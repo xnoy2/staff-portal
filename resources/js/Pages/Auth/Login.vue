@@ -1,21 +1,19 @@
 <template>
     <Head title="Sign In" />
 
-    <div class="min-h-screen flex">
+    <div class="min-h-screen flex relative bg-[#2B2D42] overflow-hidden">
+
+        <!-- ── Full-page particle canvas ────────────────────────── -->
+        <ParticleBackground />
+
+        <!-- Subtle vertical divider between panels (desktop) -->
+        <div class="hidden lg:block absolute top-0 bottom-0 left-1/2 w-px bg-white/[0.06] z-10" />
 
         <!-- ── Left panel (branding) ─────────────────────────────── -->
-        <div class="hidden lg:flex lg:w-1/2 bg-[#2B2D42] flex-col justify-between p-12 relative overflow-hidden">
-
-            <!-- Background geometric shapes -->
-            <div class="absolute inset-0 overflow-hidden pointer-events-none">
-                <div class="absolute -top-24 -right-24 w-96 h-96 rounded-full bg-white/[0.03]" />
-                <div class="absolute top-1/3 -left-16 w-64 h-64 rounded-full bg-[#EF233C]/10" />
-                <div class="absolute -bottom-16 right-16 w-80 h-80 rounded-full bg-white/[0.03]" />
-                <div class="absolute bottom-1/4 left-1/3 w-40 h-40 rounded-full bg-[#EF233C]/5" />
-            </div>
+        <div class="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative z-10">
 
             <!-- Logo + name -->
-            <div class="relative z-10">
+            <div>
                 <div class="flex items-center gap-3">
                     <AppLogo :size="44" />
                     <span class="text-white font-semibold text-lg tracking-tight">Staff Portal</span>
@@ -23,7 +21,7 @@
             </div>
 
             <!-- Centre copy -->
-            <div class="relative z-10">
+            <div>
                 <h1 class="text-4xl font-bold text-white leading-tight mb-4">
                     Manage your team,<br />
                     <span class="text-[#EF233C]">effortlessly.</span>
@@ -42,32 +40,24 @@
             </div>
 
             <!-- Footer note -->
-            <div class="relative z-10">
+            <div>
                 <p class="text-[#8D99AE] text-xs">© {{ year }} BCF. All rights reserved.</p>
             </div>
         </div>
 
         <!-- ── Right panel (form) ─────────────────────────────────── -->
-        <div class="flex-1 flex flex-col items-center justify-center bg-[#2B2D42] px-6 py-12 relative overflow-hidden">
-
-            <!-- Background geometric shapes (mirrors left panel) -->
-            <div class="absolute inset-0 overflow-hidden pointer-events-none">
-                <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/[0.03]" />
-                <div class="absolute top-1/3 -right-16 w-64 h-64 rounded-full bg-[#EF233C]/10" />
-                <div class="absolute -bottom-16 left-16 w-80 h-80 rounded-full bg-white/[0.03]" />
-                <div class="absolute bottom-1/4 right-1/3 w-40 h-40 rounded-full bg-[#EF233C]/5" />
-            </div>
+        <div class="flex-1 flex flex-col items-center justify-center px-6 py-12 relative z-10">
 
             <!-- Mobile-only logo -->
-            <div class="lg:hidden flex items-center gap-2.5 mb-10 relative z-10">
+            <div class="lg:hidden flex items-center gap-2.5 mb-10">
                 <AppLogo :size="36" />
                 <span class="text-white font-semibold text-base">Staff Portal</span>
             </div>
 
             <!-- Login card -->
             <div
-                class="relative z-10 w-full max-w-sm bg-white rounded-2xl p-8"
-                style="box-shadow: 0 0 0 1px rgba(239,35,60,0.18), 0 0 48px rgba(239,35,60,0.32), 0 0 96px rgba(239,35,60,0.12), 0 24px 60px rgba(0,0,0,0.55);"
+                class="w-full max-w-sm bg-white rounded-2xl p-8"
+                style="box-shadow: 0 0 0 1px rgba(239,35,60,0.18), 0 0 48px rgba(239,35,60,0.35), 0 0 96px rgba(239,35,60,0.14), 0 24px 60px rgba(0,0,0,0.6);"
             >
                 <!-- Heading -->
                 <div class="mb-8">
@@ -188,6 +178,7 @@ import {
     CheckCircleIcon, ExclamationCircleIcon,
 } from '@heroicons/vue/24/outline';
 import AppLogo from '@/Components/AppLogo.vue';
+import ParticleBackground from '@/Components/ParticleBackground.vue';
 
 defineProps({
     canResetPassword: { type: Boolean },
