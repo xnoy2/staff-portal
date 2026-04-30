@@ -3,7 +3,7 @@
         <div class="max-w-3xl mx-auto">
             <div class="mb-5">
                 <h1 class="text-lg font-semibold text-gray-800">New Project</h1>
-                <p class="text-xs text-gray-500 mt-0.5">Create a new BCF project.</p>
+                <p class="text-xs text-gray-500 mt-0.5">Create a new project.</p>
             </div>
             <form @submit.prevent="submit">
                 <ProjectForm :form="form" :staff-list="staffList" :vans="vans" submit-label="Create Project" />

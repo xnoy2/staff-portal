@@ -40,7 +40,7 @@ class QrScanController extends Controller
         if ($decoded === false || ! Str::isUuid($decoded)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Invalid QR code. Could not identify a BCF user.',
+                'message' => 'Invalid QR code. Could not identify a staff member.',
             ], 422);
         }
 

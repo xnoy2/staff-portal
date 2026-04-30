@@ -22,10 +22,10 @@
             <!-- Logo / Brand -->
             <div class="flex items-center gap-3 px-3 py-4 border-b border-white/10 flex-shrink-0">
                 <div class="flex-shrink-0 w-10 h-10 bg-[#EF233C] rounded-lg flex items-center justify-center">
-                    <span class="text-white font-bold text-sm">BCF</span>
+                    <span class="text-white font-bold text-sm">SP</span>
                 </div>
                 <span v-show="sidebarOpen || isMobile" class="text-white font-semibold text-sm truncate">
-                    BCF Management
+                    Staff Portal
                 </span>
                 <!-- Close button on mobile -->
                 <button

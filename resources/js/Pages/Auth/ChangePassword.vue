@@ -4,7 +4,7 @@
             <!-- Logo -->
             <div class="text-center mb-8">
                 <div class="inline-flex w-16 h-16 bg-[#EF233C] rounded-2xl items-center justify-center mb-3">
-                    <span class="text-white font-bold text-xl">BCF</span>
+                    <span class="text-white font-bold text-xl">SP</span>
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800">Change Your Password</h1>
                 <p class="text-sm text-gray-500 mt-1">Your administrator requires you to set a new password.</p>

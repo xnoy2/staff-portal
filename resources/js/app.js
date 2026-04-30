@@ -11,7 +11,7 @@ import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
 import Aura from '@primevue/themes/aura';
 
-const appName = import.meta.env.VITE_APP_NAME || 'BCF Management';
+const appName = import.meta.env.VITE_APP_NAME || 'Staff Portal';
 
 createInertiaApp({
     title: (title) => `${title} - ${appName}`,
