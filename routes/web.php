@@ -34,6 +34,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // QR Scanner page
     Route::get('/qr-scanner', [QrScanController::class, 'show'])->name('qr-scanner');
 
+    // My QR Code page (all authenticated staff)
+    Route::get('/my-qr', [QrScanController::class, 'myQr'])->name('my-qr');
+
     // Projects
     Route::resource('projects', ProjectController::class);
     Route::post('/projects/{project}/checklist',                   [ProjectController::class, 'addChecklistItem'])->name('projects.checklist.add');

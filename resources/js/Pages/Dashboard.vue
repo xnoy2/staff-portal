@@ -269,10 +269,10 @@ const activeDuration = computed(() => {
     return `${h}h ${m}m`;
 });
 
-// QR code: encodes the user's ID as a simple string
+// QR code: base64-encodes the UUID so the scanner can decode it
 const qrCodeUrl = computed(() => {
-    const payload = encodeURIComponent(`BCF_USER_${user.value.id}`);
-    return `https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${payload}&margin=10`;
+    const encoded = btoa(user.value.id);
+    return `https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(encoded)}&margin=10`;
 });
 
 // Clock in/out

@@ -49,13 +49,12 @@
             <!-- Manual input fallback -->
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <h2 class="text-sm font-semibold text-gray-700 mb-3">Manual Entry</h2>
-                <p class="text-xs text-gray-400 mb-3">Enter the staff ID directly if the camera is unavailable.</p>
+                <p class="text-xs text-gray-400 mb-3">Enter the staff member's UUID directly (found on their profile or My QR page) if the camera is unavailable.</p>
                 <div class="flex gap-2">
                     <input
                         v-model="manualId"
-                        type="number"
-                        min="1"
-                        placeholder="Staff ID number"
+                        type="text"
+                        placeholder="Staff UUID (e.g. xxxxxxxx-xxxx-xxxx-xxxx-xxxxxxxxxxxx)"
                         class="flex-1 text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]"
                         @keydown.enter="submitManual"
                     />

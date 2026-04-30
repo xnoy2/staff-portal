@@ -23,6 +23,29 @@ class QrScanController extends Controller
         return Inertia::render('Attendance/Scan');
     }
 
+    public function myQr(): Response
+    {
+        $user = auth()->user();
+
+        $recentEntries = \App\Models\TimeEntry::forUser($user->id)
+            ->approved()
+            ->latest('clock_in')
+            ->limit(5)
+            ->get()
+            ->map(fn ($e) => [
+                'id'        => $e->id,
+                'date'      => $e->clock_in->toDateString(),
+                'clock_in'  => $e->clock_in->format('H:i'),
+                'clock_out' => $e->clock_out?->format('H:i'),
+                'hours'     => $e->total_hours,
+            ]);
+
+        return Inertia::render('MyQr', [
+            'qrPayload'     => base64_encode($user->id),
+            'recentEntries' => $recentEntries,
+        ]);
+    }
+
     public function scan(Request $request): JsonResponse
     {
         abort_unless(
