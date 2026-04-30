@@ -34,18 +34,18 @@
                 </div>
 
                 <!-- Stats row -->
-                <div class="grid grid-cols-3 gap-4 mt-5 pt-5 border-t border-gray-100">
+                <div class="grid grid-cols-3 gap-2 sm:gap-4 mt-5 pt-5 border-t border-gray-100">
                     <div>
-                        <p class="text-xs text-gray-400">Assigned Projects</p>
-                        <p class="text-xl font-bold text-gray-800 mt-0.5">{{ van.projects_count }}</p>
+                        <p class="text-xs text-gray-400">Projects</p>
+                        <p class="text-lg sm:text-xl font-bold text-gray-800 mt-0.5">{{ van.projects_count }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-400">Allocations</p>
-                        <p class="text-xl font-bold text-gray-800 mt-0.5">{{ allocations.length }}</p>
+                        <p class="text-lg sm:text-xl font-bold text-gray-800 mt-0.5">{{ allocations.length }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-400">Recent Jobs</p>
-                        <p class="text-xl font-bold text-gray-800 mt-0.5">{{ recentJobs.length }}</p>
+                        <p class="text-lg sm:text-xl font-bold text-gray-800 mt-0.5">{{ recentJobs.length }}</p>
                     </div>
                 </div>
             </div>
@@ -112,10 +112,10 @@
 
                         <!-- Actions -->
                         <div class="flex items-center gap-1 flex-shrink-0">
-                            <button @click="openEdit(alloc)" class="p-1.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
+                            <button @click="openEdit(alloc)" class="p-2.5 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors">
                                 <PencilIcon class="w-3.5 h-3.5" />
                             </button>
-                            <button @click="confirmDelete(alloc)" class="p-1.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
+                            <button @click="confirmDelete(alloc)" class="p-2.5 text-gray-400 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors">
                                 <TrashIcon class="w-3.5 h-3.5" />
                             </button>
                         </div>
@@ -156,7 +156,7 @@
                 </div>
 
                 <!-- Assign staff input -->
-                <div v-if="staffOptions.length > 0" class="flex gap-2">
+                <div v-if="staffOptions.length > 0" class="flex flex-col sm:flex-row gap-2">
                     <select v-model="staffToAssign" class="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]">
                         <option :value="null">— Select staff to assign —</option>
                         <option v-for="s in staffOptions" :key="s.id" :value="s.id">{{ s.name }}</option>

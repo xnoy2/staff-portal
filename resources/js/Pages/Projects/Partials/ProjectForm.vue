@@ -119,20 +119,20 @@
                 <label
                     v-for="member in filteredStaff"
                     :key="member.id"
-                    class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer"
+                    class="flex items-center gap-3 px-4 py-2.5 hover:bg-gray-50 cursor-pointer flex-wrap"
                 >
                     <input
                         type="checkbox"
                         :value="member.id"
                         v-model="form.staff_ids"
-                        class="rounded border-gray-300 text-[#EF233C] focus:ring-[#EF233C]"
+                        class="rounded border-gray-300 text-[#EF233C] focus:ring-[#EF233C] flex-shrink-0"
                     />
-                    <span class="flex-1 text-sm text-gray-700">{{ member.name }}</span>
+                    <span class="flex-1 min-w-0 text-sm text-gray-700 truncate">{{ member.name }}</span>
                     <!-- Role selector shown only when checked -->
                     <select
                         v-if="form.staff_ids.includes(member.id)"
                         v-model="form.staff_roles[member.id]"
-                        class="text-xs border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C] py-1"
+                        class="text-xs border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C] py-1 flex-shrink-0"
                         @click.stop
                     >
                         <option value="support">Support</option>

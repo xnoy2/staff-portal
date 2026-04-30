@@ -30,31 +30,31 @@
             </div>
 
             <!-- Balance Summary Cards -->
-            <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-                <div class="bg-white rounded-xl border border-gray-200 p-4">
+            <div class="grid grid-cols-3 sm:grid-cols-5 gap-2 sm:gap-3">
+                <div class="bg-white rounded-xl border border-gray-200 p-3 sm:p-4">
                     <p class="text-xs text-gray-500 mb-1">Entitlement</p>
-                    <p class="text-2xl font-bold text-gray-800">{{ summary.entitlement }}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">days/year</p>
+                    <p class="text-xl sm:text-2xl font-bold text-gray-800">{{ summary.entitlement }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5 hidden sm:block">days/year</p>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <div class="bg-white rounded-xl border border-gray-200 p-3 sm:p-4">
                     <p class="text-xs text-gray-500 mb-1">Used</p>
-                    <p class="text-2xl font-bold text-red-600">{{ summary.used }}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">approved annual</p>
+                    <p class="text-xl sm:text-2xl font-bold text-red-600">{{ summary.used }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5 hidden sm:block">approved</p>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4">
+                <div class="bg-white rounded-xl border border-gray-200 p-3 sm:p-4">
                     <p class="text-xs text-gray-500 mb-1">Pending</p>
-                    <p class="text-2xl font-bold text-amber-500">{{ summary.pending }}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">awaiting approval</p>
+                    <p class="text-xl sm:text-2xl font-bold text-amber-500">{{ summary.pending }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5 hidden sm:block">awaiting</p>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4 border-l-4" :class="summary.remaining > 5 ? 'border-l-green-500' : 'border-l-red-500'">
-                    <p class="text-xs text-gray-500 mb-1">Remaining</p>
-                    <p class="text-2xl font-bold" :class="summary.remaining > 5 ? 'text-green-600' : 'text-red-600'">{{ summary.remaining }}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">days left</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-3 sm:p-4 border-l-4" :class="summary.remaining > 5 ? 'border-l-green-500' : 'border-l-red-500'">
+                    <p class="text-xs text-gray-500 mb-1">Left</p>
+                    <p class="text-xl sm:text-2xl font-bold" :class="summary.remaining > 5 ? 'text-green-600' : 'text-red-600'">{{ summary.remaining }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5 hidden sm:block">days left</p>
                 </div>
-                <div class="bg-white rounded-xl border border-gray-200 p-4">
-                    <p class="text-xs text-gray-500 mb-1">Sick Days</p>
-                    <p class="text-2xl font-bold text-orange-500">{{ summary.sick_days }}</p>
-                    <p class="text-xs text-gray-400 mt-0.5">this year</p>
+                <div class="bg-white rounded-xl border border-gray-200 p-3 sm:p-4">
+                    <p class="text-xs text-gray-500 mb-1">Sick</p>
+                    <p class="text-xl sm:text-2xl font-bold text-orange-500">{{ summary.sick_days }}</p>
+                    <p class="text-xs text-gray-400 mt-0.5 hidden sm:block">this year</p>
                 </div>
             </div>
 

@@ -126,7 +126,8 @@
                     <Link :href="`/attendance?user_id=${staffMember.id}`" class="text-xs text-[#EF233C] hover:underline">View all</Link>
                 </div>
                 <div v-if="!recentEntries.length" class="text-center py-6 text-gray-400 text-sm">No entries yet.</div>
-                <table v-else class="w-full text-xs">
+                <div v-else class="overflow-x-auto -mx-5 px-5">
+                <table class="w-full text-xs min-w-[280px]">
                     <thead>
                         <tr class="text-gray-400 border-b border-gray-100">
                             <th class="text-left pb-2 font-medium">Date</th>
@@ -138,9 +139,9 @@
                     </thead>
                     <tbody>
                         <tr v-for="e in recentEntries" :key="e.id" class="border-b border-gray-50 last:border-0">
-                            <td class="py-2 text-gray-700">{{ e.date }}</td>
-                            <td class="py-2 font-mono text-gray-600">{{ e.clock_in }}</td>
-                            <td class="py-2 font-mono text-gray-600">{{ e.clock_out ?? '—' }}</td>
+                            <td class="py-2 text-gray-700 whitespace-nowrap">{{ e.date }}</td>
+                            <td class="py-2 font-mono text-gray-600 whitespace-nowrap">{{ e.clock_in }}</td>
+                            <td class="py-2 font-mono text-gray-600 whitespace-nowrap">{{ e.clock_out ?? '—' }}</td>
                             <td class="py-2 text-right text-gray-700">{{ e.hours ?? '—' }}</td>
                             <td class="py-2 text-right">
                                 <span :class="statusClass(e.status)">{{ e.status }}</span>
@@ -148,6 +149,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div>
             </div>
 
         </div>

@@ -84,16 +84,16 @@
                     </div>
 
                     <div class="flex items-center gap-1 flex-shrink-0">
-                        <Link :href="route('staff.show', member.id)" class="p-2 text-gray-400 hover:text-[#EF233C] hover:bg-red-50 rounded-lg transition-colors" title="View">
+                        <Link :href="route('staff.show', member.id)" class="p-2.5 text-gray-400 hover:text-[#EF233C] hover:bg-red-50 rounded-lg transition-colors" title="View">
                             <EyeIcon class="w-4 h-4" />
                         </Link>
-                        <Link :href="route('staff.edit', member.id)" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
+                        <Link :href="route('staff.edit', member.id)" class="p-2.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                             <PencilIcon class="w-4 h-4" />
                         </Link>
-                        <button @click="toggleActive(member)" :class="member.is_active ? 'p-2 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors' : 'p-2 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors'" :title="member.is_active ? 'Deactivate' : 'Activate'">
+                        <button @click="toggleActive(member)" :class="member.is_active ? 'p-2.5 text-gray-400 hover:text-amber-600 hover:bg-amber-50 rounded-lg transition-colors' : 'p-2.5 text-gray-400 hover:text-green-600 hover:bg-green-50 rounded-lg transition-colors'" :title="member.is_active ? 'Deactivate' : 'Activate'">
                             <component :is="member.is_active ? NoSymbolIcon : CheckCircleIcon" class="w-4 h-4" />
                         </button>
-                        <button v-if="isAdmin" @click="confirmDelete(member)" class="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
+                        <button v-if="isAdmin" @click="confirmDelete(member)" class="p-2.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
                             <TrashIcon class="w-4 h-4" />
                         </button>
                     </div>
