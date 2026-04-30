@@ -6,9 +6,6 @@
         <!-- ── Full-page particle canvas ────────────────────────── -->
         <ParticleBackground />
 
-        <!-- Subtle vertical divider between panels (desktop) -->
-        <div class="hidden lg:block absolute top-0 bottom-0 left-1/2 w-px bg-white/[0.06] z-10" />
-
         <!-- ── Left panel (branding) ─────────────────────────────── -->
         <div class="hidden lg:flex lg:w-1/2 flex-col justify-between p-12 relative z-10">
 
