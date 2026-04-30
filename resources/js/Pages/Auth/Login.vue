@@ -17,9 +17,7 @@
             <!-- Logo + name -->
             <div class="relative z-10">
                 <div class="flex items-center gap-3">
-                    <div class="w-11 h-11 bg-[#EF233C] rounded-xl flex items-center justify-center shadow-lg shadow-[#EF233C]/30">
-                        <span class="text-white font-bold text-base tracking-tight">SP</span>
-                    </div>
+                    <AppLogo :size="44" />
                     <span class="text-white font-semibold text-lg tracking-tight">Staff Portal</span>
                 </div>
             </div>
@@ -54,9 +52,7 @@
 
             <!-- Mobile-only logo -->
             <div class="lg:hidden flex items-center gap-2.5 mb-10">
-                <div class="w-9 h-9 bg-[#EF233C] rounded-xl flex items-center justify-center">
-                    <span class="text-white font-bold text-sm">SP</span>
-                </div>
+                <AppLogo :size="36" />
                 <span class="text-[#2B2D42] font-semibold text-base">Staff Portal</span>
             </div>
 
@@ -179,6 +175,7 @@ import {
     EnvelopeIcon, LockClosedIcon, EyeIcon, EyeSlashIcon,
     CheckCircleIcon, ExclamationCircleIcon,
 } from '@heroicons/vue/24/outline';
+import AppLogo from '@/Components/AppLogo.vue';
 
 defineProps({
     canResetPassword: { type: Boolean },

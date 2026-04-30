@@ -1,0 +1,38 @@
+<template>
+    <svg
+        :width="size"
+        :height="size"
+        viewBox="195 57 290 290"
+        xmlns="http://www.w3.org/2000/svg"
+        aria-label="StaffPortal"
+        role="img"
+    >
+        <polygon points="340,68 459,135 459,269 340,336 221,269 221,135" fill="#c0182a" stroke="#e8203a" stroke-width="6" stroke-linejoin="round"/>
+        <polygon points="340,84 447,143 447,261 340,320 233,261 233,143" fill="none" stroke="#e8405a" stroke-width="1.5" opacity="0.35" stroke-linejoin="round"/>
+
+        <circle cx="340" cy="155" r="26" fill="#e8182e"/>
+        <circle cx="340" cy="155" r="22" fill="#f03048"/>
+
+        <path d="M260,248 Q252,210 290,196 Q308,190 325,200" fill="none" stroke="#f03048" stroke-width="14" stroke-linecap="round"/>
+        <path d="M420,248 Q428,210 390,196 Q372,190 355,200" fill="none" stroke="#f03048" stroke-width="14" stroke-linecap="round"/>
+        <path d="M325,200 Q340,210 355,200 L358,240 Q340,252 322,240 Z" fill="#e8182e"/>
+
+        <path d="M265,248 Q340,210 415,248" fill="none" stroke="#c8d0e0" stroke-width="3" opacity="0.9"/>
+
+        <circle cx="265" cy="248" r="10" fill="#ffffff" opacity="0.95"/>
+        <circle cx="265" cy="248" r="6" fill="#e8182e"/>
+        <circle cx="340" cy="218" r="10" fill="#ffffff" opacity="0.95"/>
+        <circle cx="340" cy="218" r="6" fill="#e8182e"/>
+        <circle cx="415" cy="248" r="10" fill="#ffffff" opacity="0.95"/>
+        <circle cx="415" cy="248" r="6" fill="#e8182e"/>
+
+        <line x1="265" y1="248" x2="340" y2="218" stroke="#c8d0e0" stroke-width="2" opacity="0.6"/>
+        <line x1="415" y1="248" x2="340" y2="218" stroke="#c8d0e0" stroke-width="2" opacity="0.6"/>
+    </svg>
+</template>
+
+<script setup>
+defineProps({
+    size: { type: Number, default: 40 },
+});
+</script>

@@ -3,8 +3,8 @@
         <div class="w-full max-w-md">
             <!-- Logo -->
             <div class="text-center mb-8">
-                <div class="inline-flex w-16 h-16 bg-[#EF233C] rounded-2xl items-center justify-center mb-3">
-                    <span class="text-white font-bold text-xl">SP</span>
+                <div class="inline-flex mb-3">
+                    <AppLogo :size="64" />
                 </div>
                 <h1 class="text-2xl font-bold text-gray-800">Change Your Password</h1>
                 <p class="text-sm text-gray-500 mt-1">Your administrator requires you to set a new password.</p>
@@ -50,6 +50,7 @@
 
 <script setup>
 import { useForm } from '@inertiajs/vue3';
+import AppLogo from '@/Components/AppLogo.vue';
 
 const form = useForm({
     password: '',
