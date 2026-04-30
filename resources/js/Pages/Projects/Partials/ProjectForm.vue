@@ -9,17 +9,18 @@
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div class="sm:col-span-2">
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Business</label>
-                    <div class="flex gap-3">
+                    <div class="flex gap-3 flex-wrap">
                         <label
-                            v-for="opt in [{ value: 'bcf', label: 'BCF' }, { value: 'bgr', label: 'BGR' }]"
-                            :key="opt.value"
-                            class="flex-1 flex items-center justify-center gap-2 border-2 rounded-lg py-2.5 cursor-pointer transition-colors text-sm font-semibold"
-                            :class="form.business === opt.value
-                                ? 'border-[#EF233C] bg-[#EF233C]/5 text-[#EF233C]'
-                                : 'border-gray-200 text-gray-500 hover:border-gray-300'"
+                            v-for="b in businesses"
+                            :key="b.code"
+                            class="flex-1 min-w-[100px] flex items-center justify-center gap-2 border-2 rounded-lg py-2.5 cursor-pointer transition-colors text-sm font-semibold"
+                            :style="form.business === b.code
+                                ? { borderColor: b.color, backgroundColor: b.color + '18', color: b.color }
+                                : {}"
+                            :class="form.business !== b.code ? 'border-gray-200 text-gray-500 hover:border-gray-300' : ''"
                         >
-                            <input type="radio" :value="opt.value" v-model="form.business" class="sr-only" />
-                            {{ opt.label }}
+                            <input type="radio" :value="b.code" v-model="form.business" class="sr-only" />
+                            {{ b.name }}
                         </label>
                     </div>
                     <p v-if="form.errors.business" class="mt-1 text-xs text-red-600">{{ form.errors.business }}</p>
@@ -182,8 +183,11 @@ const props = defineProps({
     form:        { type: Object, required: true },
     staffList:   { type: Array,  default: () => [] },
     vans:        { type: Array,  default: () => [] },
+    businesses:  { type: Array,  default: () => [] },
     submitLabel: { type: String, default: 'Save Changes' },
 });
+
+const businesses = computed(() => props.businesses);
 
 const staffSearch = ref('');
 

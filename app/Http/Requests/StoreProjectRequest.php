@@ -2,6 +2,7 @@
 
 namespace App\Http\Requests;
 
+use App\Models\Business;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreProjectRequest extends FormRequest
@@ -14,7 +15,7 @@ class StoreProjectRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'business'     => ['required', 'in:bcf,bgr'],
+            'business'     => ['required', 'string', 'exists:businesses,code'],
             'name'         => ['required', 'string', 'max:255'],
             'customer'     => ['required', 'string', 'max:255'],
             'address'      => ['nullable', 'string', 'max:500'],

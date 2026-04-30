@@ -61,7 +61,8 @@
                     <NavItem href="/schedule" icon="CalendarIcon" label="Schedule" :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
 
-                <NavGroup v-if="isManager" label="Admin" :collapsed="!sidebarOpen && !isMobile">
+                <NavGroup v-if="isAdmin" label="Admin" :collapsed="!sidebarOpen && !isMobile">
+                    <NavItem :href="route('businesses.index')" icon="BuildingOfficeIcon" label="Businesses" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/reports" icon="ChartBarIcon" label="Reports" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/audit-log" icon="DocumentMagnifyingGlassIcon" label="Audit Log" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/settings" icon="Cog6ToothIcon" label="Settings" :collapsed="!sidebarOpen && !isMobile" />
@@ -152,7 +153,7 @@ defineProps({
 });
 
 const page = usePage();
-const { isManager, isSiteHead } = usePermission();
+const { isAdmin, isManager, isSiteHead } = usePermission();
 
 const isMobile   = ref(window.innerWidth < 768);
 const sidebarOpen = ref(window.innerWidth >= 768);

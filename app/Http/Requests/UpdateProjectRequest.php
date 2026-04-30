@@ -14,7 +14,7 @@ class UpdateProjectRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'business'     => ['required', 'in:bcf,bgr'],
+            'business'     => ['required', 'string', 'exists:businesses,code'],
             'name'         => ['required', 'string', 'max:255'],
             'customer'     => ['required', 'string', 'max:255'],
             'address'      => ['nullable', 'string', 'max:500'],

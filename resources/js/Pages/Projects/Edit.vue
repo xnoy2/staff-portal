@@ -11,22 +11,26 @@
                 </Link>
             </div>
             <form @submit.prevent="submit">
-                <ProjectForm :form="form" :staff-list="staffList" :vans="vans" submit-label="Save Changes" />
+                <ProjectForm :form="form" :staff-list="staffList" :vans="vans" :businesses="businesses" submit-label="Save Changes" />
             </form>
         </div>
     </AppLayout>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useForm, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ProjectForm from './Partials/ProjectForm.vue';
 
 const props = defineProps({
-    project:   { type: Object, required: true },
-    staffList: { type: Array,  default: () => [] },
-    vans:      { type: Array,  default: () => [] },
+    project:    { type: Object, required: true },
+    staffList:  { type: Array,  default: () => [] },
+    vans:       { type: Array,  default: () => [] },
+    businesses: { type: Array,  default: () => [] },
 });
+
+const businesses = computed(() => props.businesses);
 
 const initialRoles = Object.fromEntries(
     props.project.staff.map(s => [s.id, s.role])

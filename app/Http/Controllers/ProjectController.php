@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreProjectRequest;
 use App\Http\Requests\UpdateProjectRequest;
+use App\Models\Business;
 use App\Models\Project;
 use App\Models\ProjectChecklistItem;
 use App\Models\User;
@@ -59,14 +60,16 @@ class ProjectController extends Controller
             'projects'     => $projects,
             'statusCounts' => $statusCounts,
             'filters'      => $request->only(['search', 'status', 'phase', 'business']),
+            'businesses'   => Business::orderBy('name')->get(['id', 'name', 'code', 'color', 'is_active']),
         ]);
     }
 
     public function create(): Response
     {
         return Inertia::render('Projects/Create', [
-            'staffList' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'vans'      => Van::where('is_active', true)->orderBy('registration')->get(['id', 'registration', 'make', 'model']),
+            'staffList'  => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'vans'       => Van::where('is_active', true)->orderBy('registration')->get(['id', 'registration', 'make', 'model']),
+            'businesses' => Business::active()->orderBy('name')->get(['id', 'name', 'code', 'color']),
         ]);
     }
 
@@ -99,9 +102,10 @@ class ProjectController extends Controller
         $project->load(['staff']);
 
         return Inertia::render('Projects/Edit', [
-            'project'   => $this->detail($project),
-            'staffList' => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
-            'vans'      => Van::where('is_active', true)->orderBy('registration')->get(['id', 'registration', 'make', 'model']),
+            'project'    => $this->detail($project),
+            'staffList'  => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
+            'vans'       => Van::where('is_active', true)->orderBy('registration')->get(['id', 'registration', 'make', 'model']),
+            'businesses' => Business::active()->orderBy('name')->get(['id', 'name', 'code', 'color']),
         ]);
     }
 

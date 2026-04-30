@@ -6,24 +6,28 @@
                 <p class="text-xs text-gray-500 mt-0.5">Create a new project.</p>
             </div>
             <form @submit.prevent="submit">
-                <ProjectForm :form="form" :staff-list="staffList" :vans="vans" submit-label="Create Project" />
+                <ProjectForm :form="form" :staff-list="staffList" :vans="vans" :businesses="businesses" submit-label="Create Project" />
             </form>
         </div>
     </AppLayout>
 </template>
 
 <script setup>
+import { computed } from 'vue';
 import { useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ProjectForm from './Partials/ProjectForm.vue';
 
-defineProps({
-    staffList: { type: Array, default: () => [] },
-    vans:      { type: Array, default: () => [] },
+const props = defineProps({
+    staffList:  { type: Array, default: () => [] },
+    vans:       { type: Array, default: () => [] },
+    businesses: { type: Array, default: () => [] },
 });
 
+const businesses = computed(() => props.businesses);
+
 const form = useForm({
-    business:     'bcf',
+    business:     props.businesses[0]?.code ?? '',
     name:         '',
     customer:     '',
     address:      '',

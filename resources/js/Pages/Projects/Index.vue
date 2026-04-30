@@ -84,12 +84,13 @@
                         v-for="opt in businessOpts"
                         :key="opt.value"
                         @click="setBusinessFilter(opt.value)"
-                        :class="[
-                            'px-3 py-1 text-xs font-semibold rounded-full border transition-all',
-                            filters.business === opt.value
-                                ? opt.active
-                                : 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white',
-                        ]"
+                        class="px-3 py-1 text-xs font-semibold rounded-full border transition-all"
+                        :style="filters.business === opt.value && opt.color
+                            ? { backgroundColor: opt.color, borderColor: opt.color, color: '#fff' }
+                            : filters.business === opt.value
+                                ? { backgroundColor: '#1f2937', borderColor: '#1f2937', color: '#fff' }
+                                : {}"
+                        :class="filters.business !== opt.value ? 'border-gray-200 text-gray-500 hover:border-gray-300 bg-white' : ''"
                     >{{ opt.label }}</button>
                 </div>
             </div>
@@ -113,7 +114,7 @@
                     <div class="flex items-start justify-between gap-2 mb-2.5">
                         <div class="min-w-0">
                             <div class="flex items-center gap-1.5 mb-0.5">
-                                <span :class="businessClass(project.business)">{{ project.business?.toUpperCase() }}</span>
+                                <span class="text-xs font-bold px-1.5 py-0.5 rounded shrink-0" :style="businessStyle(project.business)">{{ businessLabel(project.business) }}</span>
                                 <p class="font-semibold text-gray-800 text-sm truncate group-hover:text-[#EF233C] transition-colors">{{ project.name }}</p>
                             </div>
                             <p class="text-xs text-gray-400 truncate">{{ project.customer }}</p>
@@ -209,7 +210,7 @@
                                     <div :class="['w-1 h-10 rounded-full shrink-0', statusBarClass(project.status)]" />
                                     <div class="min-w-0">
                                         <div class="flex items-center gap-1.5 mb-0.5">
-                                            <span :class="businessClass(project.business)">{{ project.business?.toUpperCase() }}</span>
+                                            <span class="text-xs font-bold px-1.5 py-0.5 rounded shrink-0" :style="businessStyle(project.business)">{{ businessLabel(project.business) }}</span>
                                             <span class="font-semibold text-gray-800 truncate group-hover:text-[#EF233C] transition-colors">{{ project.name }}</span>
                                         </div>
                                         <p class="text-xs text-gray-400 truncate">{{ project.customer }}</p>
@@ -368,6 +369,7 @@ const props = defineProps({
     projects:     { type: Object, required: true },
     statusCounts: { type: Object, default: () => ({}) },
     filters:      { type: Object, default: () => ({}) },
+    businesses:   { type: Array,  default: () => [] },
 });
 
 const statuses = [
@@ -377,11 +379,10 @@ const statuses = [
     { key: 'complete',  label: 'Complete',  color: 'text-blue-600',   bar: 'bg-blue-400',    ring: 'ring-blue-400',   icon: CheckCircleIcon },
 ];
 
-const businessOpts = [
-    { value: '', label: 'All',  active: 'bg-gray-800 border-gray-800 text-white' },
-    { value: 'bcf', label: 'BCF', active: 'bg-[#EF233C] border-[#EF233C] text-white' },
-    { value: 'bgr', label: 'BGR', active: 'bg-blue-600 border-blue-600 text-white' },
-];
+const businessOpts = computed(() => [
+    { value: '', label: 'All', color: null },
+    ...props.businesses.map(b => ({ value: b.code, label: b.name, color: b.color })),
+]);
 
 const filters = reactive({
     search:   props.filters.search   ?? '',
@@ -472,9 +473,14 @@ function statusClass(s) { return statusClasses[s]  ?? statusClasses.planning; }
 function phaseLabel(s)  { return phaseLabels[s]   ?? s; }
 function phaseClass(s)  { return phaseClasses[s]   ?? phaseClasses.planning; }
 
-const businessClasses = {
-    bcf: 'text-xs font-bold px-1.5 py-0.5 rounded bg-[#EF233C]/10 text-[#EF233C] shrink-0',
-    bgr: 'text-xs font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 shrink-0',
-};
-function businessClass(b) { return businessClasses[b] ?? businessClasses.bcf; }
+function businessColor(code) {
+    return props.businesses.find(b => b.code === code)?.color ?? '#6B7280';
+}
+function businessLabel(code) {
+    return props.businesses.find(b => b.code === code)?.name ?? code?.toUpperCase();
+}
+function businessStyle(code) {
+    const color = businessColor(code);
+    return { backgroundColor: color + '1A', color };
+}
 </script>

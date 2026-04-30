@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\VanAllocationController;
@@ -69,6 +70,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Van Staff assignment
     Route::post('/vans/{van}/staff',              [VanController::class, 'assignStaff'])->name('vans.staff.assign');
     Route::delete('/vans/{van}/staff/{user}',     [VanController::class, 'unassignStaff'])->name('vans.staff.unassign');
+
+    // Businesses (admin only)
+    Route::get('/businesses',                               [BusinessController::class, 'index'])->name('businesses.index');
+    Route::post('/businesses',                              [BusinessController::class, 'store'])->name('businesses.store');
+    Route::put('/businesses/{business}',                    [BusinessController::class, 'update'])->name('businesses.update');
+    Route::delete('/businesses/{business}',                 [BusinessController::class, 'destroy'])->name('businesses.destroy');
+    Route::post('/businesses/{business}/toggle-active',     [BusinessController::class, 'toggleActive'])->name('businesses.toggle-active');
 
     // Staff management
     Route::resource('staff', StaffController::class);
