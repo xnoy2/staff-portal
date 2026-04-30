@@ -1,6 +1,9 @@
 #!/bin/bash
 set -e
 
+echo "==> Removing dev artifacts..."
+rm -f public/hot
+
 echo "==> Preparing storage directories..."
 mkdir -p storage/framework/views
 mkdir -p storage/framework/cache/data
