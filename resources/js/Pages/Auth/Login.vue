@@ -48,10 +48,15 @@
         </div>
 
         <!-- ── Right panel (form) ─────────────────────────────────── -->
-        <div class="flex-1 flex flex-col items-center justify-center bg-[#181929] px-6 py-12 relative overflow-hidden">
+        <div class="flex-1 flex flex-col items-center justify-center bg-[#2B2D42] px-6 py-12 relative overflow-hidden">
 
-            <!-- Ambient red glow behind card -->
-            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full bg-[#EF233C]/10 blur-3xl pointer-events-none" />
+            <!-- Background geometric shapes (mirrors left panel) -->
+            <div class="absolute inset-0 overflow-hidden pointer-events-none">
+                <div class="absolute -top-24 -left-24 w-96 h-96 rounded-full bg-white/[0.03]" />
+                <div class="absolute top-1/3 -right-16 w-64 h-64 rounded-full bg-[#EF233C]/10" />
+                <div class="absolute -bottom-16 left-16 w-80 h-80 rounded-full bg-white/[0.03]" />
+                <div class="absolute bottom-1/4 right-1/3 w-40 h-40 rounded-full bg-[#EF233C]/5" />
+            </div>
 
             <!-- Mobile-only logo -->
             <div class="lg:hidden flex items-center gap-2.5 mb-10 relative z-10">
