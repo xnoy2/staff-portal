@@ -34,18 +34,36 @@ import { Link, usePage } from '@inertiajs/vue3';
 import * as HeroOutline from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    href:      { type: String, required: true },
-    icon:      { type: String, required: true },
-    label:     { type: String, required: true },
-    collapsed: { type: Boolean, default: false },
-    badge:     { type: Number, default: 0 },
+    href:       { type: String, required: true },
+    icon:       { type: String, required: true },
+    label:      { type: String, required: true },
+    collapsed:  { type: Boolean, default: false },
+    badge:      { type: Number, default: 0 },
+    routeName:  { type: String, default: null },
 });
 
 const page = usePage();
 
 const isActive = computed(() => {
-    const path = props.href.startsWith('http') ? new URL(props.href).pathname : props.href;
-    return path !== '/' && page.url.startsWith(path);
+    try {
+        // Prefer Ziggy's route().current() when a route name is given — most reliable
+        if (props.routeName) {
+            return !!route().current(props.routeName);
+        }
+
+        // For hard-coded paths: extract just the pathname and compare with current URL
+        const currentUrl = page.url;
+        if (!currentUrl) return false;
+        const currentPath = currentUrl.split('?')[0];
+
+        const targetPath = props.href.startsWith('http')
+            ? new URL(props.href).pathname
+            : props.href;
+
+        return targetPath !== '/' && currentPath.startsWith(targetPath);
+    } catch {
+        return false;
+    }
 });
 
 const iconComponent = computed(() => HeroOutline[props.icon] ?? HeroOutline.QuestionMarkCircleIcon);

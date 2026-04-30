@@ -38,32 +38,25 @@
             <!-- Nav -->
             <nav class="flex-1 overflow-y-auto py-4 space-y-1 px-2">
                 <NavGroup label="Operations" :collapsed="!sidebarOpen && !isMobile">
-                    <NavItem :href="route('dashboard')" icon="HomeIcon" label="Dashboard" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/jobs" icon="ClipboardDocumentListIcon" label="Live Board" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/attendance" icon="ClockIcon" label="Attendance" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/leave" icon="CalendarDaysIcon" label="Leave" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/my-qr" icon="QrCodeIcon" label="My QR Code" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('dashboard')" routeName="dashboard" icon="HomeIcon"                  label="Dashboard"  :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/jobs"                                      icon="ClipboardDocumentListIcon" label="Live Board" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/attendance"                                icon="ClockIcon"                 label="Attendance" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/leave"                                     icon="CalendarDaysIcon"          label="Leave"      :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/my-qr"                                    icon="QrCodeIcon"                label="My QR Code" :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
 
                 <NavGroup v-if="isSiteHead" label="Field" :collapsed="!sidebarOpen && !isMobile">
                     <NavItem href="/qr-scanner" icon="CameraIcon" label="QR Scanner" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/bulk-entry" icon="TableCellsIcon" label="Bulk Entry" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem v-if="isManager" href="/approvals" icon="CheckCircleIcon" label="Approvals" :collapsed="!sidebarOpen && !isMobile" :badge="pendingApprovals" />
                 </NavGroup>
 
                 <NavGroup v-if="isManager" label="Management" :collapsed="!sidebarOpen && !isMobile">
-                    <NavItem href="/projects" icon="FolderIcon" label="Projects" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/staff" icon="UsersIcon" label="Staff" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/vans" icon="TruckIcon" label="Vans" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/inventory" icon="ArchiveBoxIcon" label="Inventory" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/schedule" icon="CalendarIcon" label="Schedule" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/projects" icon="FolderIcon"  label="Projects" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/staff"    icon="UsersIcon"   label="Staff"    :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/vans"     icon="TruckIcon"   label="Vans"     :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
 
                 <NavGroup v-if="isAdmin" label="Admin" :collapsed="!sidebarOpen && !isMobile">
-                    <NavItem :href="route('businesses.index')" icon="BuildingOfficeIcon" label="Businesses" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/reports" icon="ChartBarIcon" label="Reports" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/audit-log" icon="DocumentMagnifyingGlassIcon" label="Audit Log" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/settings" icon="Cog6ToothIcon" label="Settings" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('businesses.index')" routeName="businesses.index" icon="BuildingOfficeIcon" label="Businesses" :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
             </nav>
 
