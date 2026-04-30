@@ -43,7 +43,10 @@ const props = defineProps({
 
 const page = usePage();
 
-const isActive = computed(() => page.url.startsWith(props.href) && props.href !== '/');
+const isActive = computed(() => {
+    const path = props.href.startsWith('http') ? new URL(props.href).pathname : props.href;
+    return path !== '/' && page.url.startsWith(path);
+});
 
 const iconComponent = computed(() => HeroOutline[props.icon] ?? HeroOutline.QuestionMarkCircleIcon);
 </script>
