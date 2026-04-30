@@ -25,12 +25,15 @@ const REPEL_FORCE  = 0.12;
 const COUNT        = 65;
 
 function mkParticle(w, h) {
+    const vx = (Math.random() - 0.5) * 0.55;
+    const vy = (Math.random() - 0.5) * 0.55;
     return {
-        x:   Math.random() * w,
-        y:   Math.random() * h,
-        vx:  (Math.random() - 0.5) * 0.55,
-        vy:  (Math.random() - 0.5) * 0.55,
-        r:   Math.random() * 1.8 + 0.8,
+        x:    Math.random() * w,
+        y:    Math.random() * h,
+        vx,   vy,
+        bvx:  vx,   // base velocity — particles drift back to this
+        bvy:  vy,
+        r:    Math.random() * 1.8 + 0.8,
         color: COLORS[Math.floor(Math.random() * COLORS.length)],
     };
 }
@@ -60,9 +63,9 @@ function draw() {
             }
         }
 
-        // Dampen so repulsion doesn't accelerate forever
-        p.vx *= 0.995;
-        p.vy *= 0.995;
+        // Drift back toward base velocity so particles never stop
+        p.vx += (p.bvx - p.vx) * 0.03;
+        p.vy += (p.bvy - p.vy) * 0.03;
 
         p.x += p.vx;
         p.y += p.vy;
