@@ -201,9 +201,9 @@
                                     :key="entry.id"
                                     class="border-b border-gray-50 last:border-0"
                                 >
-                                    <td class="py-2 text-gray-700 whitespace-nowrap">{{ entry.date }}</td>
-                                    <td class="py-2 text-gray-600 whitespace-nowrap">{{ entry.clock_in }}</td>
-                                    <td class="py-2 text-gray-600 whitespace-nowrap">{{ entry.clock_out ?? '—' }}</td>
+                                    <td class="py-2 text-gray-700 whitespace-nowrap">{{ fmtDate(entry.clock_in) }}</td>
+                                    <td class="py-2 text-gray-600 whitespace-nowrap">{{ fmtTime(entry.clock_in) }}</td>
+                                    <td class="py-2 text-gray-600 whitespace-nowrap">{{ fmtTime(entry.clock_out) }}</td>
                                     <td class="py-2 text-right text-gray-700">{{ entry.hours ?? '—' }}</td>
                                     <td class="py-2 text-right">
                                         <span :class="statusClass(entry.status)">{{ entry.status }}</span>
@@ -260,6 +260,15 @@ const clockInTime = computed(() => {
 const currentDate = computed(() =>
     now.value.toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 );
+
+function fmtTime(iso) {
+    if (!iso) return '—';
+    return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+}
+function fmtDate(iso) {
+    if (!iso) return '';
+    return new Date(iso).toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
 
 const activeDuration = computed(() => {
     if (!props.activeEntry?.clock_in) return '';

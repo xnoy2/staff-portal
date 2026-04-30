@@ -64,7 +64,7 @@ class AttendanceController extends Controller
 
         $autoApprove = $user->hasAnyRole(['admin', 'manager']);
 
-        TimeEntry::create([
+        $entry = TimeEntry::create([
             'user_id'    => $user->id,
             'clock_in'   => now(),
             'source'     => 'self_clockin',
@@ -74,7 +74,7 @@ class AttendanceController extends Controller
             'approved_at' => $autoApprove ? now() : null,
         ]);
 
-        return back()->with('success', 'Clocked in at ' . now()->format('H:i'));
+        return back()->with('success', 'Clocked in at ' . $entry->clock_in->toIso8601String());
     }
 
     public function clockOut(Request $request): RedirectResponse

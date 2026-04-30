@@ -90,9 +90,8 @@ class DashboardController extends Controller
             ->get()
             ->map(fn ($e) => [
                 'id'        => $e->id,
-                'date'      => $e->clock_in->toDateString(),
-                'clock_in'  => $e->clock_in->format('H:i'),
-                'clock_out' => $e->clock_out?->format('H:i'),
+                'clock_in'  => $e->clock_in->toIso8601String(),
+                'clock_out' => $e->clock_out?->toIso8601String(),
                 'hours'     => $e->total_hours,
                 'status'    => $e->status,
             ]);

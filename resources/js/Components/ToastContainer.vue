@@ -60,10 +60,18 @@ const page  = usePage();
 const toasts = ref([]);
 let counter  = 0;
 
+// Replace any ISO-8601 timestamps in flash messages with browser-local time
+const ISO_RE = /\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(?:\.\d+)?Z/g;
+function localiseIso(msg) {
+    return msg.replace(ISO_RE, (iso) =>
+        new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+    );
+}
+
 function add(type, message) {
     if (!message) return;
     const id = ++counter;
-    toasts.value.push({ id, type, message });
+    toasts.value.push({ id, type, message: localiseIso(message) });
     setTimeout(() => remove(id), 4500);
 }
 
