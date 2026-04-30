@@ -1,6 +1,14 @@
 #!/bin/bash
 set -e
 
+echo "==> Preparing storage directories..."
+mkdir -p storage/framework/views
+mkdir -p storage/framework/cache/data
+mkdir -p storage/framework/sessions
+mkdir -p storage/logs
+mkdir -p bootstrap/cache
+chmod -R 775 storage bootstrap/cache
+
 echo "==> Caching config, routes, views..."
 php artisan config:cache
 php artisan route:cache
