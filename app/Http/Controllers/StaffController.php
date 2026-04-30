@@ -114,8 +114,8 @@ class StaffController extends Controller
             ->get()
             ->map(fn ($e) => [
                 'id'        => $e->id,
-                'date'      => $e->clock_in->toDateString(),
-                'clock_in'  => $e->clock_in->format('H:i'),
+                'date'      => $e->clock_in?->toDateString(),
+                'clock_in'  => $e->clock_in?->format('H:i'),
                 'clock_out' => $e->clock_out?->format('H:i'),
                 'hours'     => $e->total_hours,
                 'status'    => $e->status,
@@ -138,7 +138,7 @@ class StaffController extends Controller
                 'certifications'          => $staff->certifications ?? [],
                 'notes'                   => $staff->notes,
                 'roles'                   => $staff->getRoleNames(),
-                'created_at'              => $staff->created_at->toDateString(),
+                'created_at'              => $staff->created_at?->toDateString(),
             ],
             'recentEntries' => $recentEntries,
             'totalHours'    => round($totalHours, 2),

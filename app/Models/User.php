@@ -62,7 +62,7 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(Project::class, 'project_user')
             ->withPivot('role')
-            ->orderBy('name');
+            ->orderBy('projects.name');
     }
 
     public function vans(): BelongsToMany
