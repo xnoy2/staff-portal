@@ -1,0 +1,222 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Job;
+use App\Models\Project;
+use App\Models\ProjectChecklistItem;
+use App\Models\TimeEntry;
+use App\Models\User;
+use App\Models\Van;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Inertia\Inertia;
+use Inertia\Response;
+
+class JobController extends Controller
+{
+    public function index(Request $request): Response
+    {
+        $user         = $request->user();
+        $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'site_head']);
+        $date         = $request->input('date', today()->toDateString());
+
+        $jobs = Job::forDate($date)
+            ->with([
+                'project:id,name,customer,business',
+                'van:id,registration,make,model',
+                'staff:id,name,avatar',
+            ])
+            ->orderBy('start_time')
+            ->orderBy('created_at')
+            ->get();
+
+        // Load today's time entries for all assigned staff in one query
+        $staffIds = $jobs->flatMap(fn ($j) => $j->staff->pluck('id'))->unique()->values();
+
+        $entries = TimeEntry::whereIn('user_id', $staffIds)
+            ->whereDate('clock_in', $date)
+            ->get()
+            ->groupBy('user_id');
+
+        $formatted = $jobs->map(fn ($job) => $this->format($job, $entries));
+
+        return Inertia::render('Jobs/Index', [
+            'jobs'         => $formatted,
+            'date'         => $date,
+            'isPrivileged' => $isPrivileged,
+            'projects'     => $isPrivileged
+                ? Project::whereIn('status', ['planning', 'active', 'on_hold'])
+                    ->orderBy('name')->get(['id', 'name', 'customer', 'business'])
+                : [],
+            'vans'         => $isPrivileged
+                ? Van::where('is_active', true)->orderBy('registration')->get(['id', 'registration', 'make', 'model'])
+                : [],
+            'staffList'    => $isPrivileged
+                ? User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'avatar'])
+                : [],
+        ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'manager', 'site_head']), 403);
+
+        $data = $request->validate([
+            'project_id'  => ['nullable', 'exists:projects,id'],
+            'van_id'      => ['nullable', 'exists:vans,id'],
+            'title'       => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'date'        => ['required', 'date'],
+            'start_time'  => ['nullable', 'date_format:H:i'],
+            'end_time'    => ['nullable', 'date_format:H:i'],
+            'notes'       => ['nullable', 'string', 'max:2000'],
+            'staff_ids'   => ['nullable', 'array'],
+            'staff_ids.*' => ['exists:users,id'],
+        ]);
+
+        $job = Job::create([...$data, 'created_by' => $request->user()->id]);
+
+        if (!empty($data['staff_ids'])) {
+            $job->staff()->sync($data['staff_ids']);
+        }
+
+        $this->syncChecklistItem($job);
+
+        return back()->with('success', 'Job created.');
+    }
+
+    public function update(Request $request, Job $job): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'manager', 'site_head']), 403);
+
+        $data = $request->validate([
+            'project_id'  => ['nullable', 'exists:projects,id'],
+            'van_id'      => ['nullable', 'exists:vans,id'],
+            'title'       => ['required', 'string', 'max:255'],
+            'description' => ['nullable', 'string', 'max:1000'],
+            'date'        => ['required', 'date'],
+            'start_time'  => ['nullable', 'date_format:H:i'],
+            'end_time'    => ['nullable', 'date_format:H:i'],
+            'notes'       => ['nullable', 'string', 'max:2000'],
+            'staff_ids'   => ['nullable', 'array'],
+            'staff_ids.*' => ['exists:users,id'],
+        ]);
+
+        $job->update($data);
+        $job->staff()->sync($data['staff_ids'] ?? []);
+
+        $this->syncChecklistItem($job);
+
+        return back()->with('success', 'Job updated.');
+    }
+
+    public function updateStatus(Request $request, Job $job): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'manager', 'site_head']), 403);
+
+        $request->validate([
+            'status' => ['required', 'in:scheduled,in_progress,completed,cancelled'],
+        ]);
+
+        $job->update(['status' => $request->status]);
+
+        $item = ProjectChecklistItem::where('job_id', $job->id)->first();
+        if ($item) {
+            $completed = $request->status === 'completed';
+            $item->update([
+                'is_completed' => $completed,
+                'completed_by' => $completed ? $request->user()->id : null,
+                'completed_at' => $completed ? now() : null,
+            ]);
+        }
+
+        return back()->with('success', 'Status updated.');
+    }
+
+    public function destroy(Request $request, Job $job): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'manager']), 403);
+
+        ProjectChecklistItem::where('job_id', $job->id)->delete();
+        $job->delete();
+
+        return back()->with('success', 'Job removed.');
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────
+
+    private function syncChecklistItem(Job $job): void
+    {
+        $existing = ProjectChecklistItem::where('job_id', $job->id)->first();
+        $title    = $job->title . ' — ' . $job->date->format('d M Y');
+
+        if ($job->project_id) {
+            if ($existing) {
+                if ($existing->project_id !== $job->project_id) {
+                    // Project changed — move item to new project
+                    $existing->delete();
+                    $this->createChecklistItem($job, $title);
+                } else {
+                    // Same project — just sync the title and date
+                    $existing->update(['title' => $title]);
+                }
+            } else {
+                $this->createChecklistItem($job, $title);
+            }
+        } elseif ($existing) {
+            // Project removed from job — delete the linked item
+            $existing->delete();
+        }
+    }
+
+    private function createChecklistItem(Job $job, string $title): void
+    {
+        $maxOrder = ProjectChecklistItem::where('project_id', $job->project_id)->max('sort_order') ?? 0;
+
+        ProjectChecklistItem::create([
+            'project_id' => $job->project_id,
+            'job_id'     => $job->id,
+            'title'      => $title,
+            'sort_order' => $maxOrder + 1,
+        ]);
+    }
+
+    private function format(Job $job, $entries): array
+    {
+        return [
+            'id'          => $job->id,
+            'title'       => $job->title,
+            'description' => $job->description,
+            'date'        => $job->date->toDateString(),
+            'start_time'  => $job->start_time,
+            'end_time'    => $job->end_time,
+            'status'      => $job->status,
+            'notes'       => $job->notes,
+            'project'     => $job->project ? [
+                'id'       => $job->project->id,
+                'name'     => $job->project->name,
+                'customer' => $job->project->customer,
+                'business' => $job->project->business,
+            ] : null,
+            'van'         => $job->van ? [
+                'id'           => $job->van->id,
+                'registration' => $job->van->registration,
+                'label'        => "{$job->van->registration} — {$job->van->make} {$job->van->model}",
+            ] : null,
+            'staff'       => $job->staff->map(function ($u) use ($entries) {
+                $userEntries  = $entries->get($u->id, collect());
+                $activeEntry  = $userEntries->whereNull('clock_out')->first();
+                $hoursToday   = round($userEntries->sum('total_hours'), 1);
+
+                return [
+                    'id'         => $u->id,
+                    'name'       => $u->name,
+                    'avatar_url' => $u->avatar_url,
+                    'clocked_in' => (bool) $activeEntry,
+                    'hours_today'=> $hoursToday,
+                ];
+            }),
+        ];
+    }
+}

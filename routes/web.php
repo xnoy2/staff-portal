@@ -1,0 +1,90 @@
+<?php
+
+use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\JobController;
+use App\Http\Controllers\LeaveController;
+use App\Http\Controllers\VanAllocationController;
+use App\Http\Controllers\VanController;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\StaffController;
+use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\QrScanController;
+use Illuminate\Support\Facades\Route;
+
+Route::get('/', fn () => redirect()->route('dashboard'));
+
+Route::middleware(['auth', 'verified'])->group(function () {
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Attendance
+    Route::prefix('attendance')->name('attendance.')->group(function () {
+        Route::get('/',                [AttendanceController::class, 'index'])->name('index');
+        Route::post('/clock-in',       [AttendanceController::class, 'clockIn'])->name('clock-in')->middleware('throttle:clock-actions');
+        Route::post('/clock-out',      [AttendanceController::class, 'clockOut'])->name('clock-out')->middleware('throttle:clock-actions');
+        Route::get('/active-entry',    [AttendanceController::class, 'activeEntry'])->name('active-entry');
+        Route::post('/bulk-approve',   [AttendanceController::class, 'bulkApprove'])->name('bulk-approve');
+        Route::post('/{timeEntry}/approve', [AttendanceController::class, 'approve'])->name('approve');
+        Route::post('/{timeEntry}/reject',  [AttendanceController::class, 'reject'])->name('reject');
+        Route::post('/scan',           [QrScanController::class, 'scan'])->name('scan')->middleware('throttle:qr-scan');
+    });
+
+    // QR Scanner page
+    Route::get('/qr-scanner', [QrScanController::class, 'show'])->name('qr-scanner');
+
+    // Projects
+    Route::resource('projects', ProjectController::class);
+    Route::post('/projects/{project}/checklist',                   [ProjectController::class, 'addChecklistItem'])->name('projects.checklist.add');
+    Route::patch('/projects/{project}/checklist/{item}/toggle',    [ProjectController::class, 'toggleChecklistItem'])->name('projects.checklist.toggle');
+    Route::delete('/projects/{project}/checklist/{item}',          [ProjectController::class, 'deleteChecklistItem'])->name('projects.checklist.delete');
+
+    // Live Board / Jobs
+    Route::prefix('jobs')->name('jobs.')->group(function () {
+        Route::get('/',                      [JobController::class, 'index'])->name('index');
+        Route::post('/',                     [JobController::class, 'store'])->name('store');
+        Route::put('/{job}',                 [JobController::class, 'update'])->name('update');
+        Route::patch('/{job}/status',        [JobController::class, 'updateStatus'])->name('status');
+        Route::delete('/{job}',              [JobController::class, 'destroy'])->name('destroy');
+    });
+
+    // Leave
+    Route::prefix('leave')->name('leave.')->group(function () {
+        Route::get('/',                          [LeaveController::class, 'index'])->name('index');
+        Route::post('/',                         [LeaveController::class, 'store'])->name('store');
+        Route::post('/{leave}/approve',          [LeaveController::class, 'approve'])->name('approve');
+        Route::post('/{leave}/reject',           [LeaveController::class, 'reject'])->name('reject');
+        Route::delete('/{leave}',                [LeaveController::class, 'destroy'])->name('destroy');
+    });
+
+    // Vans
+    Route::resource('vans', VanController::class);
+    Route::post('/vans/{van}/toggle-active', [VanController::class, 'toggleActive'])->name('vans.toggle-active');
+
+    // Van Allocations (nested under van)
+    Route::post('/vans/{van}/allocations',                          [VanAllocationController::class, 'store'])->name('vans.allocations.store');
+    Route::put('/vans/{van}/allocations/{allocation}',              [VanAllocationController::class, 'update'])->name('vans.allocations.update');
+    Route::delete('/vans/{van}/allocations/{allocation}',           [VanAllocationController::class, 'destroy'])->name('vans.allocations.destroy');
+
+    // Van Staff assignment
+    Route::post('/vans/{van}/staff',              [VanController::class, 'assignStaff'])->name('vans.staff.assign');
+    Route::delete('/vans/{van}/staff/{user}',     [VanController::class, 'unassignStaff'])->name('vans.staff.unassign');
+
+    // Staff management
+    Route::resource('staff', StaffController::class);
+    Route::post('/staff/{staff}/toggle-active',       [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
+    Route::post('/staff/{staff}/force-password-reset',[StaffController::class, 'forcePasswordReset'])->name('staff.force-password-reset');
+
+    // Profile
+    Route::get('/profile',             [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::post('/profile',            [ProfileController::class, 'update'])->name('profile.update');
+    Route::put('/profile/password',    [ProfileController::class, 'updatePassword'])->name('profile.password');
+    Route::delete('/profile',          [ProfileController::class, 'destroy'])->name('profile.destroy');
+});
+
+Route::middleware('auth')->group(function () {
+    Route::get('/change-password',  [ChangePasswordController::class, 'show'])->name('password.change');
+    Route::post('/change-password', [ChangePasswordController::class, 'update'])->name('password.change.update');
+});
+
+require __DIR__.'/auth.php';
