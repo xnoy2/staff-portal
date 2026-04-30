@@ -184,7 +184,8 @@
                         <div v-if="recentEntries.length === 0" class="text-center py-6 text-gray-400 text-sm">
                             No recent entries yet.
                         </div>
-                        <table v-else class="w-full text-xs">
+                        <div v-else class="overflow-x-auto -mx-5 px-5">
+                        <table class="w-full text-xs min-w-[280px]">
                             <thead>
                                 <tr class="text-gray-400 border-b border-gray-100">
                                     <th class="text-left pb-2 font-medium">Date</th>
@@ -200,9 +201,9 @@
                                     :key="entry.id"
                                     class="border-b border-gray-50 last:border-0"
                                 >
-                                    <td class="py-2 text-gray-700">{{ entry.date }}</td>
-                                    <td class="py-2 text-gray-600">{{ entry.clock_in }}</td>
-                                    <td class="py-2 text-gray-600">{{ entry.clock_out ?? '—' }}</td>
+                                    <td class="py-2 text-gray-700 whitespace-nowrap">{{ entry.date }}</td>
+                                    <td class="py-2 text-gray-600 whitespace-nowrap">{{ entry.clock_in }}</td>
+                                    <td class="py-2 text-gray-600 whitespace-nowrap">{{ entry.clock_out ?? '—' }}</td>
                                     <td class="py-2 text-right text-gray-700">{{ entry.hours ?? '—' }}</td>
                                     <td class="py-2 text-right">
                                         <span :class="statusClass(entry.status)">{{ entry.status }}</span>
@@ -210,6 +211,7 @@
                                 </tr>
                             </tbody>
                         </table>
+                        </div>
                     </div>
                 </div>
             </div>

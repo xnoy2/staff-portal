@@ -3,40 +3,77 @@
         <div class="max-w-7xl mx-auto space-y-4">
 
             <!-- ── Date navigation ─────────────────────────────────── -->
-            <div class="bg-[#2B2D42] rounded-2xl px-5 py-4 flex items-center gap-3">
-                <!-- Prev -->
-                <button
-                    @click="navigate(-1)"
-                    class="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors"
-                >
-                    <ChevronLeftIcon class="w-5 h-5" />
-                </button>
+            <div class="bg-[#2B2D42] rounded-2xl px-4 sm:px-5 py-3 sm:py-4">
+                <!-- Row 1: prev | date | next | Add Job (mobile) / all controls (desktop) -->
+                <div class="flex items-center gap-2 sm:gap-3">
+                    <!-- Prev -->
+                    <button
+                        @click="navigate(-1)"
+                        class="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                        <ChevronLeftIcon class="w-5 h-5" />
+                    </button>
 
-                <!-- Date block -->
-                <div class="flex-1 text-center select-none">
-                    <div class="flex items-center justify-center gap-2">
-                        <p class="text-white text-lg font-bold tracking-tight">{{ dayLabel }}</p>
-                        <span v-if="isToday" class="text-[10px] font-bold bg-[#EF233C] text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide">Today</span>
-                        <span v-else-if="isTomorrow" class="text-[10px] font-bold bg-white/20 text-white/80 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Tomorrow</span>
-                        <span v-else-if="isYesterday" class="text-[10px] font-bold bg-white/20 text-white/80 px-1.5 py-0.5 rounded-full uppercase tracking-wide">Yesterday</span>
+                    <!-- Date block -->
+                    <div class="flex-1 text-center select-none min-w-0">
+                        <div class="flex items-center justify-center gap-2">
+                            <p class="text-white text-base sm:text-lg font-bold tracking-tight truncate">{{ dayLabel }}</p>
+                            <span v-if="isToday" class="text-[10px] font-bold bg-[#EF233C] text-white px-1.5 py-0.5 rounded-full uppercase tracking-wide shrink-0">Today</span>
+                            <span v-else-if="isTomorrow" class="text-[10px] font-bold bg-white/20 text-white/80 px-1.5 py-0.5 rounded-full uppercase tracking-wide shrink-0">Tomorrow</span>
+                            <span v-else-if="isYesterday" class="text-[10px] font-bold bg-white/20 text-white/80 px-1.5 py-0.5 rounded-full uppercase tracking-wide shrink-0">Yesterday</span>
+                        </div>
+                        <p class="text-white/50 text-xs mt-0.5">{{ shortDate }}</p>
                     </div>
-                    <p class="text-white/50 text-xs mt-0.5">{{ shortDate }}</p>
+
+                    <!-- Next -->
+                    <button
+                        @click="navigate(1)"
+                        class="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors"
+                    >
+                        <ChevronRightIcon class="w-5 h-5" />
+                    </button>
+
+                    <!-- Desktop-only controls -->
+                    <div class="hidden sm:flex items-center gap-2 ml-2 pl-3 border-l border-white/10">
+                        <button
+                            v-if="!isToday"
+                            @click="goToToday"
+                            class="text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
+                        >
+                            Today
+                        </button>
+                        <input
+                            type="date"
+                            :value="date"
+                            @change="goToDate($event.target.value)"
+                            class="text-xs bg-white/10 text-white/70 border border-white/20 rounded-lg px-2 py-1.5 focus:outline-none focus:border-white/40 [color-scheme:dark] cursor-pointer"
+                        />
+                        <button
+                            v-if="isPrivileged"
+                            @click="openCreate"
+                            class="bg-[#EF233C] hover:bg-[#D90429] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap"
+                        >
+                            <PlusIcon class="w-3.5 h-3.5" /> Add Job
+                        </button>
+                    </div>
+
+                    <!-- Mobile-only Add Job -->
+                    <button
+                        v-if="isPrivileged"
+                        @click="openCreate"
+                        class="sm:hidden flex-shrink-0 bg-[#EF233C] hover:bg-[#D90429] text-white text-xs font-semibold px-3 py-2 rounded-lg transition-colors flex items-center gap-1"
+                    >
+                        <PlusIcon class="w-3.5 h-3.5" />
+                        <span>Add</span>
+                    </button>
                 </div>
 
-                <!-- Next -->
-                <button
-                    @click="navigate(1)"
-                    class="flex-shrink-0 w-9 h-9 flex items-center justify-center rounded-xl text-white/50 hover:text-white hover:bg-white/10 transition-colors"
-                >
-                    <ChevronRightIcon class="w-5 h-5" />
-                </button>
-
-                <!-- Controls -->
-                <div class="flex items-center gap-2 ml-2 pl-3 border-l border-white/10">
+                <!-- Row 2 (mobile only): date picker + Today -->
+                <div class="flex items-center gap-2 mt-2.5 sm:hidden">
                     <button
                         v-if="!isToday"
                         @click="goToToday"
-                        class="text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors"
+                        class="text-xs text-white/70 hover:text-white border border-white/20 hover:border-white/40 hover:bg-white/10 px-3 py-1.5 rounded-lg transition-colors whitespace-nowrap"
                     >
                         Today
                     </button>
@@ -44,15 +81,8 @@
                         type="date"
                         :value="date"
                         @change="goToDate($event.target.value)"
-                        class="text-xs bg-white/10 text-white/70 border border-white/20 rounded-lg px-2 py-1.5 focus:outline-none focus:border-white/40 [color-scheme:dark] cursor-pointer"
+                        class="flex-1 text-xs bg-white/10 text-white/70 border border-white/20 rounded-lg px-2 py-1.5 focus:outline-none focus:border-white/40 [color-scheme:dark] cursor-pointer"
                     />
-                    <button
-                        v-if="isPrivileged"
-                        @click="openCreate"
-                        class="bg-[#EF233C] hover:bg-[#D90429] text-white text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap"
-                    >
-                        <PlusIcon class="w-3.5 h-3.5" /> Add Job
-                    </button>
                 </div>
             </div>
 
@@ -274,7 +304,7 @@
                         </div>
 
                         <!-- Date + Start + End -->
-                        <div class="grid grid-cols-3 gap-2">
+                        <div class="grid grid-cols-1 sm:grid-cols-3 gap-2">
                             <div>
                                 <label class="form-label">Date <span class="text-[#EF233C]">*</span></label>
                                 <input v-model="form.date" type="date" class="form-input" required />

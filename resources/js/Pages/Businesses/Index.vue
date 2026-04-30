@@ -32,7 +32,7 @@
                 <div
                     v-for="b in businesses"
                     :key="b.id"
-                    class="flex items-center gap-4 px-5 py-4"
+                    class="flex items-center gap-3 px-4 py-4 flex-wrap sm:flex-nowrap"
                 >
                     <!-- Color swatch -->
                     <div
@@ -50,28 +50,28 @@
 
                     <!-- Status badge -->
                     <span
-                        class="text-xs font-medium px-2 py-0.5 rounded-full"
+                        class="text-xs font-medium px-2 py-0.5 rounded-full flex-shrink-0"
                         :class="b.is_active ? 'bg-emerald-50 text-emerald-600' : 'bg-gray-100 text-gray-400'"
                     >
                         {{ b.is_active ? 'Active' : 'Inactive' }}
                     </span>
 
                     <!-- Actions -->
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-1 flex-shrink-0">
                         <button
                             @click="openEdit(b)"
-                            class="text-xs text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100 transition-colors"
+                            class="text-xs text-gray-500 hover:text-gray-800 px-3 py-1.5 rounded-lg hover:bg-gray-100 transition-colors"
                         >Edit</button>
                         <button
                             @click="toggleActive(b)"
-                            class="text-xs px-2 py-1 rounded transition-colors"
+                            class="text-xs px-3 py-1.5 rounded-lg transition-colors"
                             :class="b.is_active
                                 ? 'text-amber-600 hover:bg-amber-50'
                                 : 'text-emerald-600 hover:bg-emerald-50'"
                         >{{ b.is_active ? 'Deactivate' : 'Activate' }}</button>
                         <button
                             @click="confirmDelete(b)"
-                            class="text-xs text-red-500 hover:text-red-700 px-2 py-1 rounded hover:bg-red-50 transition-colors"
+                            class="text-xs text-red-500 hover:text-red-700 px-3 py-1.5 rounded-lg hover:bg-red-50 transition-colors"
                         >Delete</button>
                     </div>
                 </div>

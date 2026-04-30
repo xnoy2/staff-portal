@@ -105,7 +105,8 @@
                     <p class="text-sm text-gray-500">No leave records found.</p>
                 </div>
 
-                <table v-else class="w-full text-sm">
+                <div v-else class="overflow-x-auto">
+                <table class="w-full text-sm">
                     <thead class="bg-gray-50 border-b border-gray-200">
                         <tr>
                             <th v-if="isPrivileged" class="text-left text-xs font-medium text-gray-500 px-4 py-3">Staff</th>
@@ -161,7 +162,7 @@
                             </td>
                             <!-- Actions -->
                             <td class="px-4 py-3">
-                                <div class="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity justify-end">
+                                <div class="flex items-center gap-1 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity justify-end">
                                     <!-- Approve/Reject (managers, pending only) -->
                                     <template v-if="isPrivileged && leave.status === 'pending'">
                                         <button
@@ -186,6 +187,7 @@
                         </tr>
                     </tbody>
                 </table>
+                </div><!-- /overflow-x-auto -->
 
                 <!-- Pagination -->
                 <div v-if="leaves.last_page > 1" class="border-t border-gray-100 px-4 py-3 flex items-center justify-between text-xs text-gray-500">
