@@ -52,10 +52,7 @@
             </div>
 
             <!-- Login card -->
-            <div
-                class="w-full max-w-sm bg-white rounded-2xl p-8"
-                style="box-shadow: 0 0 0 1px rgba(239,35,60,0.18), 0 0 48px rgba(239,35,60,0.35), 0 0 96px rgba(239,35,60,0.14), 0 24px 60px rgba(0,0,0,0.6);"
-            >
+            <div class="login-card w-full max-w-sm bg-white rounded-2xl p-8">
                 <!-- Heading -->
                 <div class="mb-8">
                     <h2 class="text-2xl font-bold text-[#2B2D42]">Welcome back</h2>
@@ -154,8 +151,7 @@
                     <button
                         type="submit"
                         :disabled="form.processing"
-                        class="w-full mt-2 flex items-center justify-center gap-2 bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
-                        style="box-shadow: 0 0 20px rgba(239,35,60,0.5), 0 4px 12px rgba(239,35,60,0.3);"
+                        class="w-full mt-2 flex items-center justify-center gap-2 bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold py-2.5 rounded-xl transition-colors shadow-[0_4px_14px_rgba(239,35,60,0.35)]"
                     >
                         <span v-if="form.processing" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         <span>{{ form.processing ? 'Signing in…' : 'Sign in' }}</span>
@@ -199,3 +195,26 @@ function submit() {
     });
 }
 </script>
+
+<style scoped>
+@keyframes glow-wave {
+    0%, 100% {
+        box-shadow:
+            0 0 0 1px rgba(239, 35, 60, 0.10),
+            0 0 20px rgba(239, 35, 60, 0.12),
+            0 0 45px rgba(239, 35, 60, 0.05),
+            0 16px 40px rgba(0, 0, 0, 0.40);
+    }
+    50% {
+        box-shadow:
+            0 0 0 1px rgba(239, 35, 60, 0.20),
+            0 0 35px rgba(239, 35, 60, 0.22),
+            0 0 70px rgba(239, 35, 60, 0.09),
+            0 16px 40px rgba(0, 0, 0, 0.40);
+    }
+}
+
+.login-card {
+    animation: glow-wave 3.5s ease-in-out infinite;
+}
+</style>
