@@ -48,16 +48,22 @@
         </div>
 
         <!-- ── Right panel (form) ─────────────────────────────────── -->
-        <div class="flex-1 flex flex-col items-center justify-center bg-[#EDF2F4] px-6 py-12">
+        <div class="flex-1 flex flex-col items-center justify-center bg-[#181929] px-6 py-12 relative overflow-hidden">
+
+            <!-- Ambient red glow behind card -->
+            <div class="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[520px] h-[520px] rounded-full bg-[#EF233C]/10 blur-3xl pointer-events-none" />
 
             <!-- Mobile-only logo -->
-            <div class="lg:hidden flex items-center gap-2.5 mb-10">
+            <div class="lg:hidden flex items-center gap-2.5 mb-10 relative z-10">
                 <AppLogo :size="36" />
-                <span class="text-[#2B2D42] font-semibold text-base">Staff Portal</span>
+                <span class="text-white font-semibold text-base">Staff Portal</span>
             </div>
 
-            <div class="w-full max-w-sm">
-
+            <!-- Login card -->
+            <div
+                class="relative z-10 w-full max-w-sm bg-white rounded-2xl p-8"
+                style="box-shadow: 0 0 0 1px rgba(239,35,60,0.18), 0 0 48px rgba(239,35,60,0.32), 0 0 96px rgba(239,35,60,0.12), 0 24px 60px rgba(0,0,0,0.55);"
+            >
                 <!-- Heading -->
                 <div class="mb-8">
                     <h2 class="text-2xl font-bold text-[#2B2D42]">Welcome back</h2>
@@ -156,7 +162,8 @@
                     <button
                         type="submit"
                         :disabled="form.processing"
-                        class="w-full mt-2 flex items-center justify-center gap-2 bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold py-2.5 rounded-xl transition-colors shadow-sm shadow-[#EF233C]/30"
+                        class="w-full mt-2 flex items-center justify-center gap-2 bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-60 disabled:cursor-not-allowed text-white text-sm font-semibold py-2.5 rounded-xl transition-colors"
+                        style="box-shadow: 0 0 20px rgba(239,35,60,0.5), 0 4px 12px rgba(239,35,60,0.3);"
                     >
                         <span v-if="form.processing" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
                         <span>{{ form.processing ? 'Signing in…' : 'Sign in' }}</span>
