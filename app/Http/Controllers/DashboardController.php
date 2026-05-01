@@ -64,6 +64,7 @@ class DashboardController extends Controller
     {
         $activeEntry = TimeEntry::active()
             ->forUser($user->id)
+            ->with('breaks')
             ->first();
 
         // Weekly hours Mon–Sun of current week
@@ -96,11 +97,25 @@ class DashboardController extends Controller
                 'status'    => $e->status,
             ]);
 
+        $activeEntryPayload = null;
+        if ($activeEntry) {
+            $activeBreak       = $activeEntry->breaks->whereNull('ended_at')->first();
+            $totalBreakMinutes = (int) $activeEntry->breaks->whereNotNull('ended_at')->sum('duration_minutes');
+            $activeEntryPayload = [
+                'id'                  => $activeEntry->id,
+                'clock_in'            => $activeEntry->clock_in->toIso8601String(),
+                'clock_state'         => $activeEntry->clock_state ?? 'working',
+                'active_break'        => $activeBreak ? [
+                    'id'         => $activeBreak->id,
+                    'type'       => $activeBreak->type,
+                    'started_at' => $activeBreak->started_at->toIso8601String(),
+                ] : null,
+                'total_break_minutes' => $totalBreakMinutes,
+            ];
+        }
+
         return [
-            'activeEntry'   => $activeEntry ? [
-                'id'       => $activeEntry->id,
-                'clock_in' => $activeEntry->clock_in->toIso8601String(),
-            ] : null,
+            'activeEntry'   => $activeEntryPayload,
             'weeklyHours'   => $weeklyHours,
             'recentEntries' => $recentEntries,
         ];
