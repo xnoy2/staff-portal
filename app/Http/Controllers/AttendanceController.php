@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\TimeEntry;
+use App\Models\TimeEntryBreak;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -15,18 +16,17 @@ class AttendanceController extends Controller
 {
     public function index(Request $request): Response
     {
-        $user      = $request->user();
+        $user         = $request->user();
         $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'site_head']);
 
         $query = TimeEntry::with(['user:id,name,avatar', 'enteredBy:id,name', 'approvedBy:id,name'])
+            ->withSum('breaks', 'duration_minutes')
             ->orderBy('clock_in', 'desc');
 
-        // Staff sees only their own entries
         if (! $isPrivileged) {
             $query->forUser($user->id);
         }
 
-        // Filters
         if ($request->filled('user_id') && $isPrivileged) {
             $query->forUser($request->input('user_id'));
         }
@@ -43,6 +43,11 @@ class AttendanceController extends Controller
             ? User::select('id', 'name')->orderBy('name')->get()
             : collect();
 
+        $activeEntry = TimeEntry::active()
+            ->forUser($user->id)
+            ->with('breaks')
+            ->first();
+
         return Inertia::render('Attendance/Index', [
             'entries'      => $entries,
             'pendingCount' => $pendingCount,
@@ -50,6 +55,7 @@ class AttendanceController extends Controller
             'isPrivileged' => $isPrivileged,
             'isManager'    => $user->hasAnyRole(['admin', 'manager']),
             'filters'      => $request->only(['user_id', 'status', 'from', 'to']),
+            'activeEntry'  => $activeEntry ? $this->entryPayload($activeEntry) : null,
         ]);
     }
 
@@ -57,24 +63,24 @@ class AttendanceController extends Controller
     {
         $user = $request->user();
 
-        $existing = TimeEntry::active()->forUser($user->id)->first();
-        if ($existing) {
+        if (TimeEntry::active()->forUser($user->id)->exists()) {
             return back()->with('error', 'You already have an active clock-in entry.');
         }
 
         $autoApprove = $user->hasAnyRole(['admin', 'manager']);
 
         $entry = TimeEntry::create([
-            'user_id'    => $user->id,
-            'clock_in'   => now(),
-            'source'     => 'self_clockin',
-            'status'     => $autoApprove ? 'approved' : 'pending',
-            'entered_by' => $user->id,
+            'user_id'     => $user->id,
+            'clock_in'    => now(),
+            'clock_state' => 'working',
+            'source'      => 'self_clockin',
+            'status'      => $autoApprove ? 'approved' : 'pending',
+            'entered_by'  => $user->id,
             'approved_by' => $autoApprove ? $user->id : null,
             'approved_at' => $autoApprove ? now() : null,
         ]);
 
-        return back()->with('success', 'Clocked in at ' . $entry->clock_in->toIso8601String());
+        return back()->with('success', 'Clocked in at ' . $entry->clock_in->format('H:i'));
     }
 
     public function clockOut(Request $request): RedirectResponse
@@ -86,20 +92,77 @@ class AttendanceController extends Controller
             return back()->with('error', 'No active clock-in entry found.');
         }
 
-        $entry->clock_out = now();
+        // Close any open break first
+        $entry->breaks()->whereNull('ended_at')->each(function (TimeEntryBreak $b) {
+            $b->end();
+        });
+
+        $entry->clock_out  = now();
+        $entry->clock_state = 'working'; // reset; no longer active
         $entry->calculateHours();
         $entry->save();
 
         return back()->with('success', 'Clocked out. Duration: ' . $entry->duration_label);
     }
 
+    public function startBreak(Request $request): RedirectResponse
+    {
+        $request->validate(['type' => 'required|in:break,lunch']);
+
+        $user  = $request->user();
+        $entry = TimeEntry::active()->forUser($user->id)->first();
+
+        if (! $entry) {
+            return back()->with('error', 'No active clock-in entry found.');
+        }
+        if ($entry->clock_state !== 'working') {
+            return back()->with('error', 'Already on a break.');
+        }
+
+        $type = $request->input('type');
+
+        $entry->update(['clock_state' => $type === 'lunch' ? 'on_lunch' : 'on_break']);
+
+        TimeEntryBreak::create([
+            'time_entry_id' => $entry->id,
+            'type'          => $type,
+            'started_at'    => now(),
+        ]);
+
+        $label = $type === 'lunch' ? 'Lunch break started' : 'Break started';
+        return back()->with('success', $label . ' at ' . now()->format('H:i'));
+    }
+
+    public function endBreak(Request $request): RedirectResponse
+    {
+        $user  = $request->user();
+        $entry = TimeEntry::active()->forUser($user->id)->first();
+
+        if (! $entry) {
+            return back()->with('error', 'No active clock-in entry found.');
+        }
+
+        $break = $entry->breaks()->whereNull('ended_at')->latest()->first();
+
+        if (! $break) {
+            return back()->with('error', 'No active break found.');
+        }
+
+        $break->end();
+        $entry->update(['clock_state' => 'working']);
+
+        $label = $break->type === 'lunch' ? 'Back from lunch' : 'Break ended';
+        return back()->with('success', $label . ' · ' . $break->duration_minutes . ' min');
+    }
+
     public function activeEntry(Request $request): JsonResponse
     {
         $entry = TimeEntry::active()
             ->forUser($request->user()->id)
+            ->with('breaks')
             ->first();
 
-        return response()->json($entry);
+        return response()->json($entry ? $this->entryPayload($entry) : null);
     }
 
     public function approve(Request $request, TimeEntry $timeEntry): RedirectResponse
@@ -112,10 +175,7 @@ class AttendanceController extends Controller
 
         $timeEntry->approve($request->user());
 
-        activity()
-            ->performedOn($timeEntry)
-            ->causedBy($request->user())
-            ->log('time_entry_approved');
+        activity()->performedOn($timeEntry)->causedBy($request->user())->log('time_entry_approved');
 
         return back()->with('success', 'Entry approved.');
     }
@@ -132,10 +192,7 @@ class AttendanceController extends Controller
 
         $timeEntry->reject($request->user(), $request->input('reason'));
 
-        activity()
-            ->performedOn($timeEntry)
-            ->causedBy($request->user())
-            ->log('time_entry_rejected');
+        activity()->performedOn($timeEntry)->causedBy($request->user())->log('time_entry_rejected');
 
         return back()->with('success', 'Entry rejected.');
     }
@@ -159,6 +216,26 @@ class AttendanceController extends Controller
             ]);
 
         return back()->with('success', "{$count} entries approved.");
+    }
+
+    // ── Helpers ───────────────────────────────────────────────────────────────
+
+    private function entryPayload(TimeEntry $entry): array
+    {
+        $activeBreak      = $entry->breaks->whereNull('ended_at')->first();
+        $totalBreakMinutes = (int) $entry->breaks->whereNotNull('ended_at')->sum('duration_minutes');
+
+        return [
+            'id'                  => $entry->id,
+            'clock_in'            => $entry->clock_in->toIso8601String(),
+            'clock_state'         => $entry->clock_state ?? 'working',
+            'active_break'        => $activeBreak ? [
+                'id'         => $activeBreak->id,
+                'type'       => $activeBreak->type,
+                'started_at' => $activeBreak->started_at->toIso8601String(),
+            ] : null,
+            'total_break_minutes' => $totalBreakMinutes,
+        ];
     }
 
     private function authorizeManagerAction(Request $request): void

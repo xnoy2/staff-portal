@@ -32,6 +32,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/clock-in',       [AttendanceController::class, 'clockIn'])->name('clock-in')->middleware('throttle:clock-actions');
         Route::post('/clock-out',      [AttendanceController::class, 'clockOut'])->name('clock-out')->middleware('throttle:clock-actions');
         Route::get('/active-entry',    [AttendanceController::class, 'activeEntry'])->name('active-entry');
+        Route::post('/break/start',    [AttendanceController::class, 'startBreak'])->name('break.start');
+        Route::post('/break/end',      [AttendanceController::class, 'endBreak'])->name('break.end');
         Route::post('/bulk-approve',   [AttendanceController::class, 'bulkApprove'])->name('bulk-approve');
         Route::post('/{timeEntry}/approve', [AttendanceController::class, 'approve'])->name('approve');
         Route::post('/{timeEntry}/reject',  [AttendanceController::class, 'reject'])->name('reject');

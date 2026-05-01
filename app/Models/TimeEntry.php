@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
 
 class TimeEntry extends Model
@@ -27,6 +28,7 @@ class TimeEntry extends Model
         'approved_at',
         'notes',
         'rejection_reason',
+        'clock_state',
     ];
 
     protected function casts(): array
@@ -69,6 +71,16 @@ class TimeEntry extends Model
     public function job()
     {
         return $this->belongsTo(Job::class);
+    }
+
+    public function breaks(): HasMany
+    {
+        return $this->hasMany(TimeEntryBreak::class);
+    }
+
+    public function activeBreak(): ?TimeEntryBreak
+    {
+        return $this->breaks()->whereNull('ended_at')->latest()->first();
     }
 
     // ─── Scopes ───────────────────────────────────────────────────────────────
@@ -117,11 +129,12 @@ class TimeEntry extends Model
             return;
         }
 
-        $minutes = $this->clock_in->diffInMinutes($this->clock_out);
-        $hours   = round($minutes / 60, 2);
+        $totalMinutes = $this->clock_in->diffInMinutes($this->clock_out);
+        $breakMinutes = $this->breaks()->whereNotNull('ended_at')->sum('duration_minutes') ?? 0;
+        $workedMinutes = max(0, $totalMinutes - $breakMinutes);
 
-        $this->total_hours = $hours;
-        $this->is_overtime = $hours > 8;
+        $this->total_hours = round($workedMinutes / 60, 2);
+        $this->is_overtime = $this->total_hours > 8;
     }
 
     public function approve(User $approver): void
@@ -151,10 +164,12 @@ class TimeEntry extends Model
             return '—';
         }
 
-        $end     = $this->clock_out ?? now();
-        $minutes = $this->clock_in->diffInMinutes($end);
-        $h       = intdiv($minutes, 60);
-        $m       = $minutes % 60;
+        $end          = $this->clock_out ?? now();
+        $totalMinutes = $this->clock_in->diffInMinutes($end);
+        $breakMinutes = $this->breaks()->whereNotNull('ended_at')->sum('duration_minutes') ?? 0;
+        $minutes      = max(0, $totalMinutes - $breakMinutes);
+        $h            = intdiv($minutes, 60);
+        $m            = $minutes % 60;
 
         return $h > 0 ? "{$h}h {$m}m" : "{$m}m";
     }
