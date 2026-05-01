@@ -1,7 +1,7 @@
 <template>
     <Head title="Sign In" />
 
-    <div class="min-h-screen flex relative overflow-hidden" style="background:#0f1120">
+    <div class="min-h-screen relative overflow-hidden" style="background:#0f1120">
 
         <!-- ── Ambient gradient orbs ─────────────────────────────────── -->
         <div class="absolute inset-0 pointer-events-none overflow-hidden" aria-hidden="true">
@@ -13,149 +13,161 @@
         <!-- ── Particle canvas ───────────────────────────────────────── -->
         <ParticleBackground />
 
-        <!-- ── Left panel (desktop) ──────────────────────────────────── -->
-        <div class="hidden lg:flex lg:w-[48%] flex-col justify-between p-14 relative z-10 left-panel">
+        <!-- ── Centred two-column content ────────────────────────────── -->
+        <div class="relative z-10 min-h-screen flex items-stretch justify-center">
+            <div class="w-full max-w-[1200px] flex">
 
-            <div class="flex items-center gap-3">
-                <AppLogo :size="44" />
-                <span class="text-white font-semibold text-lg tracking-tight">Staff Portal</span>
-            </div>
+                <!-- Left panel (desktop) -->
+                <div class="hidden lg:flex flex-col justify-between py-16 px-14 w-1/2 min-h-screen left-panel">
 
-            <div>
-                <p class="text-[#EF233C] text-[11px] font-bold tracking-[0.18em] uppercase mb-5">BCF Management System</p>
-                <h1 class="text-[2.8rem] font-bold text-white leading-[1.15] mb-5">
-                    Manage your team,<br />
-                    <span class="text-transparent bg-clip-text bg-gradient-to-br from-[#EF233C] to-[#ff8585]">effortlessly.</span>
-                </h1>
-                <p class="text-white/45 text-[0.95rem] leading-relaxed max-w-xs">
-                    Track attendance, coordinate jobs, manage projects and keep your crew in sync — all in one place.
-                </p>
-
-                <div class="mt-10 space-y-4">
-                    <div v-for="f in features" :key="f" class="flex items-center gap-3.5">
-                        <div class="feature-check w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0">
-                            <svg class="w-3 h-3 text-[#EF233C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
-                                <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
-                            </svg>
-                        </div>
-                        <span class="text-sm text-white/55">{{ f }}</span>
-                    </div>
-                </div>
-            </div>
-
-            <p class="text-white/25 text-xs">© {{ year }} BCF. All rights reserved.</p>
-        </div>
-
-        <!-- ── Right panel ───────────────────────────────────────────── -->
-        <div class="flex-1 flex flex-col items-center justify-center px-6 py-12 relative z-10">
-
-            <!-- Mobile logo -->
-            <div class="lg:hidden flex items-center gap-2.5 mb-10">
-                <AppLogo :size="36" />
-                <span class="text-white font-semibold text-base">Staff Portal</span>
-            </div>
-
-            <!-- ── Glass card ──────────────────────────────────────── -->
-            <div class="login-card w-full max-w-sm rounded-3xl overflow-hidden">
-
-                <!-- Top accent line -->
-                <div class="h-px" style="background:linear-gradient(90deg,transparent,rgba(239,35,60,0.65),transparent)" />
-
-                <div class="px-8 pt-8 pb-9">
-
-                    <div class="mb-7">
-                        <h2 class="text-[1.6rem] font-bold text-white leading-tight">Welcome back</h2>
-                        <p class="text-sm text-white/38 mt-1">Sign in to your account to continue.</p>
+                    <div class="flex items-center gap-3">
+                        <AppLogo :size="44" />
+                        <span class="text-white font-semibold text-lg tracking-tight">Staff Portal</span>
                     </div>
 
-                    <!-- Status -->
-                    <div v-if="status" class="mb-5 flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm status-success">
-                        <CheckCircleIcon class="w-4 h-4 flex-shrink-0" />
-                        {{ status }}
-                    </div>
+                    <div>
+                        <p class="text-[#EF233C] text-[11px] font-bold tracking-[0.18em] uppercase mb-5">BCF Management System</p>
+                        <h1 class="text-[2.8rem] font-bold text-white leading-[1.15] mb-5">
+                            Manage your team,<br />
+                            <span class="text-transparent bg-clip-text bg-gradient-to-br from-[#EF233C] to-[#ff8585]">effortlessly.</span>
+                        </h1>
+                        <p class="text-white/60 text-[0.95rem] leading-relaxed max-w-xs">
+                            Track attendance, coordinate jobs, manage projects and keep your crew in sync — all in one place.
+                        </p>
 
-                    <!-- Error -->
-                    <div v-if="form.errors.email || form.errors.password" class="mb-5 flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm status-error">
-                        <ExclamationCircleIcon class="w-4 h-4 flex-shrink-0 mt-0.5" />
-                        <span>{{ form.errors.email || form.errors.password }}</span>
-                    </div>
-
-                    <form @submit.prevent="submit" class="space-y-5">
-
-                        <!-- Email -->
-                        <div>
-                            <label for="email" class="field-label block mb-2">Email address</label>
-                            <div class="relative">
-                                <EnvelopeIcon class="field-icon absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" />
-                                <input
-                                    id="email"
-                                    v-model="form.email"
-                                    type="email"
-                                    autocomplete="username"
-                                    autofocus
-                                    required
-                                    placeholder="you@example.com"
-                                    :class="['glass-input w-full pl-10 pr-4 py-3 text-sm text-white rounded-xl focus:outline-none transition-all', form.errors.email ? 'input-err' : 'input-base']"
-                                />
+                        <div class="mt-10 space-y-4">
+                            <div v-for="f in features" :key="f" class="flex items-center gap-3.5">
+                                <div class="feature-check w-6 h-6 rounded-full flex items-center justify-center flex-shrink-0">
+                                    <svg class="w-3 h-3 text-[#EF233C]" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="3">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
+                                <span class="text-sm text-white/65">{{ f }}</span>
                             </div>
                         </div>
+                    </div>
 
-                        <!-- Password -->
-                        <div>
-                            <label for="password" class="field-label block mb-2">Password</label>
-                            <div class="relative">
-                                <LockClosedIcon class="field-icon absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" />
-                                <input
-                                    id="password"
-                                    v-model="form.password"
-                                    :type="showPassword ? 'text' : 'password'"
-                                    autocomplete="current-password"
-                                    required
-                                    placeholder="••••••••"
-                                    :class="['glass-input w-full pl-10 pr-10 py-3 text-sm text-white rounded-xl focus:outline-none transition-all', form.errors.password ? 'input-err' : 'input-base']"
-                                />
+                    <p class="text-white/30 text-xs">© {{ year }} BCF. All rights reserved.</p>
+                </div>
+
+                <!-- Right panel -->
+                <div class="flex-1 lg:w-1/2 flex flex-col items-center justify-center px-6 py-12">
+
+                    <!-- Mobile logo -->
+                    <div class="lg:hidden flex items-center gap-2.5 mb-10">
+                        <AppLogo :size="36" />
+                        <span class="text-white font-semibold text-base">Staff Portal</span>
+                    </div>
+
+                    <!-- ── Glass card ──────────────────────────────────── -->
+                    <div class="login-card w-full max-w-sm rounded-3xl overflow-hidden">
+
+                        <!-- Top accent line -->
+                        <div class="h-px" style="background:linear-gradient(90deg,transparent,rgba(239,35,60,0.7),transparent)" />
+
+                        <div class="px-8 pt-8 pb-9">
+
+                            <div class="mb-7">
+                                <h2 class="text-[1.6rem] font-bold text-white leading-tight">Welcome back</h2>
+                                <p class="text-sm text-white/55 mt-1">Sign in to your account to continue.</p>
+                            </div>
+
+                            <!-- Status -->
+                            <div v-if="status" class="mb-5 flex items-center gap-2.5 rounded-xl px-4 py-3 text-sm status-success">
+                                <CheckCircleIcon class="w-4 h-4 flex-shrink-0" />
+                                {{ status }}
+                            </div>
+
+                            <!-- Error -->
+                            <div v-if="form.errors.email || form.errors.password" class="mb-5 flex items-start gap-2.5 rounded-xl px-4 py-3 text-sm status-error">
+                                <ExclamationCircleIcon class="w-4 h-4 flex-shrink-0 mt-0.5" />
+                                <span>{{ form.errors.email || form.errors.password }}</span>
+                            </div>
+
+                            <form @submit.prevent="submit" class="space-y-5">
+
+                                <!-- Email -->
+                                <div>
+                                    <label for="email" class="field-label block mb-2">Email address</label>
+                                    <div class="relative">
+                                        <EnvelopeIcon class="field-icon absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" />
+                                        <input
+                                            id="email"
+                                            v-model="form.email"
+                                            type="email"
+                                            autocomplete="username"
+                                            autofocus
+                                            required
+                                            placeholder="you@example.com"
+                                            class="dark-input w-full pl-10 pr-4 py-3 text-sm text-white rounded-xl focus:outline-none transition-all"
+                                            :class="form.errors.email ? 'input-err' : 'input-base'"
+                                            style="background:rgba(255,255,255,0.07)"
+                                        />
+                                    </div>
+                                </div>
+
+                                <!-- Password -->
+                                <div>
+                                    <label for="password" class="field-label block mb-2">Password</label>
+                                    <div class="relative">
+                                        <LockClosedIcon class="field-icon absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 pointer-events-none" />
+                                        <input
+                                            id="password"
+                                            v-model="form.password"
+                                            :type="showPassword ? 'text' : 'password'"
+                                            autocomplete="current-password"
+                                            required
+                                            placeholder="••••••••"
+                                            class="dark-input w-full pl-10 pr-10 py-3 text-sm text-white rounded-xl focus:outline-none transition-all"
+                                            :class="form.errors.password ? 'input-err' : 'input-base'"
+                                            style="background:rgba(255,255,255,0.07)"
+                                        />
+                                        <button
+                                            type="button"
+                                            @click="showPassword = !showPassword"
+                                            class="eye-btn absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
+                                            tabindex="-1"
+                                        >
+                                            <EyeSlashIcon v-if="showPassword" class="w-4 h-4" />
+                                            <EyeIcon v-else class="w-4 h-4" />
+                                        </button>
+                                    </div>
+                                </div>
+
+                                <!-- Remember + forgot -->
+                                <div class="flex items-center justify-between">
+                                    <label class="flex items-center gap-2 cursor-pointer">
+                                        <input
+                                            type="checkbox"
+                                            v-model="form.remember"
+                                            class="rounded text-[#EF233C] focus:ring-[#EF233C] w-3.5 h-3.5"
+                                            style="background:rgba(255,255,255,0.08);border-color:rgba(255,255,255,0.20)"
+                                        />
+                                        <span class="text-sm text-white/55">Remember me</span>
+                                    </label>
+                                    <Link
+                                        v-if="canResetPassword"
+                                        :href="route('password.request')"
+                                        class="forgot-link text-sm font-medium transition-colors"
+                                    >
+                                        Forgot password?
+                                    </Link>
+                                </div>
+
+                                <!-- Submit -->
                                 <button
-                                    type="button"
-                                    @click="showPassword = !showPassword"
-                                    class="eye-btn absolute right-3.5 top-1/2 -translate-y-1/2 transition-colors"
-                                    tabindex="-1"
+                                    type="submit"
+                                    :disabled="form.processing"
+                                    class="submit-btn w-full flex items-center justify-center gap-2 text-white text-sm font-semibold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                                 >
-                                    <EyeSlashIcon v-if="showPassword" class="w-4 h-4" />
-                                    <EyeIcon v-else class="w-4 h-4" />
+                                    <span v-if="form.processing" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                                    <span>{{ form.processing ? 'Signing in…' : 'Sign in' }}</span>
                                 </button>
-                            </div>
+                            </form>
                         </div>
-
-                        <!-- Remember + forgot -->
-                        <div class="flex items-center justify-between">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input
-                                    type="checkbox"
-                                    v-model="form.remember"
-                                    class="rounded border-white/20 bg-white/10 text-[#EF233C] focus:ring-[#EF233C] w-3.5 h-3.5"
-                                />
-                                <span class="text-sm text-white/38">Remember me</span>
-                            </label>
-                            <Link
-                                v-if="canResetPassword"
-                                :href="route('password.request')"
-                                class="forgot-link text-sm font-medium transition-colors"
-                            >
-                                Forgot password?
-                            </Link>
-                        </div>
-
-                        <!-- Submit -->
-                        <button
-                            type="submit"
-                            :disabled="form.processing"
-                            class="submit-btn w-full flex items-center justify-center gap-2 text-white text-sm font-semibold py-3 rounded-xl transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                        >
-                            <span v-if="form.processing" class="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                            <span>{{ form.processing ? 'Signing in…' : 'Sign in' }}</span>
-                        </button>
-                    </form>
+                    </div>
                 </div>
+
             </div>
         </div>
     </div>
@@ -240,7 +252,7 @@ function submit() {
     to   { opacity: 1; transform: translateX(0); }
 }
 
-/* ── Feature check icon ───────────────────────────────────────────────────── */
+/* ── Feature check icon ──────────────────────────────────────────────────── */
 .feature-check {
     background: rgba(239, 35, 60, 0.12);
     border: 1px solid rgba(239, 35, 60, 0.24);
@@ -278,55 +290,64 @@ function submit() {
     color: rgba(252, 129, 129, 1);
 }
 
-/* ── Form field helpers ───────────────────────────────────────────────────── */
+/* ── Field labels & icons ─────────────────────────────────────────────────── */
 .field-label {
     font-size: 11px;
     font-weight: 600;
     letter-spacing: 0.07em;
     text-transform: uppercase;
-    color: rgba(255, 255, 255, 0.38);
+    color: rgba(255, 255, 255, 0.55);
 }
 
 .field-icon {
-    color: rgba(255, 255, 255, 0.24);
+    color: rgba(255, 255, 255, 0.35);
 }
 
 /* ── Inputs ───────────────────────────────────────────────────────────────── */
-.glass-input {
-    background: rgba(255, 255, 255, 0.065);
+.dark-input {
+    caret-color: #EF233C;
+    color: #ffffff;
+}
+
+.dark-input::placeholder {
+    color: rgba(255, 255, 255, 0.28);
+}
+
+/* Override browser autofill white flash */
+.dark-input:-webkit-autofill,
+.dark-input:-webkit-autofill:hover,
+.dark-input:-webkit-autofill:focus {
+    -webkit-text-fill-color: #ffffff;
+    -webkit-box-shadow: 0 0 0 1000px #1c1e30 inset;
     caret-color: #EF233C;
 }
 
-.glass-input::placeholder {
-    color: rgba(255, 255, 255, 0.20);
-}
-
 .input-base {
-    border: 1px solid rgba(255, 255, 255, 0.10);
+    border: 1px solid rgba(255, 255, 255, 0.12);
 }
 
 .input-base:focus {
-    border-color: rgba(239, 35, 60, 0.55);
-    box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.13);
+    border-color: rgba(239, 35, 60, 0.60);
+    box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.14);
 }
 
 .input-err {
-    border: 1px solid rgba(239, 35, 60, 0.50);
+    border: 1px solid rgba(239, 35, 60, 0.55);
     box-shadow: 0 0 0 3px rgba(239, 35, 60, 0.12);
 }
 
 /* ── Eye button ──────────────────────────────────────────────────────────── */
 .eye-btn {
-    color: rgba(255, 255, 255, 0.28);
+    color: rgba(255, 255, 255, 0.32);
 }
 
 .eye-btn:hover {
-    color: rgba(255, 255, 255, 0.60);
+    color: rgba(255, 255, 255, 0.65);
 }
 
 /* ── Forgot link ─────────────────────────────────────────────────────────── */
 .forgot-link {
-    color: rgba(239, 35, 60, 0.70);
+    color: rgba(239, 35, 60, 0.75);
 }
 
 .forgot-link:hover {
