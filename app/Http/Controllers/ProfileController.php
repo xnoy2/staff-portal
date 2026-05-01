@@ -21,6 +21,7 @@ class ProfileController extends Controller
         return Inertia::render('Profile/Edit', [
             'profileUser' => [
                 'id'                      => $user->id,
+                'employee_id'             => $user->employee_id,
                 'name'                    => $user->name,
                 'email'                   => $user->email,
                 'avatar_url'              => $user->avatar_url,

@@ -69,6 +69,7 @@
                             <span v-if="member.must_change_password" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">pwd</span>
                         </div>
                         <p class="text-xs text-gray-400 truncate">{{ member.email }}</p>
+                        <p v-if="member.employee_id" class="text-xs font-mono text-gray-400">{{ member.employee_id }}</p>
                     </div>
                     <span :class="member.is_active ? 'badge-green' : 'badge-red'">
                         {{ member.is_active ? 'Active' : 'Inactive' }}
@@ -130,6 +131,7 @@
                                     <div>
                                         <p class="font-medium text-gray-800">{{ member.name }}</p>
                                         <p class="text-xs text-gray-400">{{ member.email }}</p>
+                                        <p v-if="member.employee_id" class="text-xs font-mono text-gray-400">{{ member.employee_id }}</p>
                                     </div>
                                     <span v-if="member.must_change_password" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium" title="Must change password">pwd</span>
                                 </div>

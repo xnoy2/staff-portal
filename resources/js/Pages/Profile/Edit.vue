@@ -38,6 +38,9 @@
                             Member since {{ formatDate(profileUser.created_at) }}
                             <span v-if="profileUser.hire_date"> · Hired {{ formatDate(profileUser.hire_date) }}</span>
                         </p>
+                        <p v-if="profileUser.employee_id" class="mt-1">
+                            <span class="text-xs font-mono font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{{ profileUser.employee_id }}</span>
+                        </p>
                     </div>
 
                     <!-- QR Code -->

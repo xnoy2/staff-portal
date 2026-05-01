@@ -14,6 +14,9 @@
                             </span>
                         </div>
                         <p class="text-sm text-gray-500">{{ staffMember.email }}</p>
+                        <p v-if="staffMember.employee_id" class="mt-0.5">
+                            <span class="text-xs font-mono font-semibold bg-gray-100 text-gray-600 px-2 py-0.5 rounded">{{ staffMember.employee_id }}</span>
+                        </p>
                         <div class="flex flex-wrap justify-center sm:justify-start gap-2 mt-2">
                             <span v-for="role in staffMember.roles" :key="role" :class="roleClass(role)">
                                 {{ role.replace('_', ' ') }}
