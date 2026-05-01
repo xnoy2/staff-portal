@@ -6,6 +6,7 @@ use Database\Factories\UserFactory;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\Storage;
@@ -25,6 +26,7 @@ class User extends Authenticatable
         'is_active',
         'must_change_password',
         'hire_date',
+        'last_login_at',
         'annual_leave_days',
         'emergency_contact_name',
         'emergency_contact_phone',
@@ -49,6 +51,7 @@ class User extends Authenticatable
             'is_active'         => 'boolean',
             'must_change_password' => 'boolean',
             'hire_date'         => 'date',
+        'last_login_at'     => 'datetime',
             'certifications' => 'array',
             'preferences'    => 'array',
         ];
@@ -67,6 +70,11 @@ class User extends Authenticatable
         return $this->belongsToMany(Project::class, 'project_user')
             ->withPivot('role')
             ->orderBy('projects.name');
+    }
+
+    public function timeEntries(): HasMany
+    {
+        return $this->hasMany(TimeEntry::class);
     }
 
     public function vans(): BelongsToMany

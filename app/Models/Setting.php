@@ -23,9 +23,11 @@ class Setting extends Model
 
     public static function set(string $key, mixed $value): void
     {
-        static::where('key', $key)->update([
-            'value' => is_array($value) ? json_encode($value) : $value,
-        ]);
+        $setting = static::find($key);
+        if ($setting) {
+            $setting->value = is_array($value) ? json_encode($value) : $value;
+            $setting->save();
+        }
     }
 
     /** Returns all settings as a flat key→value map with types applied. */

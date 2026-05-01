@@ -110,4 +110,14 @@ Route::middleware('auth')->group(function () {
     Route::post('/change-password', [ChangePasswordController::class, 'update'])->name('password.change.update');
 });
 
+// ── Dev Console (separate session auth) ──────────────────────────────────────
+Route::prefix('dev')->name('dev.')->group(function () {
+    Route::get('/login',   [\App\Http\Controllers\DevController::class, 'showLogin'])->name('login');
+    Route::post('/login',  [\App\Http\Controllers\DevController::class, 'login'])->name('authenticate');
+    Route::post('/logout', [\App\Http\Controllers\DevController::class, 'logout'])->name('logout');
+    Route::middleware(\App\Http\Middleware\DevAuth::class)->group(function () {
+        Route::get('/', [\App\Http\Controllers\DevController::class, 'index'])->name('dashboard');
+    });
+});
+
 require __DIR__.'/auth.php';
