@@ -35,6 +35,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/break/start',    [AttendanceController::class, 'startBreak'])->name('break.start');
         Route::post('/break/end',      [AttendanceController::class, 'endBreak'])->name('break.end');
         Route::post('/bulk-approve',   [AttendanceController::class, 'bulkApprove'])->name('bulk-approve');
+        Route::post('/manual',         [AttendanceController::class, 'manual'])->name('manual');
         Route::post('/{timeEntry}/approve', [AttendanceController::class, 'approve'])->name('approve');
         Route::post('/{timeEntry}/reject',  [AttendanceController::class, 'reject'])->name('reject');
         Route::post('/scan',           [QrScanController::class, 'scan'])->name('scan')->middleware('throttle:qr-scan');

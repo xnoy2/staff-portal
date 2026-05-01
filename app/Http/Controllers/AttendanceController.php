@@ -197,6 +197,66 @@ class AttendanceController extends Controller
         return back()->with('success', 'Entry rejected.');
     }
 
+    public function manual(Request $request): RedirectResponse
+    {
+        $this->authorizeManagerAction($request);
+
+        $request->validate([
+            'user_ids'   => 'required|array|min:1',
+            'user_ids.*' => 'string|exists:users,id',
+            'date'       => 'required|date|before_or_equal:today',
+            'clock_in'   => 'required|date_format:H:i',
+            'clock_out'  => 'nullable|date_format:H:i|after:clock_in',
+            'notes'      => 'nullable|string|max:500',
+        ]);
+
+        $manager  = $request->user();
+        $source   = count($request->input('user_ids')) > 1 ? 'bulk' : 'manual';
+        $date     = $request->input('date');
+        $clockIn  = \Carbon\Carbon::parse("{$date} {$request->input('clock_in')}");
+        $clockOut = $request->filled('clock_out')
+            ? \Carbon\Carbon::parse("{$date} {$request->input('clock_out')}")
+            : null;
+        $notes    = $request->input('notes');
+
+        $count = 0;
+        foreach ($request->input('user_ids') as $userId) {
+            if (TimeEntry::where('user_id', $userId)
+                ->whereDate('clock_in', $date)
+                ->exists()) {
+                continue;
+            }
+
+            $entry = TimeEntry::create([
+                'user_id'     => $userId,
+                'clock_in'    => $clockIn,
+                'clock_out'   => $clockOut,
+                'clock_state' => 'working',
+                'source'      => $source,
+                'notes'       => $notes,
+                'status'      => 'approved',
+                'entered_by'  => $manager->id,
+                'approved_by' => $manager->id,
+                'approved_at' => now(),
+            ]);
+
+            if ($clockOut) {
+                $entry->calculateHours();
+                $entry->save();
+            }
+
+            $count++;
+        }
+
+        $skipped = count($request->input('user_ids')) - $count;
+        $msg     = "{$count} entr" . ($count !== 1 ? 'ies' : 'y') . ' added.';
+        if ($skipped > 0) {
+            $msg .= " {$skipped} skipped (entry already exists for that date).";
+        }
+
+        return back()->with('success', $msg);
+    }
+
     public function bulkApprove(Request $request): RedirectResponse
     {
         $this->authorizeManagerAction($request);

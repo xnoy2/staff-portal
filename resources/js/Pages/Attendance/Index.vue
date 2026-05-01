@@ -22,6 +22,14 @@
                     <span class="hidden sm:inline">QR Scanner</span>
                 </Link>
                 <button
+                    v-if="isManager"
+                    @click="openAddEntry"
+                    class="inline-flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    <PlusIcon class="w-4 h-4" />
+                    <span class="hidden sm:inline">Add Entry</span>
+                </button>
+                <button
                     v-if="isManager && selectedIds.length > 0"
                     @click="bulkApprove"
                     class="inline-flex items-center gap-1.5 bg-green-600 text-white text-sm px-3 py-2 rounded-lg hover:bg-green-700 transition-colors"
@@ -237,6 +245,90 @@
             </div>
         </div>
 
+        <!-- Add Entry modal -->
+        <BaseModal :open="addEntryModal.open" @close="closeAddEntry" max-width="sm:max-w-lg">
+            <div class="p-6">
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Add Attendance Entry</h3>
+                <p class="text-sm text-gray-500 mb-5">Manually record time for one or more staff members. Entries are auto-approved.</p>
+
+                <!-- Staff multi-select -->
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Staff Member(s)</label>
+                    <div class="border border-gray-200 rounded-lg max-h-40 overflow-y-auto divide-y divide-gray-100">
+                        <label
+                            v-for="s in staffList"
+                            :key="s.id"
+                            class="flex items-center gap-3 px-3 py-2 hover:bg-gray-50 cursor-pointer"
+                        >
+                            <input
+                                type="checkbox"
+                                :value="s.id"
+                                v-model="addEntryModal.user_ids"
+                                class="rounded border-gray-300 text-[#EF233C] focus:ring-[#EF233C]"
+                            />
+                            <span class="text-sm text-gray-700">{{ s.name }}</span>
+                        </label>
+                    </div>
+                    <p v-if="addEntryModal.user_ids.length > 0" class="text-xs text-gray-400 mt-1">{{ addEntryModal.user_ids.length }} selected</p>
+                </div>
+
+                <!-- Date -->
+                <div class="mb-4">
+                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Date</label>
+                    <input
+                        v-model="addEntryModal.date"
+                        type="date"
+                        :max="today"
+                        class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]"
+                    />
+                </div>
+
+                <!-- Times -->
+                <div class="grid grid-cols-2 gap-3 mb-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Clock In</label>
+                        <input
+                            v-model="addEntryModal.clock_in"
+                            type="time"
+                            class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]"
+                        />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Clock Out <span class="text-gray-400 font-normal">(optional)</span></label>
+                        <input
+                            v-model="addEntryModal.clock_out"
+                            type="time"
+                            class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]"
+                        />
+                    </div>
+                </div>
+
+                <!-- Notes -->
+                <div class="mb-5">
+                    <label class="block text-xs font-medium text-gray-600 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+                    <textarea
+                        v-model="addEntryModal.notes"
+                        rows="2"
+                        placeholder="e.g. Forgot to clock in on site"
+                        class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C] resize-none"
+                    />
+                </div>
+
+                <p v-if="addEntryModal.error" class="text-xs text-red-600 mb-3">{{ addEntryModal.error }}</p>
+
+                <div class="flex justify-end gap-2">
+                    <button @click="closeAddEntry" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
+                    <button
+                        @click="submitAddEntry"
+                        :disabled="addEntryModal.submitting"
+                        class="px-4 py-2 text-sm bg-[#EF233C] text-white rounded-lg hover:bg-[#D90429] transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                    >
+                        {{ addEntryModal.submitting ? 'Saving…' : 'Add Entry' }}
+                    </button>
+                </div>
+            </div>
+        </BaseModal>
+
         <!-- Reject modal -->
         <BaseModal :open="rejectModal.open" @close="rejectModal.open = false" max-width="sm:max-w-md">
             <div class="p-6">
@@ -262,6 +354,7 @@ import BaseModal from '@/Components/BaseModal.vue';
 import {
     QrCodeIcon,
     CheckIcon,
+    PlusIcon,
 } from '@heroicons/vue/24/outline';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -315,6 +408,67 @@ function approve(id) {
 }
 
 const rejectModal = reactive({ open: false, entryId: null, reason: '' });
+
+// ── Add entry modal ───────────────────────────────────────────────────────────
+
+const today = new Date().toISOString().slice(0, 10);
+
+const addEntryDefaults = () => ({
+    open:       false,
+    user_ids:   [],
+    date:       today,
+    clock_in:   '08:00',
+    clock_out:  '',
+    notes:      '',
+    error:      '',
+    submitting: false,
+});
+
+const addEntryModal = reactive(addEntryDefaults());
+
+function openAddEntry() {
+    Object.assign(addEntryModal, addEntryDefaults(), { open: true });
+}
+
+function closeAddEntry() {
+    addEntryModal.open = false;
+}
+
+function submitAddEntry() {
+    addEntryModal.error = '';
+
+    if (addEntryModal.user_ids.length === 0) {
+        addEntryModal.error = 'Please select at least one staff member.';
+        return;
+    }
+    if (! addEntryModal.date) {
+        addEntryModal.error = 'Please select a date.';
+        return;
+    }
+    if (! addEntryModal.clock_in) {
+        addEntryModal.error = 'Please enter a clock-in time.';
+        return;
+    }
+
+    addEntryModal.submitting = true;
+
+    router.post('/attendance/manual', {
+        user_ids:  addEntryModal.user_ids,
+        date:      addEntryModal.date,
+        clock_in:  addEntryModal.clock_in,
+        clock_out: addEntryModal.clock_out || null,
+        notes:     addEntryModal.notes || null,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => { addEntryModal.open = false; },
+        onError:   (errors) => {
+            const first = Object.values(errors)[0];
+            addEntryModal.error = first ?? 'Something went wrong.';
+            addEntryModal.submitting = false;
+        },
+        onFinish: () => { addEntryModal.submitting = false; },
+    });
+}
 
 function openReject(entry) {
     rejectModal.entryId = entry.id;
