@@ -33,7 +33,42 @@
             </Link>
         </div>
 
+        <!-- ── Tabs ────────────────────────────────────────────────────── -->
+        <div class="flex items-center gap-1 p-1 bg-white border border-gray-200 rounded-xl mb-4 w-fit">
+            <button
+                @click="activeTab = 'jobs'"
+                :class="[
+                    'flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+                    activeTab === 'jobs'
+                        ? 'bg-[#2B2D42] text-white shadow-sm'
+                        : 'text-gray-500 hover:text-[#2B2D42] hover:bg-gray-50',
+                ]"
+            >
+                <ClipboardDocumentListIcon class="w-4 h-4" />
+                Jobs
+                <span :class="['text-[10px] font-bold px-1.5 py-0.5 rounded-full', activeTab === 'jobs' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">
+                    {{ totalJobs }}
+                </span>
+            </button>
+            <button
+                @click="activeTab = 'roster'"
+                :class="[
+                    'flex items-center gap-2 px-4 py-1.5 rounded-lg text-sm font-medium transition-all',
+                    activeTab === 'roster'
+                        ? 'bg-[#2B2D42] text-white shadow-sm'
+                        : 'text-gray-500 hover:text-[#2B2D42] hover:bg-gray-50',
+                ]"
+            >
+                <UsersIcon class="w-4 h-4" />
+                Staff Roster
+                <span :class="['text-[10px] font-bold px-1.5 py-0.5 rounded-full', activeTab === 'roster' ? 'bg-white/20 text-white' : 'bg-gray-100 text-gray-500']">
+                    {{ totalScheduled }}
+                </span>
+            </button>
+        </div>
+
         <!-- ── Job Calendar ─────────────────────────────────────────────── -->
+        <div v-show="activeTab === 'jobs'">
         <div class="overflow-x-auto -mx-4 sm:-mx-6 px-4 sm:px-6 pb-1">
             <div class="grid grid-cols-7 gap-2 min-w-[700px]">
                 <div v-for="day in weekDays" :key="day.date" class="flex flex-col gap-2">
@@ -103,9 +138,11 @@
             </div>
             <span class="text-xs text-gray-300 ml-auto hidden sm:inline">Click any day header to open Live Board</span>
         </div>
+        </div><!-- end jobs tab -->
 
         <!-- ── Staff Roster ─────────────────────────────────────────────── -->
-        <div class="mt-8">
+        <div v-show="activeTab === 'roster'">
+        <div>
             <div class="flex items-center justify-between mb-3">
                 <div>
                     <h2 class="text-sm font-semibold text-[#2B2D42]">Staff Roster</h2>
@@ -219,6 +256,7 @@
                 </div>
             </div>
         </div>
+        </div><!-- end roster tab -->
 
         <!-- ── Schedule Modal ───────────────────────────────────────────── -->
         <Transition name="modal">
@@ -310,7 +348,7 @@ import { ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/20/solid';
-import { ClockIcon, TruckIcon, UsersIcon, CheckIcon, PlusIcon, PencilIcon, TrashIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { ClockIcon, TruckIcon, UsersIcon, CheckIcon, PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     weekDays:      { type: Array,   default: () => [] },
@@ -323,6 +361,10 @@ const props = defineProps({
     canEdit:       { type: Boolean, default: false },
     staffSchedule: { type: Array,   default: () => [] },
 });
+
+// ── Tab state ─────────────────────────────────────────────────────────────────
+
+const activeTab = ref('jobs');
 
 // ── Modal state ───────────────────────────────────────────────────────────────
 
@@ -370,8 +412,9 @@ function removeSchedule() {
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
-const isCurrentWeek = computed(() => props.weekStart <= props.todayDate && props.todayDate <= props.weekEnd);
-const totalJobs     = computed(() => props.weekDays.reduce((sum, d) => sum + d.jobs.length, 0));
+const isCurrentWeek   = computed(() => props.weekStart <= props.todayDate && props.todayDate <= props.weekEnd);
+const totalJobs       = computed(() => props.weekDays.reduce((sum, d) => sum + d.jobs.length, 0));
+const totalScheduled  = computed(() => props.staffSchedule.filter(m => m.days_scheduled > 0).length);
 
 const weekLabel = computed(() => {
     const start = new Date(props.weekStart + 'T00:00:00');
