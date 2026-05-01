@@ -57,23 +57,28 @@ class QrScanController extends Controller
             'scanned_data' => 'required|string|max:512',
         ]);
 
-        // Decode: payload is base64(uuid)
-        $decoded = base64_decode($request->input('scanned_data'), strict: true);
+        $input = $request->input('scanned_data');
 
-        if ($decoded === false || ! Str::isUuid($decoded)) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Invalid QR code. Could not identify a staff member.',
-            ], 422);
-        }
+        // QR code path: payload is base64(uuid)
+        $decoded = base64_decode($input, strict: true);
 
-        $scannedUser = User::find($decoded);
-
-        if (! $scannedUser) {
-            return response()->json([
-                'success' => false,
-                'message' => 'User not found for this QR code.',
-            ], 404);
+        if ($decoded !== false && Str::isUuid($decoded)) {
+            $scannedUser = User::find($decoded);
+            if (! $scannedUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'User not found for this QR code.',
+                ], 404);
+            }
+        } else {
+            // Manual path: plain employee ID (e.g. STAFF001)
+            $scannedUser = User::where('employee_id', strtoupper(trim($input)))->first();
+            if (! $scannedUser) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Employee ID not found.',
+                ], 422);
+            }
         }
 
         if (! $scannedUser->is_active) {

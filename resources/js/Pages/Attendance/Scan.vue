@@ -53,13 +53,13 @@
             <!-- Manual input fallback -->
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <h2 class="text-sm font-semibold text-gray-700 mb-3">Manual Entry</h2>
-                <p class="text-xs text-gray-400 mb-3">Enter the staff member's UUID directly if the camera is unavailable.</p>
+                <p class="text-xs text-gray-400 mb-3">Enter the staff member's Employee ID (e.g. STAFF001) if the camera is unavailable.</p>
                 <div class="flex gap-2">
                     <input
                         v-model="manualId"
                         type="text"
-                        placeholder="Staff UUID"
-                        class="flex-1 text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]"
+                        placeholder="e.g. STAFF001"
+                        class="flex-1 text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C] uppercase"
                         @keydown.enter="submitManual"
                     />
                     <button
@@ -237,7 +237,7 @@ function onScanSuccess(decodedText) {
 
 function submitManual() {
     if (!manualId.value) return;
-    submitScan(btoa(String(manualId.value)));
+    submitScan(manualId.value.trim().toUpperCase());
     manualId.value = '';
 }
 

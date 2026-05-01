@@ -49,6 +49,7 @@ class StaffController extends Controller
         $staff = $query->paginate(15)->withQueryString()
             ->through(fn ($user) => [
                 'id'                   => $user->id,
+                'employee_id'          => $user->employee_id,
                 'name'                 => $user->name,
                 'email'                => $user->email,
                 'avatar_url'           => $user->avatar_url,
@@ -127,6 +128,7 @@ class StaffController extends Controller
         return Inertia::render('Staff/Show', [
             'staffMember'  => [
                 'id'                      => $staff->id,
+                'employee_id'             => $staff->employee_id,
                 'name'                    => $staff->name,
                 'email'                   => $staff->email,
                 'avatar_url'              => $staff->avatar_url,

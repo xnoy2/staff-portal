@@ -34,12 +34,12 @@
                 </div>
             </div>
 
-            <!-- UUID (for manual fallback) -->
+            <!-- Employee ID (for manual fallback) -->
             <div class="bg-white rounded-xl border border-gray-200 p-4">
-                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Staff ID (manual fallback)</p>
+                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Employee ID (manual fallback)</p>
                 <div class="flex items-center gap-2">
-                    <code class="flex-1 text-xs font-mono text-gray-600 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 break-all select-all">
-                        {{ user.id }}
+                    <code class="flex-1 text-lg font-mono font-bold text-gray-800 bg-gray-50 border border-gray-200 rounded-lg px-3 py-2 tracking-widest text-center select-all">
+                        {{ user.employee_id }}
                     </code>
                     <button
                         @click="copyId"
@@ -109,7 +109,7 @@ const copied = ref(false);
 
 async function copyId() {
     try {
-        await navigator.clipboard.writeText(user.value.id);
+        await navigator.clipboard.writeText(user.value.employee_id);
         copied.value = true;
         setTimeout(() => { copied.value = false; }, 2000);
     } catch {
