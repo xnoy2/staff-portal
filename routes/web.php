@@ -9,6 +9,7 @@ use App\Http\Controllers\VanController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\Auth\ChangePasswordController;
+use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ProfileController;
@@ -20,6 +21,7 @@ Route::get('/', fn () => redirect()->route('dashboard'));
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/schedule',                              [ScheduleController::class, 'index'])->name('schedule');
+    Route::get('/calendar',                              [CalendarController::class,  'index'])->name('calendar');
     Route::post('/schedule/staff',                       [ScheduleController::class, 'store'])->name('schedule.staff.store');
     Route::delete('/schedule/staff/{staffSchedule}',     [ScheduleController::class, 'destroyEntry'])->name('schedule.staff.destroy');
 
