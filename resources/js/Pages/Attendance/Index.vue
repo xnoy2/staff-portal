@@ -1,115 +1,6 @@
 <template>
     <AppLayout title="Attendance">
 
-        <!-- ── Clock Panel ────────────────────────────────────────────────── -->
-        <div class="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden mb-5">
-
-            <!-- IDLE: Not clocked in -->
-            <template v-if="clockState === 'idle'">
-                <div class="px-6 py-10 flex flex-col items-center text-center gap-2">
-                    <p class="text-xs text-gray-400 uppercase tracking-widest font-medium">{{ currentDate }}</p>
-                    <p class="text-6xl font-bold text-gray-900 tabular-nums tracking-tight my-2">{{ currentTime }}</p>
-                    <p class="text-sm text-gray-400 mb-4">You haven't clocked in yet</p>
-                    <button
-                        @click="doClockIn"
-                        :disabled="loading"
-                        class="inline-flex items-center gap-2 bg-[#3B6D11] hover:bg-[#2f5a0d] disabled:opacity-50 text-white font-semibold px-8 py-3 rounded-xl transition-all active:scale-95 text-base shadow-sm"
-                    >
-                        <PlayCircleIcon class="w-5 h-5" />
-                        Clock In
-                    </button>
-                </div>
-            </template>
-
-            <!-- ACTIVE: Working / On Break / On Lunch -->
-            <template v-else>
-
-                <!-- Coloured header strip -->
-                <div :class="['flex items-center justify-between px-4 py-3 text-sm font-medium text-white', headerBg]">
-                    <div class="flex items-center gap-2">
-                        <span :class="['w-2 h-2 rounded-full bg-white/90', clockState === 'working' ? 'animate-pulse' : 'opacity-60']" />
-                        {{ stateLabel }}
-                    </div>
-                    <span class="text-white/75 text-xs">Since {{ formatTime(activeEntry.clock_in) }}</span>
-                </div>
-
-                <!-- Main body -->
-                <div class="px-4 pb-6 pt-5 flex flex-col items-center gap-2">
-
-                    <!-- Live clock -->
-                    <p class="text-xs text-gray-400 uppercase tracking-widest font-medium">{{ currentDate }}</p>
-                    <p class="text-5xl sm:text-6xl font-bold text-gray-900 tabular-nums tracking-tight leading-none mt-1">{{ currentTime }}</p>
-
-                    <!-- Elapsed / break badge -->
-                    <div :class="['mt-2 inline-flex items-center gap-1.5 rounded-full px-4 py-1.5 text-sm font-medium', badgeBg]">
-                        <ClockIcon class="w-3.5 h-3.5 flex-shrink-0" />
-                        <span v-if="clockState === 'working'">{{ fmtElapsed(workedSeconds) }} net worked</span>
-                        <span v-else>{{ fmtElapsed(breakSeconds) }} {{ clockState === 'on_lunch' ? 'on lunch' : 'on break' }}</span>
-                    </div>
-                    <p v-if="clockState !== 'working'" class="text-xs text-gray-400 -mt-0.5">
-                        {{ fmtElapsed(workedSeconds) }} worked
-                        <span v-if="activeEntry.total_break_minutes > 0"> · {{ activeEntry.total_break_minutes }}m prev. breaks</span>
-                    </p>
-
-                    <!-- Circular ring + primary action button -->
-                    <div class="relative flex items-center justify-center my-4 w-52 h-52">
-                        <!-- Outer pulsing ring -->
-                        <div :class="['absolute inset-0 rounded-full animate-pulse', outerRingBg]" style="animation-duration: 3s;" />
-                        <!-- Middle ring -->
-                        <div :class="['absolute inset-6 rounded-full', middleRingBg]" />
-                        <!-- Action button -->
-                        <button
-                            @click="clockState === 'working' ? doClockOut() : doEndBreak()"
-                            :disabled="loading"
-                            :class="['relative z-10 w-24 h-24 rounded-full text-white flex flex-col items-center justify-center gap-1 shadow-xl transition-all active:scale-95 disabled:opacity-70 text-center', centerBtnBg]"
-                        >
-                            <StopCircleIcon v-if="clockState === 'working'" class="w-8 h-8" />
-                            <PlayCircleIcon v-else class="w-8 h-8" />
-                            <span class="text-xs font-bold leading-snug px-1">
-                                {{ clockState === 'working' ? 'Clock Out' : clockState === 'on_lunch' ? 'Back from Lunch' : 'Resume Work' }}
-                            </span>
-                        </button>
-                    </div>
-
-                    <!-- Break buttons (working only) -->
-                    <div v-if="clockState === 'working'" class="flex gap-3 w-full max-w-xs">
-                        <button
-                            @click="doStartBreak('break')"
-                            :disabled="loading"
-                            class="flex-1 inline-flex items-center justify-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 hover:bg-amber-100 disabled:opacity-50 font-medium px-3 py-2.5 rounded-xl text-sm transition-colors"
-                        >
-                            <PauseCircleIcon class="w-4 h-4" />
-                            Start Break
-                        </button>
-                        <button
-                            @click="doStartBreak('lunch')"
-                            :disabled="loading"
-                            class="flex-1 inline-flex items-center justify-center gap-1.5 bg-blue-50 text-blue-700 border border-blue-200 hover:bg-blue-100 disabled:opacity-50 font-medium px-3 py-2.5 rounded-xl text-sm transition-colors"
-                        >
-                            <PauseCircleIcon class="w-4 h-4" />
-                            Lunch Break
-                        </button>
-                    </div>
-
-                    <!-- Previous breaks footnote (working) -->
-                    <p v-if="clockState === 'working' && activeEntry.total_break_minutes > 0" class="text-xs text-gray-400">
-                        {{ activeEntry.total_break_minutes }}m in previous breaks
-                    </p>
-
-                    <!-- Clock Out secondary (on break / lunch) -->
-                    <button
-                        v-if="clockState !== 'working'"
-                        @click="doClockOut"
-                        :disabled="loading"
-                        class="mt-1 inline-flex items-center gap-1.5 text-red-600 border border-red-200 hover:bg-red-50 font-medium px-5 py-2 rounded-xl text-sm transition-colors disabled:opacity-50"
-                    >
-                        <StopCircleIcon class="w-4 h-4" />
-                        Clock Out
-                    </button>
-                </div>
-            </template>
-        </div>
-
         <!-- ── Header row ─────────────────────────────────────────────────── -->
         <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
             <div>
@@ -363,7 +254,7 @@
 </template>
 
 <script setup>
-import { ref, computed, reactive, onMounted, onUnmounted } from 'vue';
+import { ref, computed, reactive } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import { usePermission } from '@/Composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -371,10 +262,6 @@ import BaseModal from '@/Components/BaseModal.vue';
 import {
     QrCodeIcon,
     CheckIcon,
-    ClockIcon,
-    PlayCircleIcon,
-    PauseCircleIcon,
-    StopCircleIcon,
 } from '@heroicons/vue/24/outline';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -386,126 +273,9 @@ const props = defineProps({
     isPrivileged: { type: Boolean, default: false },
     isManager:    { type: Boolean, default: false },
     filters:      { type: Object,  default: () => ({}) },
-    activeEntry:  { type: Object,  default: null },
 });
 
 const { isSiteHead } = usePermission();
-
-// ── Clock state machine ───────────────────────────────────────────────────────
-
-const now     = ref(Date.now());
-const loading = ref(false);
-let   timerHandle;
-
-onMounted(()  => { timerHandle = setInterval(() => { now.value = Date.now(); }, 1000); });
-onUnmounted(() => clearInterval(timerHandle));
-
-const clockState = computed(() => props.activeEntry?.clock_state ?? 'idle');
-
-// Net worked seconds — freezes during a break
-const workedSeconds = computed(() => {
-    if (! props.activeEntry) return 0;
-    const clockIn      = new Date(props.activeEntry.clock_in).getTime();
-    const pastBreaksMs = props.activeEntry.total_break_minutes * 60_000;
-    const endpoint     = props.activeEntry.active_break
-        ? new Date(props.activeEntry.active_break.started_at).getTime()
-        : now.value;
-    return Math.max(0, Math.floor((endpoint - clockIn - pastBreaksMs) / 1000));
-});
-
-// Current break/lunch duration — only ticks while on break
-const breakSeconds = computed(() => {
-    if (! props.activeEntry?.active_break) return 0;
-    const start = new Date(props.activeEntry.active_break.started_at).getTime();
-    return Math.max(0, Math.floor((now.value - start) / 1000));
-});
-
-// Live time display
-const currentTime = computed(() =>
-    new Date(now.value).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
-);
-const currentDate = computed(() =>
-    new Date(now.value).toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
-);
-
-// "Xh Ym" short format for badges
-function fmtElapsed(s) {
-    const h = Math.floor(s / 3600);
-    const m = Math.floor((s % 3600) / 60);
-    return `${h}h ${m}m`;
-}
-
-// ── Panel presentation ────────────────────────────────────────────────────────
-
-const stateLabel = computed(() => ({
-    working:  'Currently Clocked In',
-    on_break: 'On Break',
-    on_lunch: 'Lunch Break',
-}[clockState.value] ?? ''));
-
-const headerBg = computed(() => ({
-    working:  'bg-[#3B6D11]',
-    on_break: 'bg-amber-500',
-    on_lunch: 'bg-blue-600',
-}[clockState.value] ?? 'bg-gray-600'));
-
-const badgeBg = computed(() => ({
-    working:  'bg-green-50 text-green-700',
-    on_break: 'bg-amber-50 text-amber-700',
-    on_lunch: 'bg-blue-50 text-blue-700',
-}[clockState.value] ?? 'bg-gray-100 text-gray-600'));
-
-const outerRingBg = computed(() => ({
-    working:  'bg-green-100',
-    on_break: 'bg-amber-100',
-    on_lunch: 'bg-blue-100',
-}[clockState.value] ?? 'bg-gray-100'));
-
-const middleRingBg = computed(() => ({
-    working:  'bg-green-200',
-    on_break: 'bg-amber-200',
-    on_lunch: 'bg-blue-200',
-}[clockState.value] ?? 'bg-gray-200'));
-
-const centerBtnBg = computed(() => ({
-    working:  'bg-[#3B6D11] hover:bg-[#2f5a0d]',
-    on_break: 'bg-amber-500 hover:bg-amber-600',
-    on_lunch: 'bg-blue-600 hover:bg-blue-700',
-}[clockState.value] ?? 'bg-gray-600 hover:bg-gray-700'));
-
-// ── Clock actions ─────────────────────────────────────────────────────────────
-
-function doClockIn() {
-    loading.value = true;
-    router.post('/attendance/clock-in', {}, {
-        preserveScroll: true,
-        onFinish: () => { loading.value = false; },
-    });
-}
-
-function doClockOut() {
-    loading.value = true;
-    router.post('/attendance/clock-out', {}, {
-        preserveScroll: true,
-        onFinish: () => { loading.value = false; },
-    });
-}
-
-function doStartBreak(type) {
-    loading.value = true;
-    router.post('/attendance/break/start', { type }, {
-        preserveScroll: true,
-        onFinish: () => { loading.value = false; },
-    });
-}
-
-function doEndBreak() {
-    loading.value = true;
-    router.post('/attendance/break/end', {}, {
-        preserveScroll: true,
-        onFinish: () => { loading.value = false; },
-    });
-}
 
 // ── Filters ───────────────────────────────────────────────────────────────────
 
