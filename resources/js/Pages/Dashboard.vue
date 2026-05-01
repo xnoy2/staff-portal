@@ -49,14 +49,19 @@
                         <li
                             v-for="job in todaysJobs"
                             :key="job.id"
-                            class="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                            class="flex items-center justify-between p-3 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors gap-3"
                         >
-                            <div>
-                                <p class="text-sm font-medium text-gray-800">{{ job.name }}</p>
-                                <p class="text-xs text-gray-500">{{ job.customer }}</p>
+                            <div class="min-w-0">
+                                <p class="text-sm font-medium text-gray-800 truncate">{{ job.title }}</p>
+                                <p class="text-xs text-gray-500 truncate">
+                                    {{ job.project?.name ?? '—' }}
+                                    <span v-if="job.project?.business"> · {{ job.project.business }}</span>
+                                    <span v-if="job.van"> · {{ job.van }}</span>
+                                    <span v-if="job.staff_count"> · {{ job.staff_count }} staff</span>
+                                </p>
                             </div>
-                            <span :class="['text-xs px-2 py-1 rounded-full font-medium', phaseClass(job.phase)]">
-                                {{ job.phase }}
+                            <span :class="['text-xs px-2 py-1 rounded-full font-medium flex-shrink-0', jobStatusClass(job.status)]">
+                                {{ jobStatusLabel(job.status) }}
                             </span>
                         </li>
                     </ul>
@@ -432,6 +437,20 @@ const weeklyChartOptions = {
 };
 
 // Phase badge colors
+function jobStatusClass(s) {
+    const map = {
+        scheduled:   'bg-blue-50 text-blue-700',
+        in_progress: 'bg-amber-50 text-amber-700',
+        completed:   'bg-green-50 text-green-700',
+        cancelled:   'bg-gray-100 text-gray-500',
+    };
+    return map[s] ?? 'bg-gray-100 text-gray-500';
+}
+
+function jobStatusLabel(s) {
+    return { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled' }[s] ?? s;
+}
+
 function phaseClass(phase) {
     const map = {
         planning:     'bg-gray-100 text-gray-600',
