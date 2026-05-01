@@ -52,6 +52,7 @@ function draw() {
     const ctx = cvs.getContext('2d');
     const { width: w, height: h } = cvs;
 
+    if (!w || !h) { animId = requestAnimationFrame(draw); return; }
     ctx.clearRect(0, 0, w, h);
 
     // Move particles + cursor repulsion + pulse
@@ -73,8 +74,11 @@ function draw() {
         p.y    += p.vy;
         p.phase += p.pulseSpeed;
 
-        if (p.x < 0 || p.x > w) p.vx *= -1;
-        if (p.y < 0 || p.y > h) p.vy *= -1;
+        // Clamp back to bounds — prevents escape if velocity overshoots the edge
+        if (p.x < 0)  { p.x = 0;  p.vx = Math.abs(p.vx);  p.bvx = Math.abs(p.bvx); }
+        if (p.x > w)  { p.x = w;  p.vx = -Math.abs(p.vx); p.bvx = -Math.abs(p.bvx); }
+        if (p.y < 0)  { p.y = 0;  p.vy = Math.abs(p.vy);  p.bvy = Math.abs(p.bvy); }
+        if (p.y > h)  { p.y = h;  p.vy = -Math.abs(p.vy); p.bvy = -Math.abs(p.bvy); }
     }
 
     // Particle–particle connections
@@ -157,9 +161,11 @@ function onMouseLeave() {
 function resize() {
     const cvs = canvas.value;
     if (!cvs) return;
-    cvs.width  = cvs.offsetWidth;
-    cvs.height = cvs.offsetHeight;
-    init(cvs.width, cvs.height);
+    const w = cvs.offsetWidth  || window.innerWidth;
+    const h = cvs.offsetHeight || window.innerHeight;
+    cvs.width  = w;
+    cvs.height = h;
+    init(w, h);
 }
 
 onMounted(() => {
