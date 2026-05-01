@@ -88,7 +88,7 @@
                             />
                         </div>
                         <div v-if="isPrivileged" class="flex items-center gap-2 min-w-0">
-                            <img :src="entry.user?.avatar" :alt="entry.user?.name" class="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                            <img :src="entry.user?.avatar_url" :alt="entry.user?.name" class="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                             <span class="text-sm font-semibold text-gray-800 truncate">{{ entry.user?.name }}</span>
                         </div>
                     </div>
@@ -173,7 +173,7 @@
                             </td>
                             <td v-if="isPrivileged" class="px-4 py-3">
                                 <div class="flex items-center gap-2">
-                                    <img :src="entry.user?.avatar" :alt="entry.user?.name" class="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                                    <img :src="entry.user?.avatar_url" :alt="entry.user?.name" class="w-6 h-6 rounded-full object-cover flex-shrink-0" />
                                     <span class="text-gray-700 font-medium">{{ entry.user?.name }}</span>
                                 </div>
                             </td>
