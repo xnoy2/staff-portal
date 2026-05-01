@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\JobController;
 use App\Http\Controllers\LeaveController;
@@ -91,6 +92,11 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('staff', StaffController::class);
     Route::post('/staff/{staff}/toggle-active',       [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
     Route::post('/staff/{staff}/force-password-reset',[StaffController::class, 'forcePasswordReset'])->name('staff.force-password-reset');
+
+    // Settings
+    Route::get('/settings',              [SettingsController::class, 'index'])->name('settings');
+    Route::post('/settings',             [SettingsController::class, 'update'])->name('settings.update');
+    Route::post('/settings/preferences', [SettingsController::class, 'updatePreferences'])->name('settings.preferences');
 
     // Profile
     Route::get('/profile',             [ProfileController::class, 'edit'])->name('profile.edit');

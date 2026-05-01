@@ -31,6 +31,7 @@ class User extends Authenticatable
         'certifications',
         'notes',
         'avatar',
+        'preferences',
     ];
 
     protected $hidden = [
@@ -46,7 +47,8 @@ class User extends Authenticatable
             'is_active'         => 'boolean',
             'must_change_password' => 'boolean',
             'hire_date'         => 'date',
-            'certifications'    => 'array',
+            'certifications' => 'array',
+            'preferences'    => 'array',
         ];
     }
 

@@ -59,6 +59,7 @@
 
                 <NavGroup v-if="isAdmin" label="Admin" :collapsed="!sidebarOpen && !isMobile">
                     <NavItem :href="route('businesses.index')" routeName="businesses.index" icon="BuildingOfficeIcon" label="Businesses" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('settings')"         routeName="settings"          icon="Cog6ToothIcon"     label="Settings"   :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
             </nav>
 
