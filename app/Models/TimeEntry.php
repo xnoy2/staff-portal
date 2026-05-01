@@ -75,9 +75,7 @@ class TimeEntry extends Model
 
     public function scopeActive(Builder $query): Builder
     {
-        return $query
-            ->whereNull('clock_out')
-            ->whereDate('clock_in', today());
+        return $query->whereNull('clock_out');
     }
 
     public function scopePending(Builder $query): Builder
