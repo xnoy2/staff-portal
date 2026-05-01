@@ -122,8 +122,8 @@
                                 <div class="relative flex items-center justify-center">
                                     <!-- Ripple rings (working state only) -->
                                     <template v-if="clockState === 'working' && !clockLoading">
-                                        <span :class="['absolute w-32 h-32 rounded-full clock-ring-1', ringColor]" />
-                                        <span :class="['absolute w-32 h-32 rounded-full clock-ring-2', ringColor]" />
+                                        <span :class="['absolute w-32 h-32 rounded-full clock-ring-1 pointer-events-none', ringColor]" />
+                                        <span :class="['absolute w-32 h-32 rounded-full clock-ring-2 pointer-events-none', ringColor]" />
                                     </template>
 
                                     <button
