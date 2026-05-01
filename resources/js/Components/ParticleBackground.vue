@@ -12,33 +12,31 @@ let particles = [];
 const mouse = { x: null, y: null };
 
 const COLORS = [
-    'rgba(239,35,60,0.90)',
-    'rgba(239,35,60,0.55)',
-    'rgba(255,255,255,0.75)',
-    'rgba(255,255,255,0.45)',
-    'rgba(141,153,174,0.65)',
+    'rgba(239,35,60,0.8)',
+    'rgba(239,35,60,0.4)',
+    'rgba(255,255,255,0.6)',
+    'rgba(255,255,255,0.3)',
+    'rgba(141,153,174,0.5)',
 ];
-const LINK_DIST   = 155;
-const MOUSE_DIST  = 180;
+const LINK_DIST   = 130;
+const MOUSE_DIST  = 160;
 const REPEL_DIST  = 80;
 const REPEL_FORCE = 0.12;
-const COUNT       = 90;
+const COUNT       = 65;
 
 function mkParticle(w, h) {
-    const vx = (Math.random() - 0.5) * 0.6;
-    const vy = (Math.random() - 0.5) * 0.6;
+    const vx = (Math.random() - 0.5) * 0.42;
+    const vy = (Math.random() - 0.5) * 0.42;
     const colorIdx = Math.floor(Math.random() * COLORS.length);
     return {
-        x:          Math.random() * w,
-        y:          Math.random() * h,
-        vx,         vy,
-        bvx:        vx,
-        bvy:        vy,
-        r:          1.0 + Math.random() * 2.2,
-        color:      COLORS[colorIdx],
-        isRed:      colorIdx < 2,
-        phase:      Math.random() * Math.PI * 2,
-        pulseSpeed: 0.015 + Math.random() * 0.02,
+        x:     Math.random() * w,
+        y:     Math.random() * h,
+        vx,    vy,
+        bvx:   vx,
+        bvy:   vy,
+        r:     0.6 + Math.random() * 1.4,
+        color: COLORS[colorIdx],
+        isRed: colorIdx < 2,
     };
 }
 
@@ -68,11 +66,10 @@ function draw() {
             }
         }
 
-        p.vx   += (p.bvx - p.vx) * 0.03;
-        p.vy   += (p.bvy - p.vy) * 0.03;
-        p.x    += p.vx;
-        p.y    += p.vy;
-        p.phase += p.pulseSpeed;
+        p.vx += (p.bvx - p.vx) * 0.03;
+        p.vy += (p.bvy - p.vy) * 0.03;
+        p.x  += p.vx;
+        p.y  += p.vy;
 
         // Clamp back to bounds — prevents escape if velocity overshoots the edge
         if (p.x < 0)  { p.x = 0;  p.vx = Math.abs(p.vx);  p.bvx = Math.abs(p.bvx); }
@@ -88,12 +85,12 @@ function draw() {
             const dy   = particles[i].y - particles[j].y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < LINK_DIST) {
-                const alpha = 0.28 * (1 - dist / LINK_DIST);
+                const alpha = 0.15 * (1 - dist / LINK_DIST);
                 ctx.beginPath();
                 ctx.moveTo(particles[i].x, particles[i].y);
                 ctx.lineTo(particles[j].x, particles[j].y);
                 ctx.strokeStyle = `rgba(255,255,255,${alpha})`;
-                ctx.lineWidth   = 0.7;
+                ctx.lineWidth   = 0.6;
                 ctx.stroke();
             }
         }
@@ -106,7 +103,7 @@ function draw() {
             const dy   = p.y - mouse.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
             if (dist < MOUSE_DIST) {
-                const alpha = 0.45 * (1 - dist / MOUSE_DIST);
+                const alpha = 0.35 * (1 - dist / MOUSE_DIST);
                 ctx.beginPath();
                 ctx.moveTo(mouse.x, mouse.y);
                 ctx.lineTo(p.x, p.y);
@@ -125,19 +122,8 @@ function draw() {
 
     // Particles
     for (const p of particles) {
-        const drawR = p.r * (1 + 0.28 * Math.sin(p.phase));
-
-        // Soft glow halo on red particles
-        if (p.isRed) {
-            ctx.beginPath();
-            ctx.arc(p.x, p.y, drawR * 4.5, 0, Math.PI * 2);
-            ctx.fillStyle = 'rgba(239,35,60,0.07)';
-            ctx.fill();
-        }
-
-        // Main dot
         ctx.beginPath();
-        ctx.arc(p.x, p.y, drawR, 0, Math.PI * 2);
+        ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
         ctx.fillStyle = p.color;
         ctx.fill();
     }
