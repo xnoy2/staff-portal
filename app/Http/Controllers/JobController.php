@@ -18,18 +18,30 @@ class JobController extends Controller
     public function index(Request $request): Response
     {
         $user         = $request->user();
-        $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'site_head']);
+        $isManager    = $user->hasAnyRole(['admin', 'manager']);
+        $isSiteHead   = $user->hasRole('site_head');
+        $isPrivileged = $isManager || $isSiteHead;
         $date         = $request->input('date', today()->toDateString());
 
-        $jobs = Job::forDate($date)
+        $query = Job::forDate($date)
             ->with([
                 'project:id,name,customer,business',
                 'van:id,registration,make,model',
                 'staff:id,name,avatar',
             ])
             ->orderBy('start_time')
-            ->orderBy('created_at')
-            ->get();
+            ->orderBy('created_at');
+
+        if ($isSiteHead && ! $isManager) {
+            // Site head: only jobs linked to projects they are assigned to
+            $projectIds = $user->projects()->pluck('projects.id');
+            $query->whereIn('project_id', $projectIds);
+        } elseif (! $isPrivileged) {
+            // Staff: only jobs they are directly assigned to
+            $query->whereHas('staff', fn ($q) => $q->where('users.id', $user->id));
+        }
+
+        $jobs = $query->get();
 
         // Load today's time entries for all assigned staff in one query
         $staffIds = $jobs->flatMap(fn ($j) => $j->staff->pluck('id'))->unique()->values();
@@ -46,8 +58,12 @@ class JobController extends Controller
             'date'         => $date,
             'isPrivileged' => $isPrivileged,
             'projects'     => $isPrivileged
-                ? Project::whereIn('status', ['planning', 'active', 'on_hold'])
-                    ->orderBy('name')->get(['id', 'name', 'customer', 'business'])
+                ? ($isSiteHead && ! $isManager
+                    ? $user->projects()
+                        ->whereIn('status', ['planning', 'active', 'on_hold'])
+                        ->orderBy('name')->get(['projects.id', 'projects.name', 'projects.customer', 'projects.business'])
+                    : Project::whereIn('status', ['planning', 'active', 'on_hold'])
+                        ->orderBy('name')->get(['id', 'name', 'customer', 'business']))
                 : [],
             'vans'         => $isPrivileged
                 ? Van::where('is_active', true)->orderBy('registration')->get(['id', 'registration', 'make', 'model'])
@@ -60,7 +76,8 @@ class JobController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        abort_unless($request->user()->hasAnyRole(['admin', 'manager', 'site_head']), 403);
+        $user = $request->user();
+        abort_unless($user->hasAnyRole(['admin', 'manager', 'site_head']), 403);
 
         $data = $request->validate([
             'project_id'  => ['nullable', 'exists:projects,id'],
@@ -75,7 +92,14 @@ class JobController extends Controller
             'staff_ids.*' => ['exists:users,id'],
         ]);
 
-        $job = Job::create([...$data, 'created_by' => $request->user()->id]);
+        // Site heads can only create jobs for their own projects
+        if ($user->hasRole('site_head') && ! $user->hasAnyRole(['admin', 'manager'])) {
+            if (! empty($data['project_id']) && ! $user->projects()->where('projects.id', $data['project_id'])->exists()) {
+                abort(403, 'You can only create jobs for projects assigned to you.');
+            }
+        }
+
+        $job = Job::create([...$data, 'created_by' => $user->id]);
 
         if (!empty($data['staff_ids'])) {
             $job->staff()->sync($data['staff_ids']);
@@ -88,7 +112,8 @@ class JobController extends Controller
 
     public function update(Request $request, Job $job): RedirectResponse
     {
-        abort_unless($request->user()->hasAnyRole(['admin', 'manager', 'site_head']), 403);
+        $user = $request->user();
+        abort_unless($user->hasAnyRole(['admin', 'manager', 'site_head']), 403);
 
         $data = $request->validate([
             'project_id'  => ['nullable', 'exists:projects,id'],
@@ -102,6 +127,14 @@ class JobController extends Controller
             'staff_ids'   => ['nullable', 'array'],
             'staff_ids.*' => ['exists:users,id'],
         ]);
+
+        // Site heads can only edit jobs belonging to their projects
+        if ($user->hasRole('site_head') && ! $user->hasAnyRole(['admin', 'manager'])) {
+            $projectId = $data['project_id'] ?? $job->project_id;
+            if ($projectId && ! $user->projects()->where('projects.id', $projectId)->exists()) {
+                abort(403, 'You can only edit jobs for projects assigned to you.');
+            }
+        }
 
         $job->update($data);
         $job->staff()->sync($data['staff_ids'] ?? []);
