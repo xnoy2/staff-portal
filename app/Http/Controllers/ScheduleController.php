@@ -3,6 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Models\Job;
+use App\Models\StaffSchedule;
+use App\Models\User;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -16,6 +19,7 @@ class ScheduleController extends Controller
         $weekStart = Carbon::parse($weekOf)->startOfWeek(Carbon::MONDAY);
         $weekEnd   = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
 
+        // All jobs for the week (with staff loaded)
         $jobs = Job::whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
             ->with([
                 'project:id,name,customer,business',
@@ -26,6 +30,7 @@ class ScheduleController extends Controller
             ->orderBy('start_time')
             ->get();
 
+        // Job calendar — grouped by day
         $weekDays = collect(range(0, 6))->map(function ($i) use ($weekStart, $jobs) {
             $date    = $weekStart->copy()->addDays($i);
             $dateStr = $date->toDateString();
@@ -61,12 +66,23 @@ class ScheduleController extends Controller
             ];
         });
 
-        // Build staff schedule matrix from the already-loaded jobs
-        $allStaff = $jobs->flatMap->staff->unique('id')->sortBy('name');
+        // Staff schedule matrix — all active staff
+        $activeStaff = User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'avatar']);
 
-        $staffSchedule = $allStaff->map(function ($staffMember) use ($jobs, $weekStart) {
-            $days = collect(range(0, 6))->map(function ($i) use ($staffMember, $jobs, $weekStart) {
-                $date    = $weekStart->copy()->addDays($i)->toDateString();
+        // Roster entries for the week, indexed by [user_id][date]
+        $rosterEntries = StaffSchedule::whereIn('user_id', $activeStaff->pluck('id'))
+            ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn ($group) => $group->keyBy(fn ($e) => $e->date->toDateString()));
+
+        $staffSchedule = $activeStaff->map(function ($staffMember) use ($jobs, $weekStart, $rosterEntries) {
+            $userRoster = $rosterEntries->get($staffMember->id, collect());
+
+            $days = collect(range(0, 6))->map(function ($i) use ($staffMember, $jobs, $weekStart, $userRoster) {
+                $date  = $weekStart->copy()->addDays($i)->toDateString();
+                $entry = $userRoster->get($date);
+
                 $dayJobs = $jobs
                     ->filter(fn ($j) =>
                         $j->date->toDateString() === $date &&
@@ -81,15 +97,24 @@ class ScheduleController extends Controller
                     ])
                     ->values();
 
-                return ['date' => $date, 'jobs' => $dayJobs];
+                return [
+                    'date'        => $date,
+                    'scheduled'   => $entry !== null,
+                    'schedule_id' => $entry?->id,
+                    'shift_start' => $entry?->shift_start,
+                    'shift_end'   => $entry?->shift_end,
+                    'notes'       => $entry?->notes,
+                    'jobs'        => $dayJobs,
+                ];
             });
 
             return [
-                'id'         => $staffMember->id,
-                'name'       => $staffMember->name,
-                'avatar_url' => $staffMember->avatar_url,
-                'total_jobs' => $days->sum(fn ($d) => count($d['jobs'])),
-                'days'       => $days,
+                'id'             => $staffMember->id,
+                'name'           => $staffMember->name,
+                'avatar_url'     => $staffMember->avatar_url,
+                'days_scheduled' => $days->filter(fn ($d) => $d['scheduled'])->count(),
+                'total_jobs'     => $days->sum(fn ($d) => count($d['jobs'])),
+                'days'           => $days,
             ];
         })->values();
 
@@ -101,7 +126,42 @@ class ScheduleController extends Controller
             'nextWeek'      => $weekStart->copy()->addWeek()->toDateString(),
             'todayDate'     => today()->toDateString(),
             'isPrivileged'  => $request->user()->hasAnyRole(['admin', 'manager', 'site_head']),
+            'canEdit'       => $request->user()->hasAnyRole(['admin', 'manager']),
             'staffSchedule' => $staffSchedule,
         ]);
+    }
+
+    public function store(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'manager']), 403);
+
+        $data = $request->validate([
+            'user_id'     => ['required', 'exists:users,id'],
+            'date'        => ['required', 'date'],
+            'shift_start' => ['nullable', 'date_format:H:i'],
+            'shift_end'   => ['nullable', 'date_format:H:i'],
+            'notes'       => ['nullable', 'string', 'max:500'],
+        ]);
+
+        StaffSchedule::updateOrCreate(
+            ['user_id' => $data['user_id'], 'date' => $data['date']],
+            [
+                'shift_start' => $data['shift_start'] ?? null,
+                'shift_end'   => $data['shift_end']   ?? null,
+                'notes'       => $data['notes']        ?? null,
+                'created_by'  => $request->user()->id,
+            ]
+        );
+
+        return back()->with('success', 'Schedule saved.');
+    }
+
+    public function destroyEntry(StaffSchedule $staffSchedule): RedirectResponse
+    {
+        abort_unless(request()->user()->hasAnyRole(['admin', 'manager']), 403);
+
+        $staffSchedule->delete();
+
+        return back()->with('success', 'Schedule removed.');
     }
 }
