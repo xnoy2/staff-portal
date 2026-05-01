@@ -10,6 +10,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\StaffController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QrScanController;
 use Illuminate\Support\Facades\Route;
@@ -18,6 +19,7 @@ Route::get('/', fn () => redirect()->route('dashboard'));
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/schedule',  [ScheduleController::class,  'index'])->name('schedule');
 
     // Attendance
     Route::prefix('attendance')->name('attendance.')->group(function () {

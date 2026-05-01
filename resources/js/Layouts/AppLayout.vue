@@ -40,6 +40,7 @@
                 <NavGroup label="Operations" :collapsed="!sidebarOpen && !isMobile">
                     <NavItem :href="route('dashboard')" routeName="dashboard" icon="HomeIcon"                  label="Dashboard"  :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/jobs"                                      icon="ClipboardDocumentListIcon" label="Live Board" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/schedule"                                  icon="CalendarIcon"              label="Schedule"   :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/attendance"                                icon="ClockIcon"                 label="Attendance" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/leave"                                     icon="CalendarDaysIcon"          label="Leave"      :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/my-qr"                                    icon="QrCodeIcon"                label="My QR Code" :collapsed="!sidebarOpen && !isMobile" />
