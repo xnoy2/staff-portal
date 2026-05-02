@@ -10,13 +10,13 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Reverb config — injected at runtime so Railway env vars are always picked up -->
+        <!-- Reverb config — read from config() not env() so it survives config:cache -->
         <script>
             window.ReverbConfig = {
-                key:    "{{ env('REVERB_APP_KEY', '') }}",
-                host:   "{{ env('REVERB_HOST', '') }}",
-                port:   {{ (int) env('REVERB_PORT', 443) }},
-                scheme: "{{ env('REVERB_SCHEME', 'https') }}"
+                key:    "{{ config('broadcasting.connections.reverb.key') }}",
+                host:   "{{ config('broadcasting.connections.reverb.options.host') }}",
+                port:   {{ (int) config('broadcasting.connections.reverb.options.port', 443) }},
+                scheme: "{{ config('broadcasting.connections.reverb.options.scheme', 'https') }}"
             };
         </script>
 
