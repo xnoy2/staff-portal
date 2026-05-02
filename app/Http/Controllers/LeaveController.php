@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Http\Requests\StoreLeaveRequest;
 use App\Models\LeaveRequest;
 use App\Models\User;
+use App\Notifications\LeaveStatusChanged;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -129,6 +130,14 @@ class LeaveController extends Controller
             'review_notes' => $request->review_notes,
         ]);
 
+        $leave->user?->notify(new LeaveStatusChanged(
+            status:      'approved',
+            leaveType:   $leave->type,
+            startDate:   $leave->start_date->toDateString(),
+            endDate:     $leave->end_date->toDateString(),
+            reviewNotes: $request->review_notes,
+        ));
+
         return back()->with('success', 'Leave approved.');
     }
 
@@ -144,6 +153,14 @@ class LeaveController extends Controller
             'reviewed_at'  => now(),
             'review_notes' => $request->review_notes,
         ]);
+
+        $leave->user?->notify(new LeaveStatusChanged(
+            status:      'rejected',
+            leaveType:   $leave->type,
+            startDate:   $leave->start_date->toDateString(),
+            endDate:     $leave->end_date->toDateString(),
+            reviewNotes: $request->review_notes,
+        ));
 
         return back()->with('success', 'Leave rejected.');
     }

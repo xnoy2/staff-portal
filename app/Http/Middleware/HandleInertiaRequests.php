@@ -55,6 +55,20 @@ class HandleInertiaRequests extends Middleware
                 'info'          => session('info'),
                 'temp_password' => session('temp_password'),
             ],
+            'notifications' => $user ? $user->unreadNotifications()
+                ->latest()
+                ->limit(15)
+                ->get()
+                ->map(fn ($n) => [
+                    'id'         => $n->id,
+                    'type'       => $n->data['type'] ?? 'info',
+                    'title'      => $n->data['title'] ?? '',
+                    'message'    => $n->data['message'] ?? '',
+                    'url'        => $n->data['url'] ?? null,
+                    'created_at' => $n->created_at->diffForHumans(),
+                ])
+                ->values() : [],
+            'unreadCount' => $user ? $user->unreadNotifications()->count() : 0,
         ];
     }
 }

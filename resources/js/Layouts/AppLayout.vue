@@ -105,6 +105,56 @@
 
                 <div class="flex items-center gap-2 text-xs text-[#8D99AE] flex-shrink-0">
                     <span class="hidden lg:inline">{{ formattedDate }}</span>
+
+                    <!-- Notification bell -->
+                    <div class="relative" ref="notifRef">
+                        <button
+                            @click="notifOpen = !notifOpen"
+                            class="relative p-1.5 rounded-md hover:bg-gray-100 transition-colors text-gray-500 hover:text-[#2B2D42]"
+                        >
+                            <BellIcon class="w-5 h-5" />
+                            <span
+                                v-if="unreadCount > 0"
+                                class="absolute -top-0.5 -right-0.5 w-4 h-4 bg-[#EF233C] text-white text-[10px] font-bold rounded-full flex items-center justify-center leading-none"
+                            >{{ unreadCount > 9 ? '9+' : unreadCount }}</span>
+                        </button>
+
+                        <Transition name="dropdown">
+                            <div
+                                v-if="notifOpen"
+                                class="absolute right-0 mt-1 w-80 bg-white rounded-xl shadow-lg border border-gray-200 z-50 overflow-hidden"
+                            >
+                                <div class="flex items-center justify-between px-4 py-3 border-b border-gray-100">
+                                    <p class="text-sm font-semibold text-gray-800">Notifications</p>
+                                    <button
+                                        v-if="unreadCount > 0"
+                                        @click="markAllRead"
+                                        class="text-xs text-[#EF233C] hover:underline"
+                                    >Mark all read</button>
+                                </div>
+                                <div class="max-h-80 overflow-y-auto divide-y divide-gray-50">
+                                    <div v-if="notifications.length === 0" class="px-4 py-8 text-center text-xs text-gray-400">
+                                        No new notifications
+                                    </div>
+                                    <a
+                                        v-for="n in notifications"
+                                        :key="n.id"
+                                        :href="n.url ?? '#'"
+                                        @click.prevent="openNotif(n)"
+                                        class="flex gap-3 px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                                    >
+                                        <div class="w-2 h-2 rounded-full bg-[#EF233C] flex-shrink-0 mt-1.5" />
+                                        <div class="flex-1 min-w-0">
+                                            <p class="text-xs font-semibold text-gray-800">{{ n.title }}</p>
+                                            <p class="text-xs text-gray-500 mt-0.5 line-clamp-2">{{ n.message }}</p>
+                                            <p class="text-[10px] text-gray-400 mt-1">{{ n.created_at }}</p>
+                                        </div>
+                                    </a>
+                                </div>
+                            </div>
+                        </Transition>
+                    </div>
+
                     <Link
                         :href="route('profile.edit')"
                         class="flex items-center gap-2 hover:bg-gray-100 rounded-lg px-2 py-1 transition-colors"
@@ -136,14 +186,14 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { Link, usePage } from '@inertiajs/vue3';
+import { Link, usePage, router } from '@inertiajs/vue3';
 import { usePermission } from '@/Composables/usePermission';
 import NavGroup from '@/Components/Layout/NavGroup.vue';
 import NavItem from '@/Components/Layout/NavItem.vue';
 import ToastContainer from '@/Components/ToastContainer.vue';
 import TempPasswordModal from '@/Components/TempPasswordModal.vue';
 import AppLogo from '@/Components/AppLogo.vue';
-import { Bars3Icon, ArrowRightOnRectangleIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { Bars3Icon, ArrowRightOnRectangleIcon, XMarkIcon, BellIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
     title: { type: String, default: '' },
@@ -161,8 +211,14 @@ function onResize() {
     else if (!sidebarOpen.value) sidebarOpen.value = true;
 }
 
-onMounted(() => window.addEventListener('resize', onResize));
-onUnmounted(() => window.removeEventListener('resize', onResize));
+onMounted(() => {
+    window.addEventListener('resize', onResize);
+    document.addEventListener('click', onClickOutside);
+});
+onUnmounted(() => {
+    window.removeEventListener('resize', onResize);
+    document.removeEventListener('click', onClickOutside);
+});
 
 // Close drawer on navigation (mobile)
 watch(() => page.url, () => {
@@ -171,6 +227,29 @@ watch(() => page.url, () => {
 
 const user             = computed(() => page.props.auth.user);
 const pendingApprovals = computed(() => page.props.pendingApprovals ?? 0);
+const notifications    = computed(() => page.props.notifications ?? []);
+const unreadCount      = computed(() => page.props.unreadCount ?? 0);
+
+const notifOpen = ref(false);
+const notifRef  = ref(null);
+
+function markAllRead() {
+    router.post(route('notifications.read-all'), {}, { preserveScroll: true, onSuccess: () => { notifOpen.value = false; } });
+}
+
+function openNotif(n) {
+    router.post(route('notifications.read', n.id), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            notifOpen.value = false;
+            if (n.url) router.visit(n.url);
+        },
+    });
+}
+
+function onClickOutside(e) {
+    if (notifRef.value && !notifRef.value.contains(e.target)) notifOpen.value = false;
+}
 
 const formattedDate = computed(() =>
     new Intl.DateTimeFormat('en-GB', {
@@ -182,6 +261,10 @@ const formattedDate = computed(() =>
 <style scoped>
 .fade-enter-active, .fade-leave-active { transition: opacity 0.25s ease; }
 .fade-enter-from, .fade-leave-to       { opacity: 0; }
+
+.dropdown-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.dropdown-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
+.dropdown-enter-from, .dropdown-leave-to { opacity: 0; transform: translateY(-4px); }
 
 .page-enter-active { transition: opacity 0.18s ease, transform 0.18s ease; }
 .page-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }

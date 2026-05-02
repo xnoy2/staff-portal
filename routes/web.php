@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\BusinessController;
@@ -98,6 +99,10 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('staff', StaffController::class);
     Route::post('/staff/{staff}/toggle-active',       [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
     Route::post('/staff/{staff}/force-password-reset',[StaffController::class, 'forcePasswordReset'])->name('staff.force-password-reset');
+
+    // Notifications
+    Route::post('/notifications/{id}/read',  [NotificationController::class, 'markRead'])->name('notifications.read');
+    Route::post('/notifications/read-all',   [NotificationController::class, 'markAllRead'])->name('notifications.read-all');
 
     // Audit Log (admin/manager only)
     Route::get('/audit-log', [AuditController::class, 'index'])->name('audit-log');

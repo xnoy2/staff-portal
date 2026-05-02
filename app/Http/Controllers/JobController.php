@@ -8,6 +8,7 @@ use App\Models\ProjectChecklistItem;
 use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\Van;
+use App\Notifications\JobAssigned;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -107,6 +108,7 @@ class JobController extends Controller
 
         if (!empty($data['staff_ids'])) {
             $job->staff()->sync($data['staff_ids']);
+            $this->notifyNewlyAssigned($job, $data['staff_ids'], []);
         }
 
         $this->syncChecklistItem($job);
@@ -139,8 +141,11 @@ class JobController extends Controller
             }
         }
 
+        $previousStaffIds = $job->staff()->pluck('users.id')->toArray();
         $job->update($data);
-        $job->staff()->sync($data['staff_ids'] ?? []);
+        $newStaffIds = $data['staff_ids'] ?? [];
+        $job->staff()->sync($newStaffIds);
+        $this->notifyNewlyAssigned($job, $newStaffIds, $previousStaffIds);
 
         $this->syncChecklistItem($job);
 
@@ -178,6 +183,21 @@ class JobController extends Controller
         $job->delete();
 
         return back()->with('success', 'Job removed.');
+    }
+
+    private function notifyNewlyAssigned(Job $job, array $newIds, array $previousIds): void
+    {
+        $added = array_diff($newIds, $previousIds);
+        if (empty($added)) return;
+
+        $users = User::whereIn('id', $added)->get();
+        foreach ($users as $user) {
+            $user->notify(new JobAssigned(
+                jobTitle: $job->title,
+                jobDate:  $job->date->format('d M Y'),
+                jobId:    $job->id,
+            ));
+        }
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
