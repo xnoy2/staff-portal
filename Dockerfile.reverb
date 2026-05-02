@@ -1,0 +1,13 @@
+FROM php:8.4-cli-alpine
+
+RUN apk add --no-cache git unzip curl \
+    && docker-php-ext-install pcntl pdo pdo_mysql
+
+COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
+
+WORKDIR /app
+COPY . .
+
+RUN composer install --no-dev --optimize-autoloader --no-interaction --no-progress
+
+CMD sh -c "php artisan reverb:start --host=0.0.0.0 --port=${PORT:-8080}"
