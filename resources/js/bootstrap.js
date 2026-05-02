@@ -7,14 +7,19 @@ window.axios.defaults.headers.common['X-Requested-With'] = 'XMLHttpRequest';
 
 window.Pusher = Pusher;
 
-if (import.meta.env.VITE_REVERB_APP_KEY && import.meta.env.VITE_REVERB_HOST) {
+const reverbKey    = import.meta.env.VITE_REVERB_APP_KEY;
+const reverbHost   = import.meta.env.VITE_REVERB_HOST;
+const reverbPort   = Number(import.meta.env.VITE_REVERB_PORT ?? 443);
+const reverbScheme = import.meta.env.VITE_REVERB_SCHEME ?? 'https';
+
+if (reverbKey && reverbHost) {
     window.Echo = new Echo({
-        broadcaster: 'reverb',
-        key: import.meta.env.VITE_REVERB_APP_KEY,
-        wsHost: import.meta.env.VITE_REVERB_HOST,
-        wsPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-        wssPort: import.meta.env.VITE_REVERB_PORT ?? 8080,
-        forceTLS: (import.meta.env.VITE_REVERB_SCHEME ?? 'https') === 'https',
+        broadcaster:       'reverb',
+        key:               reverbKey,
+        wsHost:            reverbHost,
+        wsPort:            reverbPort,
+        wssPort:           reverbPort,
+        forceTLS:          reverbScheme === 'https',
         enabledTransports: ['ws', 'wss'],
     });
 }
