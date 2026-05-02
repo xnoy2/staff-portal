@@ -258,10 +258,28 @@
                             </div>
                         </div>
 
-                        <!-- Working days preview -->
-                        <div v-if="estimatedDays !== null" class="bg-blue-50 border border-blue-200 rounded-lg px-3 py-2 text-sm text-blue-700">
-                            Approx. <strong>{{ estimatedDays }}</strong> working day(s)
+                        <!-- Working days preview + balance check -->
+                        <div v-if="estimatedDays !== null">
+                            <div
+                                :class="[
+                                    'rounded-lg px-3 py-2 text-sm',
+                                    balanceExceeded
+                                        ? 'bg-red-50 border border-red-200 text-red-700'
+                                        : 'bg-blue-50 border border-blue-200 text-blue-700'
+                                ]"
+                            >
+                                <span>Approx. <strong>{{ estimatedDays }}</strong> working day(s)</span>
+                                <span v-if="requestForm.type === 'annual' && !requestForm.user_id" class="ml-2 font-medium">
+                                    · {{ summary.remaining }} day(s) remaining
+                                </span>
+                                <p v-if="balanceExceeded" class="mt-0.5 text-xs">
+                                    Exceeds your annual leave balance. Please adjust the dates.
+                                </p>
+                            </div>
                         </div>
+
+                        <!-- Server-side balance error -->
+                        <p v-if="requestForm.errors.days" class="text-xs text-red-600 -mt-1">{{ requestForm.errors.days }}</p>
 
                         <!-- Reason -->
                         <div>
@@ -276,7 +294,7 @@
                             </button>
                             <button
                                 type="submit"
-                                :disabled="requestForm.processing"
+                                :disabled="requestForm.processing || balanceExceeded"
                                 class="flex-1 bg-[#EF233C] hover:bg-[#D90429] text-white text-sm font-medium py-2 rounded-lg transition-colors disabled:opacity-60"
                             >
                                 {{ requestForm.processing ? 'Submitting…' : 'Submit Request' }}
@@ -415,6 +433,13 @@ function openRequestModal() {
     requestForm.reset();
     showRequestModal.value = true;
 }
+
+const balanceExceeded = computed(() => {
+    if (requestForm.type !== 'annual') return false;
+    if (requestForm.user_id) return false; // manager submitting for others — server will validate
+    if (estimatedDays.value === null) return false;
+    return estimatedDays.value > props.summary.remaining;
+});
 
 const estimatedDays = computed(() => {
     if (!requestForm.start_date || !requestForm.end_date) return null;

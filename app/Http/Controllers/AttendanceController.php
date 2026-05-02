@@ -197,6 +197,59 @@ class AttendanceController extends Controller
         return back()->with('success', 'Entry rejected.');
     }
 
+    public function export(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
+    {
+        $this->authorizeManagerAction($request);
+
+        $user         = $request->user();
+        $isPrivileged = $user->hasAnyRole(['admin', 'manager']);
+
+        $query = TimeEntry::with(['user:id,name,employee_id'])
+            ->withSum('breaks', 'duration_minutes')
+            ->orderBy('clock_in', 'desc');
+
+        if ($request->filled('user_id') && $isPrivileged) {
+            $query->forUser($request->input('user_id'));
+        }
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+        $query->dateRange($request->input('from'), $request->input('to'));
+
+        $entries = $query->get();
+
+        $filename = 'attendance_' . now()->format('Y-m-d_His') . '.csv';
+
+        $headers = [
+            'Content-Type'        => 'text/csv',
+            'Content-Disposition' => "attachment; filename=\"{$filename}\"",
+        ];
+
+        return response()->stream(function () use ($entries) {
+            $handle = fopen('php://output', 'w');
+
+            fputcsv($handle, ['Employee ID', 'Name', 'Date', 'Clock In', 'Clock Out', 'Total Hours', 'Break (min)', 'Overtime', 'Source', 'Status', 'Notes']);
+
+            foreach ($entries as $entry) {
+                fputcsv($handle, [
+                    $entry->user?->employee_id ?? '',
+                    $entry->user?->name ?? '',
+                    $entry->clock_in?->toDateString() ?? '',
+                    $entry->clock_in?->format('H:i') ?? '',
+                    $entry->clock_out?->format('H:i') ?? '',
+                    $entry->total_hours ?? '',
+                    $entry->breaks_sum_duration_minutes ?? 0,
+                    $entry->is_overtime ? 'Yes' : 'No',
+                    $entry->source ?? '',
+                    $entry->status ?? '',
+                    $entry->notes ?? '',
+                ]);
+            }
+
+            fclose($handle);
+        }, 200, $headers);
+    }
+
     public function manual(Request $request): RedirectResponse
     {
         $this->authorizeManagerAction($request);

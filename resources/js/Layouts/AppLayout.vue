@@ -57,9 +57,10 @@
                     <NavItem href="/vans"     icon="TruckIcon"   label="Vans"     :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
 
-                <NavGroup v-if="isAdmin" label="Admin" :collapsed="!sidebarOpen && !isMobile">
-                    <NavItem :href="route('businesses.index')" routeName="businesses.index" icon="BuildingOfficeIcon" label="Businesses" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem :href="route('settings')"         routeName="settings"          icon="Cog6ToothIcon"     label="Settings"   :collapsed="!sidebarOpen && !isMobile" />
+                <NavGroup v-if="isAdmin || isManager" label="Admin" :collapsed="!sidebarOpen && !isMobile">
+                    <NavItem v-if="isAdmin" :href="route('businesses.index')" routeName="businesses.index" icon="BuildingOfficeIcon"      label="Businesses" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('audit-log')"                       routeName="audit-log"         icon="ClipboardDocumentIcon"  label="Audit Log"  :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem v-if="isAdmin" :href="route('settings')"         routeName="settings"          icon="Cog6ToothIcon"           label="Settings"   :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
             </nav>
 

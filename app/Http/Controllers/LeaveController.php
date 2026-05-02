@@ -77,6 +77,22 @@ class LeaveController extends Controller
         $end   = Carbon::parse($request->end_date);
         $days  = LeaveRequest::workingDays($start, $end);
 
+        // Balance check for annual leave
+        if ($request->type === 'annual') {
+            $targetUser  = User::findOrFail($targetId);
+            $year        = $start->year;
+            $used        = LeaveRequest::forUser($targetId)->forYear($year)->approved()->where('type', 'annual')->sum('days');
+            $pending     = LeaveRequest::forUser($targetId)->forYear($year)->pending()->where('type', 'annual')->sum('days');
+            $remaining   = $targetUser->annual_leave_days - (float) $used - (float) $pending;
+
+            if ($days > $remaining) {
+                $label = $targetId !== $user->id ? "This staff member has" : "You have";
+                return back()->withErrors([
+                    'days' => "{$label} {$remaining} annual leave day(s) remaining (including pending). Requested {$days} day(s).",
+                ])->withInput();
+            }
+        }
+
         // Admin/manager leave (own or for others) → auto-approved; site head/staff → pending
         $autoApprove = $user->hasAnyRole(['admin', 'manager']);
 

@@ -21,6 +21,14 @@
                     <QrCodeIcon class="w-4 h-4" />
                     <span class="hidden sm:inline">QR Scanner</span>
                 </Link>
+                <a
+                    v-if="isManager"
+                    :href="exportUrl"
+                    class="inline-flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                >
+                    <ArrowDownTrayIcon class="w-4 h-4" />
+                    <span class="hidden sm:inline">Export</span>
+                </a>
                 <button
                     v-if="isManager"
                     @click="openAddEntry"
@@ -355,6 +363,7 @@ import {
     QrCodeIcon,
     CheckIcon,
     PlusIcon,
+    ArrowDownTrayIcon,
 } from '@heroicons/vue/24/outline';
 
 // ── Props ─────────────────────────────────────────────────────────────────────
@@ -382,6 +391,16 @@ const filters = reactive({
 function applyFilters() {
     router.get('/attendance', filters, { preserveState: true, replace: true });
 }
+
+const exportUrl = computed(() => {
+    const params = new URLSearchParams();
+    if (filters.user_id) params.set('user_id', filters.user_id);
+    if (filters.status)  params.set('status',  filters.status);
+    if (filters.from)    params.set('from',     filters.from);
+    if (filters.to)      params.set('to',       filters.to);
+    const qs = params.toString();
+    return '/attendance/export' + (qs ? '?' + qs : '');
+});
 
 function clearFilters() {
     Object.assign(filters, { user_id: '', status: '', from: '', to: '' });
