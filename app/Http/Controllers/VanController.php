@@ -15,13 +15,9 @@ use Inertia\Response;
 
 class VanController extends Controller
 {
-    public function __construct()
-    {
-        $this->authorizeResource(Van::class, 'van');
-    }
-
     public function index(Request $request): Response
     {
+        $this->authorize('viewAny', Van::class);
         $query = Van::withCount('projects');
 
         if ($request->filled('search')) {
@@ -52,11 +48,13 @@ class VanController extends Controller
 
     public function create(): Response
     {
+        $this->authorize('create', Van::class);
         return Inertia::render('Vans/Create');
     }
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorize('create', Van::class);
         $data = $request->validate([
             'registration' => ['required', 'string', 'max:20', 'unique:vans,registration'],
             'make'         => ['required', 'string', 'max:100'],
@@ -73,6 +71,7 @@ class VanController extends Controller
 
     public function show(Van $van): Response
     {
+        $this->authorize('view', $van);
         $van->loadCount('projects');
 
         $projects = $van->projects()
@@ -175,6 +174,7 @@ class VanController extends Controller
 
     public function edit(Van $van): Response
     {
+        $this->authorize('update', $van);
         return Inertia::render('Vans/Edit', [
             'van' => $this->detail($van),
         ]);
@@ -182,6 +182,7 @@ class VanController extends Controller
 
     public function update(Request $request, Van $van): RedirectResponse
     {
+        $this->authorize('update', $van);
         $data = $request->validate([
             'registration' => ['required', 'string', 'max:20', 'unique:vans,registration,' . $van->id],
             'make'         => ['required', 'string', 'max:100'],
@@ -198,6 +199,7 @@ class VanController extends Controller
 
     public function destroy(Van $van): RedirectResponse
     {
+        $this->authorize('delete', $van);
         $reg = $van->registration;
         $van->delete();
 
@@ -207,6 +209,7 @@ class VanController extends Controller
 
     public function toggleActive(Van $van): RedirectResponse
     {
+        $this->authorize('update', $van);
         $van->update(['is_active' => !$van->is_active]);
 
         $status = $van->is_active ? 'activated' : 'deactivated';
@@ -216,6 +219,7 @@ class VanController extends Controller
 
     public function assignStaff(Request $request, Van $van): RedirectResponse
     {
+        $this->authorize('update', $van);
         $request->validate([
             'user_id' => ['required', 'exists:users,id'],
         ]);
@@ -229,6 +233,7 @@ class VanController extends Controller
 
     public function unassignStaff(Van $van, User $user): RedirectResponse
     {
+        $this->authorize('update', $van);
         $van->staff()->detach($user->id);
 
         return back()->with('success', 'Staff member removed from van.');

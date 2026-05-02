@@ -16,13 +16,9 @@ use Inertia\Response;
 
 class ProjectController extends Controller
 {
-    public function __construct()
-    {
-        $this->authorizeResource(Project::class, 'project');
-    }
-
     public function index(Request $request): Response
     {
+        $this->authorize('viewAny', Project::class);
         $query = Project::with(['van', 'staff', 'creator'])
             ->withCount(['checklistItems', 'checklistItems as completed_checklist_count' => fn ($q) => $q->where('is_completed', true)])
             ->latest();
@@ -63,6 +59,7 @@ class ProjectController extends Controller
 
     public function create(): Response
     {
+        $this->authorize('create', Project::class);
         return Inertia::render('Projects/Create', [
             'staffList'  => User::where('is_active', true)->orderBy('name')->get(['id', 'name']),
             'vans'       => Van::where('is_active', true)->orderBy('registration')->get(['id', 'registration', 'make', 'model']),
@@ -72,6 +69,7 @@ class ProjectController extends Controller
 
     public function store(StoreProjectRequest $request): RedirectResponse
     {
+        $this->authorize('create', Project::class);
         $project = Project::create([
             ...$request->safe()->except(['staff_ids', 'staff_roles']),
             'created_by' => $request->user()->id,
@@ -87,6 +85,7 @@ class ProjectController extends Controller
 
     public function show(Project $project): Response
     {
+        $this->authorize('view', $project);
         $project->load(['van', 'creator', 'staff', 'checklistItems.completedBy']);
 
         return Inertia::render('Projects/Show', [
@@ -96,6 +95,7 @@ class ProjectController extends Controller
 
     public function edit(Project $project): Response
     {
+        $this->authorize('update', $project);
         $project->load(['staff']);
 
         return Inertia::render('Projects/Edit', [
@@ -108,6 +108,7 @@ class ProjectController extends Controller
 
     public function update(UpdateProjectRequest $request, Project $project): RedirectResponse
     {
+        $this->authorize('update', $project);
         $project->update($request->safe()->except(['staff_ids', 'staff_roles']));
 
         $this->syncStaff($project, $request);
@@ -120,6 +121,7 @@ class ProjectController extends Controller
 
     public function destroy(Request $request, Project $project): RedirectResponse
     {
+        $this->authorize('delete', $project);
         $name = $project->name;
         $project->delete();
 
@@ -133,6 +135,7 @@ class ProjectController extends Controller
 
     public function addChecklistItem(Request $request, Project $project): RedirectResponse
     {
+        $this->authorize('update', $project);
         $request->validate(['title' => ['required', 'string', 'max:255']]);
 
         $project->checklistItems()->create([
@@ -145,6 +148,7 @@ class ProjectController extends Controller
 
     public function toggleChecklistItem(Request $request, Project $project, ProjectChecklistItem $item): RedirectResponse
     {
+        $this->authorize('update', $project);
         $item->update([
             'is_completed' => !$item->is_completed,
             'completed_by' => !$item->is_completed ? $request->user()->id : null,
@@ -156,6 +160,7 @@ class ProjectController extends Controller
 
     public function deleteChecklistItem(Project $project, ProjectChecklistItem $item): RedirectResponse
     {
+        $this->authorize('update', $project);
         $item->delete();
         return back();
     }

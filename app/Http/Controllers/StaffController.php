@@ -16,13 +16,9 @@ use Spatie\Permission\Models\Role;
 
 class StaffController extends Controller
 {
-    public function __construct()
-    {
-        $this->authorizeResource(User::class, 'staff');
-    }
-
     public function index(Request $request): Response
     {
+        $this->authorize('viewAny', User::class);
         $query = User::with('roles')
             ->orderBy('name');
 
@@ -65,6 +61,7 @@ class StaffController extends Controller
 
     public function create(): Response
     {
+        $this->authorize('create', User::class);
         return Inertia::render('Staff/Create', [
             'roles' => Role::orderBy('name')->pluck('name'),
         ]);
@@ -72,6 +69,7 @@ class StaffController extends Controller
 
     public function store(StoreUserRequest $request): RedirectResponse
     {
+        $this->authorize('create', User::class);
         $temporaryPassword = Str::password(12);
 
         $user = User::create([
@@ -102,6 +100,7 @@ class StaffController extends Controller
 
     public function show(User $staff): Response
     {
+        $this->authorize('view', $staff);
         $staff->load(['roles', 'projects']);
 
         $recentEntries = TimeEntry::forUser($staff->id)
@@ -153,6 +152,7 @@ class StaffController extends Controller
 
     public function edit(User $staff): Response
     {
+        $this->authorize('update', $staff);
         $staff->load('roles');
 
         return Inertia::render('Staff/Edit', [
@@ -177,6 +177,7 @@ class StaffController extends Controller
 
     public function update(UpdateUserRequest $request, User $staff): RedirectResponse
     {
+        $this->authorize('update', $staff);
         $staff->update([
             'name'                    => $request->name,
             'email'                   => $request->email,
@@ -203,8 +204,7 @@ class StaffController extends Controller
 
     public function destroy(Request $request, User $staff): RedirectResponse
     {
-        abort_unless($request->user()->hasRole('admin'), 403, 'Only admins can delete users.');
-        abort_if($staff->id === $request->user()->id, 403, 'You cannot delete your own account here.');
+        $this->authorize('delete', $staff);
 
         $name = $staff->name;
         $staff->delete();
@@ -219,6 +219,7 @@ class StaffController extends Controller
 
     public function toggleActive(Request $request, User $staff): RedirectResponse
     {
+        $this->authorize('toggleActive', $staff);
         $staff->update(['is_active' => ! $staff->is_active]);
 
         $status = $staff->is_active ? 'activated' : 'deactivated';
@@ -233,6 +234,7 @@ class StaffController extends Controller
 
     public function forcePasswordReset(Request $request, User $staff): RedirectResponse
     {
+        $this->authorize('update', $staff);
         $staff->update(['must_change_password' => true]);
 
         activity()

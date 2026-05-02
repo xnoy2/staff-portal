@@ -17,13 +17,9 @@ use Inertia\Response;
 
 class JobController extends Controller
 {
-    public function __construct()
-    {
-        $this->authorizeResource(Job::class, 'job');
-    }
-
     public function index(Request $request): Response
     {
+        $this->authorize('viewAny', Job::class);
         $user         = $request->user();
         $isManager    = $user->hasAnyRole(['admin', 'manager']);
         $isSiteHead   = $user->hasRole('site_head');
@@ -83,6 +79,7 @@ class JobController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        $this->authorize('create', Job::class);
         $user = $request->user();
 
         $data = $request->validate([
@@ -123,6 +120,7 @@ class JobController extends Controller
 
     public function update(Request $request, Job $job): RedirectResponse
     {
+        $this->authorize('update', $job);
         $user = $request->user();
 
         $data = $request->validate([
@@ -186,7 +184,7 @@ class JobController extends Controller
 
     public function destroy(Request $request, Job $job): RedirectResponse
     {
-        abort_unless($request->user()->hasAnyRole(['admin', 'manager']), 403);
+        $this->authorize('delete', $job);
 
         ProjectChecklistItem::where('job_id', $job->id)->delete();
         $job->delete();
