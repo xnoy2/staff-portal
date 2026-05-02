@@ -202,7 +202,7 @@ defineProps({
 const page = usePage();
 const { isAdmin, isManager, isSiteHead } = usePermission();
 
-const isMobile   = ref(window.innerWidth < 768);
+const isMobile    = ref(window.innerWidth < 768);
 const sidebarOpen = ref(window.innerWidth >= 768);
 
 function onResize() {
@@ -211,37 +211,76 @@ function onResize() {
     else if (!sidebarOpen.value) sidebarOpen.value = true;
 }
 
-onMounted(() => {
-    window.addEventListener('resize', onResize);
-    document.addEventListener('click', onClickOutside);
-});
-onUnmounted(() => {
-    window.removeEventListener('resize', onResize);
-    document.removeEventListener('click', onClickOutside);
-});
-
-// Close drawer on navigation (mobile)
-watch(() => page.url, () => {
-    if (isMobile.value) sidebarOpen.value = false;
-});
-
 const user             = computed(() => page.props.auth.user);
 const pendingApprovals = computed(() => page.props.pendingApprovals ?? 0);
-const notifications    = computed(() => page.props.notifications ?? []);
-const unreadCount      = computed(() => page.props.unreadCount ?? 0);
+
+// Local state — seeded from Inertia shared props, updated in real-time via Echo
+const notifications = ref(page.props.notifications ?? []);
+const unreadCount   = ref(page.props.unreadCount ?? 0);
+
+// Keep in sync when navigating (Inertia updates shared props on each visit)
+watch(() => page.props.notifications, (val) => { notifications.value = val ?? []; });
+watch(() => page.props.unreadCount,   (val) => { unreadCount.value   = val ?? 0;  });
 
 const notifOpen = ref(false);
 const notifRef  = ref(null);
 
+let echoChannel = null;
+
+onMounted(() => {
+    window.addEventListener('resize', onResize);
+    document.addEventListener('click', onClickOutside);
+
+    // Subscribe to the authenticated user's private channel
+    if (window.Echo && user.value?.id) {
+        echoChannel = window.Echo.private(`App.Models.User.${user.value.id}`)
+            .notification((notification) => {
+                // Prepend the new notification and bump the badge
+                notifications.value = [
+                    {
+                        id:         notification.id ?? crypto.randomUUID(),
+                        type:       notification.type    ?? 'info',
+                        title:      notification.title   ?? '',
+                        message:    notification.message ?? '',
+                        url:        notification.url     ?? null,
+                        created_at: 'just now',
+                    },
+                    ...notifications.value,
+                ].slice(0, 15);
+                unreadCount.value += 1;
+            });
+    }
+});
+
+onUnmounted(() => {
+    window.removeEventListener('resize', onResize);
+    document.removeEventListener('click', onClickOutside);
+    if (echoChannel) window.Echo.leave(`App.Models.User.${user.value?.id}`);
+});
+
+// Close sidebar on navigation (mobile)
+watch(() => page.url, () => {
+    if (isMobile.value) sidebarOpen.value = false;
+});
+
 function markAllRead() {
-    router.post(route('notifications.read-all'), {}, { preserveScroll: true, onSuccess: () => { notifOpen.value = false; } });
+    router.post(route('notifications.read-all'), {}, {
+        preserveScroll: true,
+        onSuccess: () => {
+            notifications.value = [];
+            unreadCount.value   = 0;
+            notifOpen.value     = false;
+        },
+    });
 }
 
 function openNotif(n) {
     router.post(route('notifications.read', n.id), {}, {
         preserveScroll: true,
         onSuccess: () => {
-            notifOpen.value = false;
+            notifications.value = notifications.value.filter(x => x.id !== n.id);
+            unreadCount.value   = Math.max(0, unreadCount.value - 1);
+            notifOpen.value     = false;
             if (n.url) router.visit(n.url);
         },
     });

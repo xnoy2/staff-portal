@@ -3,8 +3,7 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Messages\BroadcastMessage;
 use Illuminate\Notifications\Notification;
 
 class JobAssigned extends Notification
@@ -19,7 +18,7 @@ class JobAssigned extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database'];
+        return ['database', 'broadcast'];
     }
 
     public function toArray(object $notifiable): array
@@ -30,5 +29,10 @@ class JobAssigned extends Notification
             'message' => "You have been assigned to \"{$this->jobTitle}\" on {$this->jobDate}.",
             'url'     => '/jobs',
         ];
+    }
+
+    public function toBroadcast(object $notifiable): BroadcastMessage
+    {
+        return new BroadcastMessage($this->toArray($notifiable));
     }
 }

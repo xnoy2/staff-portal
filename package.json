@@ -26,8 +26,10 @@
         "chart.js": "^4.5.1",
         "dayjs": "^1.11.20",
         "html5-qrcode": "^2.3.8",
+        "laravel-echo": "^2.3.4",
         "pinia": "^3.0.4",
         "primevue": "^4.5.5",
+        "pusher-js": "^8.5.0",
         "qrcode": "^1.5.4",
         "vee-validate": "^4.15.1",
         "yup": "^1.7.1"
