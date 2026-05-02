@@ -10,6 +10,16 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
+        <!-- Reverb config — injected at runtime so Railway env vars are always picked up -->
+        <script>
+            window.ReverbConfig = {
+                key:    "{{ env('REVERB_APP_KEY', '') }}",
+                host:   "{{ env('REVERB_HOST', '') }}",
+                port:   {{ (int) env('REVERB_PORT', 443) }},
+                scheme: "{{ env('REVERB_SCHEME', 'https') }}"
+            };
+        </script>
+
         <!-- Scripts -->
         @routes
         @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
