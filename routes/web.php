@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuditController;
+use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\JobController;
@@ -100,6 +101,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Audit Log (admin/manager only)
     Route::get('/audit-log', [AuditController::class, 'index'])->name('audit-log');
+
+    // Reports (admin/manager only)
+    Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
 
     // Settings
     Route::get('/settings',              [SettingsController::class, 'index'])->name('settings');

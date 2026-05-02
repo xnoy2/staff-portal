@@ -15,6 +15,11 @@ use Inertia\Response;
 
 class JobController extends Controller
 {
+    public function __construct()
+    {
+        $this->authorizeResource(Job::class, 'job');
+    }
+
     public function index(Request $request): Response
     {
         $user         = $request->user();
@@ -77,7 +82,6 @@ class JobController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasAnyRole(['admin', 'manager', 'site_head']), 403);
 
         $data = $request->validate([
             'project_id'  => ['nullable', 'exists:projects,id'],
@@ -113,7 +117,6 @@ class JobController extends Controller
     public function update(Request $request, Job $job): RedirectResponse
     {
         $user = $request->user();
-        abort_unless($user->hasAnyRole(['admin', 'manager', 'site_head']), 403);
 
         $data = $request->validate([
             'project_id'  => ['nullable', 'exists:projects,id'],
@@ -146,7 +149,7 @@ class JobController extends Controller
 
     public function updateStatus(Request $request, Job $job): RedirectResponse
     {
-        abort_unless($request->user()->hasAnyRole(['admin', 'manager', 'site_head']), 403);
+        $this->authorize('update', $job);
 
         $request->validate([
             'status' => ['required', 'in:scheduled,in_progress,completed,cancelled'],

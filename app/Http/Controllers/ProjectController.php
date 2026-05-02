@@ -18,10 +18,7 @@ class ProjectController extends Controller
 {
     public function __construct()
     {
-        abort_unless(
-            auth()->check() && auth()->user()->hasAnyRole(['admin', 'manager']),
-            403
-        );
+        $this->authorizeResource(Project::class, 'project');
     }
 
     public function index(Request $request): Response

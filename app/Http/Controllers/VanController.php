@@ -17,10 +17,7 @@ class VanController extends Controller
 {
     public function __construct()
     {
-        abort_unless(
-            auth()->check() && auth()->user()->hasAnyRole(['admin', 'manager']),
-            403
-        );
+        $this->authorizeResource(Van::class, 'van');
     }
 
     public function index(Request $request): Response

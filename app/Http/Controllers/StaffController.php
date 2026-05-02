@@ -18,11 +18,7 @@ class StaffController extends Controller
 {
     public function __construct()
     {
-        // All staff routes require manager or admin
-        abort_unless(
-            auth()->check() && auth()->user()->hasAnyRole(['admin', 'manager']),
-            403
-        );
+        $this->authorizeResource(User::class, 'staff');
     }
 
     public function index(Request $request): Response
