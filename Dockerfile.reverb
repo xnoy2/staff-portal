@@ -1,7 +1,8 @@
 FROM php:8.4-cli-alpine
 
-RUN apk add --no-cache git unzip curl \
-    && docker-php-ext-install pcntl pdo pdo_mysql
+RUN apk add --no-cache git unzip curl libpng-dev libjpeg-turbo-dev freetype-dev libexif-dev \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
+    && docker-php-ext-install pcntl pdo pdo_mysql gd exif
 
 COPY --from=composer:latest /usr/bin/composer /usr/bin/composer
 
