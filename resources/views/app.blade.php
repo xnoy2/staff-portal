@@ -10,8 +10,20 @@
         <link rel="preconnect" href="https://fonts.bunny.net">
         <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
 
-        <!-- Reverb config written by startup.sh from bash env — bypasses PHP env reading entirely -->
-        <script src="{{ asset('js/reverb-config.js') }}?v={{ time() }}"></script>
+        <!-- Reverb config written by startup.sh; PHP reads from storage, no env() needed -->
+        @php
+            $reverbJson = file_exists(storage_path('app/reverb.json'))
+                ? (json_decode(file_get_contents(storage_path('app/reverb.json')), true) ?? [])
+                : [];
+        @endphp
+        <script>
+            window.ReverbConfig = {
+                key:    "{{ $reverbJson['key']    ?? '' }}",
+                host:   "{{ $reverbJson['host']   ?? '' }}",
+                port:   {{ $reverbJson['port']   ?? 443 }},
+                scheme: "{{ $reverbJson['scheme'] ?? 'https' }}"
+            };
+        </script>
 
         <!-- Scripts -->
         @routes

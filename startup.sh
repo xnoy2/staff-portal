@@ -24,15 +24,13 @@ php artisan migrate --force
 echo "==> Linking storage..."
 php artisan storage:link 2>/dev/null || true
 
-echo "==> Writing Reverb WebSocket client config..."
-mkdir -p public/js
-printf 'window.ReverbConfig={key:"%s",host:"%s",port:%d,scheme:"%s"};' \
-    "${REVERB_APP_KEY:-}" \
-    "${REVERB_HOST:-}" \
-    "${REVERB_PORT:-443}" \
-    "${REVERB_SCHEME:-https}" \
-    > public/js/reverb-config.js
-echo "    key=${REVERB_APP_KEY:-MISSING}, host=${REVERB_HOST:-MISSING}"
+echo "==> Writing Reverb client config to storage..."
+RKEY="${REVERB_APP_KEY:-}"
+RHOST="${REVERB_HOST:-}"
+RPORT="${REVERB_PORT:-443}"
+RSCHEME="${REVERB_SCHEME:-https}"
+echo "{\"key\":\"$RKEY\",\"host\":\"$RHOST\",\"port\":$RPORT,\"scheme\":\"$RSCHEME\"}" > storage/app/reverb.json
+echo "    reverb.json written: key=$RKEY host=$RHOST"
 
 echo "==> Starting server on port ${PORT:-8000}..."
 exec php artisan serve --host=0.0.0.0 --port="${PORT:-8000}"
