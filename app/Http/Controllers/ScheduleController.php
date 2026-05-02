@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Job;
+use App\Models\LeaveRequest;
 use App\Models\StaffSchedule;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -143,6 +144,19 @@ class ScheduleController extends Controller
             'notes'       => ['nullable', 'string', 'max:500'],
         ]);
 
+        // Conflict detection
+        $conflicts = [];
+
+        $onLeave = LeaveRequest::forUser($data['user_id'])
+            ->approved()
+            ->where('start_date', '<=', $data['date'])
+            ->where('end_date', '>=', $data['date'])
+            ->first();
+
+        if ($onLeave) {
+            $conflicts[] = 'Staff member has approved ' . $onLeave->type . ' leave on this date.';
+        }
+
         StaffSchedule::updateOrCreate(
             ['user_id' => $data['user_id'], 'date' => $data['date']],
             [
@@ -153,7 +167,13 @@ class ScheduleController extends Controller
             ]
         );
 
-        return back()->with('success', 'Schedule saved.');
+        $message = 'Schedule saved.';
+        if (! empty($conflicts)) {
+            $message .= ' Warning: ' . implode(' ', $conflicts);
+            return back()->with('warning', $message);
+        }
+
+        return back()->with('success', $message);
     }
 
     public function destroyEntry(StaffSchedule $staffSchedule): RedirectResponse

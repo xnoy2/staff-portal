@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Job;
+use App\Models\LeaveRequest;
 use App\Models\Project;
 use App\Models\ProjectChecklistItem;
 use App\Models\TimeEntry;
@@ -113,7 +114,11 @@ class JobController extends Controller
 
         $this->syncChecklistItem($job);
 
-        return back()->with('success', 'Job created.');
+        $warning = $this->leaveConflictWarning($data['staff_ids'] ?? [], $data['date']);
+
+        return $warning
+            ? back()->with('warning', 'Job created. Warning: ' . $warning)
+            : back()->with('success', 'Job created.');
     }
 
     public function update(Request $request, Job $job): RedirectResponse
@@ -149,7 +154,11 @@ class JobController extends Controller
 
         $this->syncChecklistItem($job);
 
-        return back()->with('success', 'Job updated.');
+        $warning = $this->leaveConflictWarning($newStaffIds, $data['date']);
+
+        return $warning
+            ? back()->with('warning', 'Job updated. Warning: ' . $warning)
+            : back()->with('success', 'Job updated.');
     }
 
     public function updateStatus(Request $request, Job $job): RedirectResponse
@@ -183,6 +192,26 @@ class JobController extends Controller
         $job->delete();
 
         return back()->with('success', 'Job removed.');
+    }
+
+    private function leaveConflictWarning(array $staffIds, string $date): ?string
+    {
+        if (empty($staffIds)) return null;
+
+        $names = LeaveRequest::approved()
+            ->whereIn('user_id', $staffIds)
+            ->where('start_date', '<=', $date)
+            ->where('end_date', '>=', $date)
+            ->with('user:id,name')
+            ->get()
+            ->map(fn ($l) => $l->user?->name)
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($names->isEmpty()) return null;
+
+        return $names->join(', ') . ' ha' . ($names->count() === 1 ? 's' : 've') . ' approved leave on this date.';
     }
 
     private function notifyNewlyAssigned(Job $job, array $newIds, array $previousIds): void
