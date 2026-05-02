@@ -22,17 +22,6 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => redirect()->route('dashboard'));
 
-// TEMP DEBUG — remove after
-Route::get('/debug-reverb', function () {
-    $path = storage_path('app/reverb.json');
-    return response()->json([
-        'path'    => $path,
-        'exists'  => file_exists($path),
-        'content' => file_exists($path) ? file_get_contents($path) : null,
-        'env_key' => getenv('REVERB_APP_KEY') ?: '(empty)',
-    ]);
-});
-
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
     Route::get('/schedule',                              [ScheduleController::class, 'index'])->name('schedule');
