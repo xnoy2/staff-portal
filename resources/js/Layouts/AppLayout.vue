@@ -1,4 +1,5 @@
 <template>
+    <Head :title="title" />
     <div class="min-h-screen bg-[#EDF2F4] flex">
 
         <!-- Mobile backdrop -->
@@ -187,7 +188,7 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { Link, usePage, router } from '@inertiajs/vue3';
+import { Head, Link, usePage, router } from '@inertiajs/vue3';
 import { usePermission } from '@/Composables/usePermission';
 import NavGroup from '@/Components/Layout/NavGroup.vue';
 import NavItem from '@/Components/Layout/NavItem.vue';
