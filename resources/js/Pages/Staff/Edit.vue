@@ -39,6 +39,7 @@ const form = useForm({
     certifications:          [...(props.staffMember.certifications ?? [])],
     notes:                   props.staffMember.notes ?? '',
     annual_leave_days:       props.staffMember.annual_leave_days ?? 28,
+    hourly_rate:             props.staffMember.hourly_rate ?? '',
 });
 
 function submit() {

@@ -84,6 +84,7 @@ class StaffController extends Controller
             'certifications'          => $request->certifications ?? [],
             'notes'                   => $request->notes,
             'annual_leave_days'       => $request->integer('annual_leave_days', 28),
+            'hourly_rate'             => $request->filled('hourly_rate') ? $request->decimal('hourly_rate') : null,
         ]);
 
         $user->syncRoles([$request->role]);
@@ -170,6 +171,7 @@ class StaffController extends Controller
                 'notes'                   => $staff->notes,
                 'roles'                   => $staff->getRoleNames(),
                 'annual_leave_days'       => $staff->annual_leave_days,
+                'hourly_rate'             => $staff->hourly_rate,
             ],
             'roles' => Role::orderBy('name')->pluck('name'),
         ]);
@@ -189,6 +191,7 @@ class StaffController extends Controller
             'certifications'          => $request->certifications ?? [],
             'notes'                   => $request->notes,
             'annual_leave_days'       => $request->integer('annual_leave_days', 28),
+            'hourly_rate'             => $request->filled('hourly_rate') ? $request->decimal('hourly_rate') : null,
         ]);
 
         $staff->syncRoles([$request->role]);

@@ -32,6 +32,7 @@ const form = useForm({
     certifications:          [],
     notes:                   '',
     annual_leave_days:       28,
+    hourly_rate:             '',
 });
 
 function submit() {

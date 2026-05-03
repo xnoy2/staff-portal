@@ -41,6 +41,12 @@
                     <input v-model.number="form.annual_leave_days" type="number" min="0" max="365" class="form-input" placeholder="28" />
                     <p v-if="form.errors.annual_leave_days" class="mt-1 text-xs text-red-600">{{ form.errors.annual_leave_days }}</p>
                 </div>
+                <!-- Hourly Rate -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Hourly Rate (£)</label>
+                    <input v-model="form.hourly_rate" type="number" min="0" step="0.01" class="form-input" placeholder="0.00" />
+                    <p v-if="form.errors.hourly_rate" class="mt-1 text-xs text-red-600">{{ form.errors.hourly_rate }}</p>
+                </div>
             </div>
 
             <!-- Toggles -->

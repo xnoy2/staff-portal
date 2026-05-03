@@ -113,6 +113,43 @@
                 </div>
             </div>
 
+            <!-- Payroll Export -->
+            <div class="bg-white rounded-xl border border-gray-200 p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <div>
+                        <h2 class="text-sm font-semibold text-gray-800">Payroll Export</h2>
+                        <p class="text-xs text-gray-500 mt-0.5">Download approved shifts as a CSV with gross pay calculations.</p>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">From</label>
+                        <input v-model="payroll.from" type="date" class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">To</label>
+                        <input v-model="payroll.to" type="date" class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
+                    </div>
+                    <div>
+                        <label class="block text-xs text-gray-500 mb-1">Staff Member (optional)</label>
+                        <select v-model="payroll.user_id" class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]">
+                            <option value="">All staff</option>
+                            <option v-for="s in staffList" :key="s.id" :value="s.id">{{ s.name }}</option>
+                        </select>
+                    </div>
+                    <div class="flex items-end">
+                        <button
+                            @click="downloadPayroll"
+                            :disabled="!payroll.from || !payroll.to"
+                            class="w-full bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-40 text-white text-sm font-medium px-4 py-2 rounded-lg transition-colors flex items-center justify-center gap-2"
+                        >
+                            <ArrowDownTrayIcon class="w-4 h-4" />
+                            Export CSV
+                        </button>
+                    </div>
+                </div>
+            </div>
+
             <!-- Leave Balance Table -->
             <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
                 <div class="px-5 py-4 border-b border-gray-100 flex items-center justify-between">
@@ -181,6 +218,7 @@
 import { reactive, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     attendanceSummary: { type: Array,  default: () => [] },
@@ -217,6 +255,18 @@ const periodLabel = computed(() => {
     }
     return `Full year ${filters.year}`;
 });
+
+const payroll = reactive({
+    from:    '',
+    to:      '',
+    user_id: '',
+});
+
+function downloadPayroll() {
+    const params = new URLSearchParams({ from: payroll.from, to: payroll.to });
+    if (payroll.user_id) params.set('user_id', payroll.user_id);
+    window.location.href = route('payroll.export') + '?' + params.toString();
+}
 
 function applyFilters() {
     router.get(route('reports'), {

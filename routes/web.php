@@ -3,6 +3,7 @@
 use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\NotificationController;
+use App\Http\Controllers\PayrollExportController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\BusinessController;
@@ -109,6 +110,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
 
     // Reports (admin/manager only)
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
+    Route::get('/reports/payroll-export', [PayrollExportController::class, 'export'])->name('payroll.export');
 
     // Settings
     Route::get('/settings',              [SettingsController::class, 'index'])->name('settings');
