@@ -25,11 +25,23 @@ class SettingsController extends Controller
         abort_if(! auth()->user()->hasRole('admin'), 403);
 
         foreach ($request->except('_token') as $key => $value) {
-            $setting = Setting::find($key);
-            if ($setting) {
-                $setting->value = is_bool($value) ? (int) $value : $value;
-                $setting->save();
-            }
+            $existing = Setting::find($key);
+
+            $type = $existing?->type ?? match (true) {
+                is_bool($value)  => 'boolean',
+                is_int($value)   => 'integer',
+                is_float($value) => 'float',
+                is_array($value) => 'json',
+                default          => 'string',
+            };
+
+            $dbValue = match ($type) {
+                'boolean' => (int) (bool) $value,
+                'json'    => json_encode($value),
+                default   => (string) $value,
+            };
+
+            Setting::updateOrCreate(['key' => $key], ['value' => $dbValue, 'type' => $type]);
         }
 
         Cache::forget('app_settings');

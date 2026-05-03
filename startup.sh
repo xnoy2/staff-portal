@@ -21,6 +21,9 @@ php artisan view:cache
 echo "==> Running migrations..."
 php artisan migrate --force
 
+echo "==> Seeding default settings..."
+php artisan db:seed --class=SettingSeeder --force
+
 echo "==> Linking storage..."
 php artisan storage:link 2>/dev/null || true
 
