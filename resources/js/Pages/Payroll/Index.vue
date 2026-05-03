@@ -3,9 +3,26 @@
         <div class="max-w-6xl mx-auto space-y-5">
 
             <!-- Header -->
-            <div>
-                <h1 class="text-lg font-semibold text-gray-800">Payroll</h1>
-                <p class="text-xs text-gray-500 mt-0.5">Cut-off: {{ cutoffDay }}th of every month · Auto-generates at midnight on cut-off day</p>
+            <div class="flex items-center justify-between gap-4 flex-wrap">
+                <div>
+                    <h1 class="text-lg font-semibold text-gray-800">Payroll</h1>
+                    <p class="text-xs text-gray-500 mt-0.5">Auto-generates at midnight on the cut-off day</p>
+                </div>
+                <!-- Cut-off day editor -->
+                <form @submit.prevent="saveCutoff" class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5">
+                    <span class="text-xs text-gray-500 whitespace-nowrap">Cut-off day:</span>
+                    <input
+                        v-model.number="cutoffForm.cutoff_day"
+                        type="number" min="1" max="28"
+                        class="w-14 text-sm font-semibold text-center border border-gray-200 rounded-lg py-1 focus:outline-none focus:ring-1 focus:ring-[#EF233C] focus:border-[#EF233C]"
+                    />
+                    <span class="text-xs text-gray-400">of each month</span>
+                    <button
+                        type="submit"
+                        :disabled="cutoffForm.processing || cutoffForm.cutoff_day === cutoffDay"
+                        class="text-xs bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-40 text-white font-semibold px-3 py-1 rounded-lg transition-colors"
+                    >Save</button>
+                </form>
             </div>
 
             <!-- Current period + generate -->
@@ -165,6 +182,14 @@ const props = defineProps({
     cutoffDay:  { type: Number, default: 25 },
     filters:    { type: Object, default: () => ({}) },
 });
+
+// ── Cut-off form ──────────────────────────────────────────────────────────────
+
+const cutoffForm = useForm({ cutoff_day: props.cutoffDay });
+
+function saveCutoff() {
+    cutoffForm.post(route('payroll.cutoff'));
+}
 
 // ── Generate form ─────────────────────────────────────────────────────────────
 

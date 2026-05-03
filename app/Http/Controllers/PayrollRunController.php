@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -136,6 +137,24 @@ class PayrollRunController extends Controller
             ]);
 
         return back()->with('success', "Approved {$count} payslip" . ($count !== 1 ? 's' : '') . '.');
+    }
+
+    public function updateCutoff(Request $request): RedirectResponse
+    {
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager']), 403);
+
+        $request->validate([
+            'cutoff_day' => ['required', 'integer', 'min:1', 'max:28'],
+        ]);
+
+        Setting::updateOrCreate(
+            ['key' => 'payroll_cutoff_day'],
+            ['value' => $request->cutoff_day, 'type' => 'integer', 'group' => 'payroll']
+        );
+
+        Cache::forget('app_settings');
+
+        return back()->with('success', 'Cut-off day updated to the ' . $request->cutoff_day . 'th.');
     }
 
     public function destroy(PayrollRun $run): RedirectResponse
