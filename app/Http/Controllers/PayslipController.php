@@ -11,6 +11,11 @@ use Inertia\Response;
 
 class PayslipController extends Controller
 {
+    public function mine(Request $request): Response
+    {
+        return $this->show($request, auth()->user());
+    }
+
     public function show(Request $request, User $staff): Response
     {
         $viewer = auth()->user();
