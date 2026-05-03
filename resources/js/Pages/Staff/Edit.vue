@@ -40,6 +40,7 @@ const form = useForm({
     notes:                   props.staffMember.notes ?? '',
     annual_leave_days:       props.staffMember.annual_leave_days ?? 28,
     hourly_rate:             props.staffMember.hourly_rate ?? '',
+    contracted_hours:        props.staffMember.contracted_hours ?? 40,
 });
 
 function submit() {

@@ -47,6 +47,12 @@
                     <input v-model="form.hourly_rate" type="number" min="0" step="0.01" class="form-input" placeholder="0.00" />
                     <p v-if="form.errors.hourly_rate" class="mt-1 text-xs text-red-600">{{ form.errors.hourly_rate }}</p>
                 </div>
+                <!-- Contracted Hours -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Contracted Hours / Week</label>
+                    <input v-model.number="form.contracted_hours" type="number" min="1" max="168" class="form-input" placeholder="40" />
+                    <p v-if="form.errors.contracted_hours" class="mt-1 text-xs text-red-600">{{ form.errors.contracted_hours }}</p>
+                </div>
             </div>
 
             <!-- Toggles -->

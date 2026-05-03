@@ -55,6 +55,7 @@ class User extends Authenticatable
         'last_login_at',
         'annual_leave_days',
         'hourly_rate',
+        'contracted_hours',
         'emergency_contact_name',
         'emergency_contact_phone',
         'certifications',

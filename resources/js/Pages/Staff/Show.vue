@@ -91,16 +91,16 @@
                     <div>
                         <p class="text-xs text-gray-400 mb-1">Est. Weekly</p>
                         <p class="text-lg font-bold text-gray-800">
-                            {{ staffMember.hourly_rate ? '£' + (Number(staffMember.hourly_rate) * 40).toFixed(2) : '—' }}
+                            {{ staffMember.hourly_rate ? '£' + (Number(staffMember.hourly_rate) * (staffMember.contracted_hours ?? 40)).toFixed(2) : '—' }}
                         </p>
-                        <p class="text-xs text-gray-400">at 40 hrs/wk</p>
+                        <p class="text-xs text-gray-400">at {{ staffMember.contracted_hours ?? 40 }} hrs/wk</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-400 mb-1">Est. Annual</p>
                         <p class="text-lg font-bold text-gray-800">
-                            {{ staffMember.hourly_rate ? '£' + (Number(staffMember.hourly_rate) * 40 * 52).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—' }}
+                            {{ staffMember.hourly_rate ? '£' + (Number(staffMember.hourly_rate) * (staffMember.contracted_hours ?? 40) * 52).toLocaleString('en-GB', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) : '—' }}
                         </p>
-                        <p class="text-xs text-gray-400">40 hrs × 52 wks</p>
+                        <p class="text-xs text-gray-400">{{ staffMember.contracted_hours ?? 40 }} hrs × 52 wks</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-400 mb-1">Total Earned</p>

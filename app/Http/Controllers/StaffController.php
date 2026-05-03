@@ -85,6 +85,7 @@ class StaffController extends Controller
             'notes'                   => $request->notes,
             'annual_leave_days'       => $request->integer('annual_leave_days', 28),
             'hourly_rate'             => $request->filled('hourly_rate') ? round((float) $request->input('hourly_rate'), 2) : null,
+            'contracted_hours'        => $request->integer('contracted_hours', 40),
         ]);
 
         $user->syncRoles([$request->role]);
@@ -139,6 +140,7 @@ class StaffController extends Controller
                 'created_at'             => $staff->created_at?->toDateString(),
                 'hourly_rate'            => $staff->hourly_rate,
                 'annual_leave_days'      => $staff->annual_leave_days,
+                'contracted_hours'       => $staff->contracted_hours ?? 40,
             ],
             'recentEntries' => $recentEntries,
             'totalHours'    => round($totalHours, 2),
@@ -174,6 +176,7 @@ class StaffController extends Controller
                 'roles'                   => $staff->getRoleNames(),
                 'annual_leave_days'       => $staff->annual_leave_days,
                 'hourly_rate'             => $staff->hourly_rate,
+                'contracted_hours'        => $staff->contracted_hours ?? 40,
             ],
             'roles' => Role::orderBy('name')->pluck('name'),
         ]);
@@ -194,6 +197,7 @@ class StaffController extends Controller
             'notes'                   => $request->notes,
             'annual_leave_days'       => $request->integer('annual_leave_days', 28),
             'hourly_rate'             => $request->filled('hourly_rate') ? round((float) $request->input('hourly_rate'), 2) : null,
+            'contracted_hours'        => $request->integer('contracted_hours', 40),
         ]);
 
         $staff->syncRoles([$request->role]);
