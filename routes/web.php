@@ -4,6 +4,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PayrollExportController;
+use App\Http\Controllers\PayslipController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\BusinessController;
@@ -100,6 +101,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('staff', StaffController::class);
     Route::post('/staff/{staff}/toggle-active',       [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
     Route::post('/staff/{staff}/force-password-reset',[StaffController::class, 'forcePasswordReset'])->name('staff.force-password-reset');
+    Route::get('/staff/{staff}/payslip',              [PayslipController::class, 'show'])->name('staff.payslip');
 
     // Notifications
     Route::post('/notifications/{id}/read',  [NotificationController::class, 'markRead'])->name('notifications.read');

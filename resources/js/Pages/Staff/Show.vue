@@ -28,7 +28,13 @@
                         </p>
                     </div>
                     <!-- Actions -->
-                    <div class="flex gap-2 flex-shrink-0">
+                    <div class="flex gap-2 flex-shrink-0 flex-wrap">
+                        <Link
+                            :href="route('staff.payslip', staffMember.id)"
+                            class="inline-flex items-center gap-1.5 bg-white border border-gray-200 text-gray-700 text-sm px-3 py-2 rounded-lg hover:bg-gray-50 transition-colors"
+                        >
+                            <DocumentTextIcon class="w-4 h-4" /> Payslip
+                        </Link>
                         <Link
                             :href="route('staff.edit', staffMember.id)"
                             class="inline-flex items-center gap-1.5 bg-[#EF233C] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#D90429] transition-colors"
@@ -200,7 +206,7 @@
 <script setup>
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { PencilIcon, NoSymbolIcon, CheckCircleIcon, FolderIcon } from '@heroicons/vue/24/outline';
+import { PencilIcon, NoSymbolIcon, CheckCircleIcon, FolderIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     staffMember:   { type: Object, required: true },
