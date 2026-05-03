@@ -33,6 +33,9 @@ class SettingSeeder extends Seeder
             ['key' => 'app_name',      'value' => 'Staff Portal', 'type' => 'string', 'group' => 'appearance'],
             ['key' => 'primary_color', 'value' => '#EF233C',      'type' => 'string', 'group' => 'appearance'],
             ['key' => 'sidebar_color', 'value' => '#2B2D42',      'type' => 'string', 'group' => 'appearance'],
+
+            // ── Payroll ───────────────────────────────────────────────────────
+            ['key' => 'payroll_cutoff_day', 'value' => '25', 'type' => 'integer', 'group' => 'payroll'],
         ];
 
         foreach ($defaults as $setting) {

@@ -8,14 +8,32 @@
                     <ArrowLeftIcon class="w-4 h-4" /> Back to Profile
                 </Link>
                 <div class="flex flex-wrap items-center gap-2">
-                    <button @click="setPreset('this_month')" :class="presetClass('this_month')">This Month</button>
-                    <button @click="setPreset('last_month')" :class="presetClass('last_month')">Last Month</button>
-                    <div class="flex items-center gap-1.5">
-                        <input v-model="customFrom" type="date" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#EF233C] focus:border-[#EF233C]" />
-                        <span class="text-xs text-gray-400">–</span>
-                        <input v-model="customTo" type="date" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#EF233C] focus:border-[#EF233C]" />
-                        <button @click="applyCustom" :disabled="!customFrom || !customTo" class="text-xs bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 px-3 py-1.5 rounded-lg transition-colors">Apply</button>
-                    </div>
+                    <!-- Locked mode: show status badge + approve button -->
+                    <template v-if="isLocked">
+                        <span :class="runStatus === 'approved'
+                            ? 'bg-green-100 text-green-700 border border-green-200'
+                            : 'bg-amber-50 text-amber-700 border border-amber-200'"
+                            class="text-xs font-semibold px-2.5 py-1 rounded-full capitalize flex items-center gap-1"
+                        >
+                            <LockClosedIcon class="w-3 h-3" /> Locked · {{ runStatus }}
+                        </span>
+                        <button
+                            v-if="runStatus === 'draft'"
+                            @click="approveRun"
+                            class="text-xs bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 px-3 py-1.5 rounded-lg transition-colors font-medium"
+                        >Approve Payslip</button>
+                    </template>
+                    <!-- Live mode: period selectors -->
+                    <template v-else>
+                        <button @click="setPreset('this_month')" :class="presetClass('this_month')">This Month</button>
+                        <button @click="setPreset('last_month')" :class="presetClass('last_month')">Last Month</button>
+                        <div class="flex items-center gap-1.5">
+                            <input v-model="customFrom" type="date" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#EF233C] focus:border-[#EF233C]" />
+                            <span class="text-xs text-gray-400">–</span>
+                            <input v-model="customTo" type="date" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#EF233C] focus:border-[#EF233C]" />
+                            <button @click="applyCustom" :disabled="!customFrom || !customTo" class="text-xs bg-gray-100 hover:bg-gray-200 disabled:opacity-40 text-gray-700 px-3 py-1.5 rounded-lg transition-colors">Apply</button>
+                        </div>
+                    </template>
                     <button @click="printPayslip" class="bg-[#EF233C] hover:bg-[#D90429] text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
                         <PrinterIcon class="w-3.5 h-3.5" /> Print / PDF
                     </button>
@@ -164,7 +182,7 @@
 import { ref } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ArrowLeftIcon, PrinterIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, PrinterIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     staffMember:   { type: Object,  required: true },
@@ -178,6 +196,9 @@ const props = defineProps({
     overtimePay:   { type: Number,  default: 0 },
     grossPay:      { type: Number,  default: 0 },
     hasRate:       { type: Boolean, default: false },
+    isLocked:      { type: Boolean, default: false },
+    runId:         { type: String,  default: null },
+    runStatus:     { type: String,  default: null },
 });
 
 const customFrom = ref(props.period.from);
@@ -241,6 +262,11 @@ function applyCustom() {
         from: customFrom.value,
         to:   customTo.value,
     }, { preserveScroll: true });
+}
+
+function approveRun() {
+    if (!props.runId) return;
+    router.post(route('payroll.approve', props.runId), {}, { preserveScroll: true });
 }
 
 function printPayslip() {

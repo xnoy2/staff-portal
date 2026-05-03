@@ -166,6 +166,42 @@
                 </div>
             </div>
 
+            <!-- Payslip History -->
+            <div class="bg-white rounded-xl border border-gray-200 p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold text-gray-800">Payslip History</h2>
+                    <Link :href="route('payroll.index')" class="text-xs text-[#EF233C] hover:underline">View all</Link>
+                </div>
+                <div v-if="recentPayrollRuns.length === 0" class="text-center py-6 text-sm text-gray-400">
+                    No payslips generated yet.
+                </div>
+                <div v-else class="space-y-2">
+                    <Link
+                        v-for="run in recentPayrollRuns"
+                        :key="run.id"
+                        :href="route('staff.payslip', staffMember.id) + '?run_id=' + run.id"
+                        class="flex items-center justify-between p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all group"
+                    >
+                        <div>
+                            <p class="text-sm font-medium text-gray-800 group-hover:text-[#EF233C] transition-colors">
+                                {{ formatDate(run.period_from) }} – {{ formatDate(run.period_to) }}
+                            </p>
+                            <p class="text-xs text-gray-400 mt-0.5">{{ run.total_hours.toFixed(2) }}h worked</p>
+                        </div>
+                        <div class="flex items-center gap-2">
+                            <span class="text-sm font-semibold text-gray-800">
+                                {{ run.has_rate ? '£' + run.gross_pay.toFixed(2) : '—' }}
+                            </span>
+                            <span :class="run.status === 'approved'
+                                ? 'bg-green-100 text-green-700 border border-green-200'
+                                : 'bg-amber-50 text-amber-700 border border-amber-200'"
+                                class="text-xs font-semibold px-2 py-0.5 rounded-full capitalize"
+                            >{{ run.status }}</span>
+                        </div>
+                    </Link>
+                </div>
+            </div>
+
             <!-- Recent attendance -->
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <div class="flex items-center justify-between mb-4">
@@ -209,10 +245,11 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { PencilIcon, NoSymbolIcon, CheckCircleIcon, FolderIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    staffMember:   { type: Object, required: true },
-    recentEntries: { type: Array,  default: () => [] },
-    totalHours:    { type: Number, default: 0 },
-    projects:      { type: Array,  default: () => [] },
+    staffMember:        { type: Object, required: true },
+    recentEntries:      { type: Array,  default: () => [] },
+    totalHours:         { type: Number, default: 0 },
+    projects:           { type: Array,  default: () => [] },
+    recentPayrollRuns:  { type: Array,  default: () => [] },
 });
 
 function toggleActive() {

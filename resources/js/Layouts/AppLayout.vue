@@ -60,6 +60,7 @@
                 <NavGroup v-if="isAdmin || isManager" label="Admin" :collapsed="!sidebarOpen && !isMobile">
                     <NavItem v-if="isAdmin" :href="route('businesses.index')" routeName="businesses.index" icon="BuildingOfficeIcon"      label="Businesses" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem :href="route('reports')"                         routeName="reports"           icon="ChartBarIcon"            label="Reports"    :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('payroll.index')"                   routeName="payroll.index"     icon="BanknotesIcon"           label="Payroll"    :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem :href="route('audit-log')"                       routeName="audit-log"         icon="ClipboardDocumentIcon"  label="Audit Log"  :collapsed="!sidebarOpen && !isMobile" />
 
                 </NavGroup>

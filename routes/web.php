@@ -4,6 +4,7 @@ use App\Http\Controllers\AttendanceController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PayrollExportController;
+use App\Http\Controllers\PayrollRunController;
 use App\Http\Controllers\PayslipController;
 use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
@@ -113,6 +114,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Reports (admin/manager only)
     Route::get('/reports', [ReportsController::class, 'index'])->name('reports');
     Route::get('/reports/payroll-export', [PayrollExportController::class, 'export'])->name('payroll.export');
+
+    // Payroll runs
+    Route::get('/payroll',                          [PayrollRunController::class, 'index'])->name('payroll.index');
+    Route::post('/payroll',                         [PayrollRunController::class, 'store'])->name('payroll.store');
+    Route::post('/payroll/{run}/approve',           [PayrollRunController::class, 'approve'])->name('payroll.approve');
+    Route::post('/payroll/approve-all',             [PayrollRunController::class, 'approveAll'])->name('payroll.approve-all');
+    Route::delete('/payroll/{run}',                 [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
 
     // Settings
     Route::get('/settings',              [SettingsController::class, 'index'])->name('settings');

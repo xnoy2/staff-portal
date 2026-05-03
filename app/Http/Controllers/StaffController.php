@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use App\Models\PayrollRun;
 use App\Models\TimeEntry;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
@@ -142,8 +143,21 @@ class StaffController extends Controller
                 'annual_leave_days'      => $staff->annual_leave_days,
                 'contracted_hours'       => $staff->contracted_hours ?? 40,
             ],
-            'recentEntries' => $recentEntries,
-            'totalHours'    => round($totalHours, 2),
+            'recentEntries'    => $recentEntries,
+            'totalHours'       => round($totalHours, 2),
+            'recentPayrollRuns'=> PayrollRun::where('user_id', $staff->id)
+                ->orderBy('period_from', 'desc')
+                ->limit(6)
+                ->get()
+                ->map(fn ($r) => [
+                    'id'          => $r->id,
+                    'period_from' => $r->period_from->toDateString(),
+                    'period_to'   => $r->period_to->toDateString(),
+                    'gross_pay'   => $r->gross_pay,
+                    'total_hours' => $r->total_hours,
+                    'status'      => $r->status,
+                    'has_rate'    => ! is_null($r->hourly_rate),
+                ]),
             'projects'      => $staff->projects->map(fn ($p) => [
                 'id'       => $p->id,
                 'name'     => $p->name,
