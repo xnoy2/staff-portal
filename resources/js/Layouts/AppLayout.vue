@@ -230,6 +230,25 @@ const notifRef  = ref(null);
 
 let echoChannel = null;
 
+function playNotifSound() {
+    try {
+        const ctx  = new (window.AudioContext || window.webkitAudioContext)();
+        const osc  = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.type = 'sine';
+        // Two-tone ascending ding: 880 Hz → 1100 Hz
+        osc.frequency.setValueAtTime(880, ctx.currentTime);
+        osc.frequency.setValueAtTime(1100, ctx.currentTime + 0.12);
+        gain.gain.setValueAtTime(0.25, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.5);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.5);
+        osc.onended = () => ctx.close();
+    } catch (_) {}
+}
+
 onMounted(() => {
     window.addEventListener('resize', onResize);
     document.addEventListener('click', onClickOutside);
@@ -251,6 +270,7 @@ onMounted(() => {
                     ...notifications.value,
                 ].slice(0, 15);
                 unreadCount.value += 1;
+                playNotifSound();
             });
     }
 });
