@@ -166,6 +166,18 @@
             </div>
 
         </div>
+
+        <!-- Delete confirmation modal -->
+        <ConfirmModal
+            :open="!!deleteTargetId"
+            title="Delete Draft Payslip"
+            message="This cannot be undone. Only draft payslips can be deleted."
+            confirm-label="Delete"
+            :danger="true"
+            @confirm="confirmDelete"
+            @cancel="deleteTargetId = null"
+        />
+
     </AppLayout>
 </template>
 
@@ -173,6 +185,7 @@
 import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 import { BoltIcon, BanknotesIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -243,9 +256,15 @@ function approveAll() {
     router.post(route('payroll.approve-all'), { from: period.from, to: period.to }, { preserveScroll: true });
 }
 
+const deleteTargetId = ref(null);
+
 function remove(id) {
-    if (!confirm('Delete this draft payslip?')) return;
-    router.delete(route('payroll.destroy', id), { preserveScroll: true });
+    deleteTargetId.value = id;
+}
+
+function confirmDelete() {
+    router.delete(route('payroll.destroy', deleteTargetId.value), { preserveScroll: true });
+    deleteTargetId.value = null;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
