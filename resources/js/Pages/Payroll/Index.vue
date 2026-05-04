@@ -182,7 +182,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -199,6 +199,9 @@ const props = defineProps({
 // ── Cut-off form ──────────────────────────────────────────────────────────────
 
 const cutoffForm = useForm({ cutoff_day: props.cutoffDay });
+
+// Keep form in sync after a successful save (prop updates on page reload)
+watch(() => props.cutoffDay, (val) => { cutoffForm.cutoff_day = val; });
 
 function saveCutoff() {
     cutoffForm.post(route('payroll.cutoff'));
@@ -231,16 +234,19 @@ const draftCount = computed(() => props.runs.filter(r => r.status === 'draft').l
 const nextCutoffDate = computed(() => {
     const today = new Date();
     const d = props.cutoffDay;
-    if (today.getDate() <= d) {
-        return new Date(today.getFullYear(), today.getMonth(), d);
-    }
-    return new Date(today.getFullYear(), today.getMonth() + 1, d);
+    const dt = today.getDate() <= d
+        ? new Date(today.getFullYear(), today.getMonth(), d)
+        : new Date(today.getFullYear(), today.getMonth() + 1, d);
+    const y  = dt.getFullYear();
+    const m  = String(dt.getMonth() + 1).padStart(2, '0');
+    const dd = String(dt.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
 });
 
 const daysUntil = computed(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    const diff = nextCutoffDate.value - today;
+    const diff = new Date(nextCutoffDate.value + 'T00:00:00') - today;
     return Math.round(diff / 86400000);
 });
 

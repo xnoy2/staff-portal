@@ -28,6 +28,7 @@ class UpdateUserRequest extends FormRequest
             'certifications'          => ['nullable', 'array'],
             'certifications.*'        => ['string', 'max:100'],
             'notes'                   => ['nullable', 'string', 'max:2000'],
+            'avatar'                  => ['nullable', 'image', 'max:2048'],
         ];
     }
 }

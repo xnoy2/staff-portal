@@ -10,6 +10,7 @@ use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
@@ -73,6 +74,10 @@ class StaffController extends Controller
         $this->authorize('create', User::class);
         $temporaryPassword = Str::password(12);
 
+        $avatarPath = $request->hasFile('avatar')
+            ? $request->file('avatar')->store('avatars', $this->avatarDisk())
+            : null;
+
         $user = User::create([
             'name'                    => $request->name,
             'email'                   => $request->email,
@@ -87,6 +92,7 @@ class StaffController extends Controller
             'annual_leave_days'       => $request->integer('annual_leave_days', 28),
             'hourly_rate'             => $request->filled('hourly_rate') ? round((float) $request->input('hourly_rate'), 2) : null,
             'contracted_hours'        => $request->integer('contracted_hours', 40),
+            'avatar'                  => $avatarPath,
         ]);
 
         $user->syncRoles([$request->role]);
@@ -199,7 +205,8 @@ class StaffController extends Controller
     public function update(UpdateUserRequest $request, User $staff): RedirectResponse
     {
         $this->authorize('update', $staff);
-        $staff->update([
+
+        $data = [
             'name'                    => $request->name,
             'email'                   => $request->email,
             'is_active'               => $request->boolean('is_active', true),
@@ -212,7 +219,17 @@ class StaffController extends Controller
             'annual_leave_days'       => $request->integer('annual_leave_days', 28),
             'hourly_rate'             => $request->filled('hourly_rate') ? round((float) $request->input('hourly_rate'), 2) : null,
             'contracted_hours'        => $request->integer('contracted_hours', 40),
-        ]);
+        ];
+
+        if ($request->hasFile('avatar')) {
+            // Delete old file if stored locally
+            if ($staff->avatar) {
+                Storage::disk($this->avatarDisk())->delete($staff->avatar);
+            }
+            $data['avatar'] = $request->file('avatar')->store('avatars', $this->avatarDisk());
+        }
+
+        $staff->update($data);
 
         $staff->syncRoles([$request->role]);
 
@@ -223,6 +240,11 @@ class StaffController extends Controller
 
         return redirect()->route('staff.index')
             ->with('success', "{$staff->name} has been updated.");
+    }
+
+    private function avatarDisk(): string
+    {
+        return config('filesystems.disks.r2.bucket') ? 'r2' : 'public';
     }
 
     public function destroy(Request $request, User $staff): RedirectResponse

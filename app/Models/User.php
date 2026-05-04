@@ -113,14 +113,18 @@ class User extends Authenticatable
     public function getAvatarUrlAttribute(): string
     {
         if ($this->avatar) {
+            // Try R2 (production)
             try {
                 $publicUrl = config('filesystems.disks.r2.url');
                 if ($publicUrl) {
                     return rtrim($publicUrl, '/') . '/' . $this->avatar;
                 }
                 return Storage::disk('r2')->temporaryUrl($this->avatar, now()->addWeek());
-            } catch (\Throwable) {
-                // R2 not configured or unavailable — fall through to default
+            } catch (\Throwable) {}
+
+            // Fall back to public disk (local dev)
+            if (Storage::disk('public')->exists($this->avatar)) {
+                return Storage::disk('public')->url($this->avatar);
             }
         }
         $name = urlencode($this->name);

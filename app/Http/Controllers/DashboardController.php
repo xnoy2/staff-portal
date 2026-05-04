@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Job;
+use App\Models\LeaveRequest;
 use App\Models\TimeEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -114,10 +115,42 @@ class DashboardController extends Controller
             ];
         }
 
+        // Leave balance
+        $year        = now()->year;
+        $entitlement = (float) ($user->annual_leave_days ?? 28);
+        $used        = (float) LeaveRequest::forUser($user->id)->forYear($year)->approved()->where('type', 'annual')->sum('days');
+        $pending     = (float) LeaveRequest::forUser($user->id)->forYear($year)->pending()->where('type', 'annual')->sum('days');
+
+        // Upcoming jobs assigned to this staff member (today onwards, next 5)
+        $upcomingJobs = Job::whereHas('staff', fn ($q) => $q->where('users.id', $user->id))
+            ->where('date', '>=', today()->toDateString())
+            ->whereIn('status', ['scheduled', 'in_progress'])
+            ->with('project:id,name,business')
+            ->orderBy('date')
+            ->orderBy('start_time')
+            ->limit(5)
+            ->get()
+            ->map(fn ($j) => [
+                'id'         => $j->id,
+                'title'      => $j->title,
+                'date'       => $j->date->toDateString(),
+                'start_time' => $j->start_time,
+                'status'     => $j->status,
+                'project'    => $j->project?->name,
+                'business'   => $j->project?->business,
+            ]);
+
         return [
             'activeEntry'   => $activeEntryPayload,
             'weeklyHours'   => $weeklyHours,
             'recentEntries' => $recentEntries,
+            'leaveBalance'  => [
+                'entitlement' => $entitlement,
+                'used'        => $used,
+                'pending'     => $pending,
+                'remaining'   => max(0, $entitlement - $used),
+            ],
+            'upcomingJobs'  => $upcomingJobs,
         ];
     }
 }

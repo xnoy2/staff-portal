@@ -5,6 +5,38 @@
             <h2 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
                 <UserIcon class="w-4 h-4 text-[#EF233C]" /> Basic Information
             </h2>
+
+            <!-- Avatar upload -->
+            <div class="flex items-center gap-4 mb-5 pb-5 border-b border-gray-100">
+                <div class="relative flex-shrink-0">
+                    <img
+                        :src="avatarPreview || form.current_avatar_url || `https://ui-avatars.com/api/?name=${encodeURIComponent(form.name || 'Staff')}&background=3B6D11&color=fff&size=128`"
+                        class="w-16 h-16 rounded-full object-cover border-2 border-gray-200"
+                        alt="Avatar preview"
+                    />
+                    <label
+                        for="avatar-upload"
+                        class="absolute -bottom-1 -right-1 w-6 h-6 bg-[#EF233C] hover:bg-[#D90429] rounded-full flex items-center justify-center cursor-pointer transition-colors"
+                        title="Change photo"
+                    >
+                        <CameraIcon class="w-3 h-3 text-white" />
+                    </label>
+                </div>
+                <div>
+                    <p class="text-sm font-medium text-gray-700">Profile Photo</p>
+                    <p class="text-xs text-gray-400 mt-0.5">JPG, PNG or WebP · max 2 MB</p>
+                    <p v-if="avatarPreview" class="text-xs text-emerald-600 mt-1 font-medium">New photo selected</p>
+                </div>
+                <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/jpeg,image/png,image/webp"
+                    class="hidden"
+                    @change="onAvatarChange"
+                />
+                <p v-if="form.errors.avatar" class="mt-1 text-xs text-red-600">{{ form.errors.avatar }}</p>
+            </div>
+
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <!-- Full Name -->
                 <div>
@@ -157,7 +189,7 @@ import { ref } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import {
     UserIcon, PhoneIcon, AcademicCapIcon,
-    DocumentTextIcon, XMarkIcon,
+    DocumentTextIcon, XMarkIcon, CameraIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -166,6 +198,14 @@ const props = defineProps({
     isCreate:    { type: Boolean, default: false },
     submitLabel: { type: String,  default: 'Save Changes' },
 });
+
+const avatarPreview = ref(null);
+function onAvatarChange(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    props.form.avatar = file;
+    avatarPreview.value = URL.createObjectURL(file);
+}
 
 const newCert = ref('');
 function addCert() {

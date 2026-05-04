@@ -4,6 +4,7 @@ namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Messages\BroadcastMessage;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 
 class LeaveStatusChanged extends Notification
@@ -20,7 +21,28 @@ class LeaveStatusChanged extends Notification
 
     public function via(object $notifiable): array
     {
-        return ['database', 'broadcast'];
+        return ['database', 'broadcast', 'mail'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        $statusLabel = ucfirst($this->status);
+        $type        = ucfirst(str_replace('_', ' ', $this->leaveType));
+        $isApproved  = $this->status === 'approved';
+
+        $mail = (new MailMessage)
+            ->subject("Leave {$statusLabel} — BCF Staff Portal")
+            ->greeting("Hi {$notifiable->name},")
+            ->line("Your {$type} leave request has been **{$this->status}**.")
+            ->line("**Period:** {$this->startDate} – {$this->endDate}");
+
+        if ($this->reviewNotes) {
+            $mail->line("**Note from reviewer:** {$this->reviewNotes}");
+        }
+
+        return $mail
+            ->action('View Leave', url('/leave'))
+            ->salutation('BCF Staff Portal');
     }
 
     public function toArray(object $notifiable): array

@@ -195,7 +195,7 @@
                     </div>
                 </div>
 
-                <!-- Right: Weekly hours + recent entries -->
+                <!-- Right: Weekly hours + recent entries + leave + upcoming jobs -->
                 <div class="space-y-4">
                     <!-- Weekly hours bar chart -->
                     <div class="bg-white rounded-xl border border-gray-200 p-5">
@@ -206,6 +206,57 @@
                             :options="weeklyChartOptions"
                             class="h-40"
                         />
+                    </div>
+
+                    <!-- Leave balance -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-sm font-semibold text-gray-800">Annual Leave</h2>
+                            <Link href="/leave" class="text-xs text-[#EF233C] hover:underline">View all</Link>
+                        </div>
+                        <div class="flex items-end justify-between mb-2">
+                            <span class="text-3xl font-black text-gray-800">{{ leaveBalance.remaining }}<span class="text-base font-medium text-gray-400 ml-1">days left</span></span>
+                            <span class="text-xs text-gray-400">of {{ leaveBalance.entitlement }} days</span>
+                        </div>
+                        <!-- Progress bar -->
+                        <div class="w-full bg-gray-100 rounded-full h-2 mb-2">
+                            <div
+                                class="h-2 rounded-full transition-all"
+                                :class="leaveBalance.remaining <= 5 ? 'bg-red-400' : 'bg-emerald-400'"
+                                :style="{ width: Math.min(100, (leaveBalance.remaining / leaveBalance.entitlement) * 100) + '%' }"
+                            />
+                        </div>
+                        <div class="flex items-center gap-4 text-xs text-gray-400">
+                            <span>Used: <span class="font-semibold text-gray-600">{{ leaveBalance.used }}d</span></span>
+                            <span v-if="leaveBalance.pending > 0">Pending: <span class="font-semibold text-amber-600">{{ leaveBalance.pending }}d</span></span>
+                        </div>
+                    </div>
+
+                    <!-- Upcoming jobs -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <div class="flex items-center justify-between mb-3">
+                            <h2 class="text-sm font-semibold text-gray-800">Upcoming Jobs</h2>
+                            <Link href="/jobs" class="text-xs text-[#EF233C] hover:underline">Live Board</Link>
+                        </div>
+                        <div v-if="upcomingJobs.length === 0" class="text-center py-6 text-gray-400 text-sm">
+                            No upcoming jobs assigned.
+                        </div>
+                        <ul v-else class="space-y-2">
+                            <li v-for="job in upcomingJobs" :key="job.id" class="flex items-start gap-3 p-2.5 rounded-lg bg-gray-50">
+                                <div class="flex-shrink-0 text-center mt-0.5">
+                                    <p class="text-[10px] font-bold text-gray-400 uppercase leading-none">{{ fmtJobMonth(job.date) }}</p>
+                                    <p class="text-lg font-black text-gray-800 leading-tight">{{ fmtJobDay(job.date) }}</p>
+                                </div>
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-gray-800 truncate">{{ job.title }}</p>
+                                    <p class="text-xs text-gray-400 truncate">
+                                        <span v-if="job.start_time">{{ job.start_time }} · </span>
+                                        <span v-if="job.project">{{ job.project }}</span>
+                                        <span v-if="job.business"> · {{ job.business }}</span>
+                                    </p>
+                                </div>
+                            </li>
+                        </ul>
                     </div>
 
                     <!-- Recent entries -->
@@ -270,6 +321,8 @@ const props = defineProps({
     activeEntry:      { type: Object, default: null },
     weeklyHours:      { type: Array,  default: () => [0, 0, 0, 0, 0, 0, 0] },
     recentEntries:    { type: Array,  default: () => [] },
+    leaveBalance:     { type: Object, default: () => ({ entitlement: 28, used: 0, pending: 0, remaining: 28 }) },
+    upcomingJobs:     { type: Array,  default: () => [] },
 });
 
 const page = usePage();
@@ -301,6 +354,12 @@ function fmtTime(iso) {
 function fmtDate(iso) {
     if (!iso) return '';
     return new Date(iso).toLocaleDateString([], { year: 'numeric', month: '2-digit', day: '2-digit' });
+}
+function fmtJobDay(dateStr) {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit' });
+}
+function fmtJobMonth(dateStr) {
+    return new Date(dateStr + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short' });
 }
 
 const clockState = computed(() => props.activeEntry?.clock_state ?? 'idle');
