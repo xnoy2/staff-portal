@@ -4,8 +4,12 @@
 
             <!-- Controls — hidden on print -->
             <div class="no-print flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <Link :href="route('staff.show', staffMember.id)" class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5">
-                    <ArrowLeftIcon class="w-4 h-4" /> Back to Profile
+                <Link
+                    :href="selfView ? route('dashboard') : route('staff.show', staffMember.id)"
+                    class="text-sm text-gray-500 hover:text-gray-700 flex items-center gap-1.5"
+                >
+                    <ArrowLeftIcon class="w-4 h-4" />
+                    {{ selfView ? 'Back to Dashboard' : 'Back to Profile' }}
                 </Link>
                 <div class="flex flex-wrap items-center gap-2">
                     <!-- Locked mode: show status badge + approve button -->
@@ -37,6 +41,35 @@
                     <button @click="printPayslip" class="bg-[#EF233C] hover:bg-[#D90429] text-white text-xs font-semibold px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5">
                         <PrinterIcon class="w-3.5 h-3.5" /> Print / PDF
                     </button>
+                </div>
+            </div>
+
+            <!-- Past approved payslips -->
+            <div v-if="pastRuns.length > 0" class="no-print bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-100 flex items-center justify-between">
+                    <p class="text-xs font-semibold text-gray-500 uppercase tracking-widest">Payslip History</p>
+                    <span class="text-xs text-gray-400">{{ pastRuns.length }} record{{ pastRuns.length !== 1 ? 's' : '' }}</span>
+                </div>
+                <div class="divide-y divide-gray-50">
+                    <a
+                        v-for="r in pastRuns"
+                        :key="r.id"
+                        :href="payslipUrl(r.id)"
+                        class="flex items-center justify-between px-4 py-3 hover:bg-gray-50 transition-colors cursor-pointer"
+                        :class="{ 'bg-[#EF233C]/5': runId === r.id }"
+                    >
+                        <div class="flex items-center gap-3">
+                            <span :class="r.status === 'approved'
+                                ? 'bg-green-100 text-green-700 border-green-200'
+                                : 'bg-amber-50 text-amber-700 border-amber-200'"
+                                class="text-[10px] font-bold px-2 py-0.5 rounded-full border capitalize"
+                            >{{ r.status }}</span>
+                            <span class="text-sm text-gray-700">{{ formatDate(r.period_from) }} – {{ formatDate(r.period_to) }}</span>
+                        </div>
+                        <span class="text-sm font-semibold" :class="r.has_rate ? 'text-gray-800' : 'text-amber-500'">
+                            {{ r.has_rate ? '£' + r.gross_pay.toFixed(2) : 'No rate' }}
+                        </span>
+                    </a>
                 </div>
             </div>
 
@@ -199,6 +232,8 @@ const props = defineProps({
     isLocked:      { type: Boolean, default: false },
     runId:         { type: String,  default: null },
     runStatus:     { type: String,  default: null },
+    pastRuns:      { type: Array,   default: () => [] },
+    selfView:      { type: Boolean, default: false },
 });
 
 const customFrom = ref(props.period.from);
@@ -237,9 +272,19 @@ function lastMonth() {
     };
 }
 
+function baseRoute() {
+    return props.selfView
+        ? route('my-payslip')
+        : route('staff.payslip', props.staffMember.id);
+}
+
+function payslipUrl(runId) {
+    return baseRoute() + '?run_id=' + runId;
+}
+
 function setPreset(preset) {
     const { from, to } = preset === 'this_month' ? thisMonth() : lastMonth();
-    router.get(route('staff.payslip', props.staffMember.id), { from, to }, { preserveScroll: true });
+    router.get(baseRoute(), { from, to }, { preserveScroll: true });
 }
 
 function isPreset(preset) {
@@ -258,7 +303,7 @@ function presetClass(preset) {
 
 function applyCustom() {
     if (!customFrom.value || !customTo.value) return;
-    router.get(route('staff.payslip', props.staffMember.id), {
+    router.get(baseRoute(), {
         from: customFrom.value,
         to:   customTo.value,
     }, { preserveScroll: true });

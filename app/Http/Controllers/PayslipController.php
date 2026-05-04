@@ -13,10 +13,10 @@ class PayslipController extends Controller
 {
     public function mine(Request $request): Response
     {
-        return $this->show($request, auth()->user());
+        return $this->show($request, auth()->user(), selfView: true);
     }
 
-    public function show(Request $request, User $staff): Response
+    public function show(Request $request, User $staff, bool $selfView = false): Response
     {
         $viewer = auth()->user();
         abort_unless(
@@ -25,6 +25,8 @@ class PayslipController extends Controller
         );
 
         $staff->load('roles');
+
+        $pastRuns = $this->pastRuns($staff);
 
         // ── Locked run mode ───────────────────────────────────────────────────
         if ($request->filled('run_id')) {
@@ -50,6 +52,8 @@ class PayslipController extends Controller
                 'isLocked'     => true,
                 'runId'        => $run->id,
                 'runStatus'    => $run->status,
+                'pastRuns'     => $pastRuns,
+                'selfView'     => $selfView,
             ]);
         }
 
@@ -112,7 +116,25 @@ class PayslipController extends Controller
             'isLocked'     => false,
             'runId'        => null,
             'runStatus'    => null,
+            'pastRuns'     => $pastRuns,
+            'selfView'     => $selfView,
         ]);
+    }
+
+    private function pastRuns(User $staff): array
+    {
+        return PayrollRun::where('user_id', $staff->id)
+            ->orderBy('period_from', 'desc')
+            ->get()
+            ->map(fn ($r) => [
+                'id'         => $r->id,
+                'period_from'=> $r->period_from->toDateString(),
+                'period_to'  => $r->period_to->toDateString(),
+                'gross_pay'  => (float) $r->gross_pay,
+                'has_rate'   => ! is_null($r->hourly_rate),
+                'status'     => $r->status,
+            ])
+            ->all();
     }
 
     private function staffData(User $staff): array

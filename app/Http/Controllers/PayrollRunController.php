@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\PayrollRun;
 use App\Models\Setting;
 use App\Models\User;
+use App\Notifications\PayslipApproved;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -115,6 +116,12 @@ class PayrollRunController extends Controller
             'approved_at' => now(),
         ]);
 
+        $run->user?->notify(new PayslipApproved(
+            periodFrom: $run->period_from->toDateString(),
+            periodTo:   $run->period_to->toDateString(),
+            grossPay:   (float) $run->gross_pay,
+        ));
+
         return back()->with('success', "{$run->user->name}'s payslip approved.");
     }
 
@@ -127,14 +134,27 @@ class PayrollRunController extends Controller
             'to'   => ['required', 'date'],
         ]);
 
-        $count = PayrollRun::where('period_from', $request->from)
+        $runs = PayrollRun::with('user')
+            ->where('period_from', $request->from)
             ->where('period_to', $request->to)
             ->where('status', 'draft')
-            ->update([
-                'status'      => 'approved',
-                'approved_by' => auth()->id(),
-                'approved_at' => now(),
-            ]);
+            ->get();
+
+        $runs->each->update([
+            'status'      => 'approved',
+            'approved_by' => auth()->id(),
+            'approved_at' => now(),
+        ]);
+
+        foreach ($runs as $run) {
+            $run->user?->notify(new PayslipApproved(
+                periodFrom: $run->period_from->toDateString(),
+                periodTo:   $run->period_to->toDateString(),
+                grossPay:   (float) $run->gross_pay,
+            ));
+        }
+
+        $count = $runs->count();
 
         return back()->with('success', "Approved {$count} payslip" . ($count !== 1 ? 's' : '') . '.');
     }
