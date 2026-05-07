@@ -35,4 +35,9 @@ return [
         ],
     ],
 
+    'cloudflare' => [
+        'account_id'   => env('CLOUDFLARE_ACCOUNT_ID'),
+        'stream_token' => env('CLOUDFLARE_STREAM_TOKEN'),
+    ],
+
 ];

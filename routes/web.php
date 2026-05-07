@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\TrainingController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\PayrollExportController;
@@ -123,6 +124,23 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/payroll/approve-all',             [PayrollRunController::class, 'approveAll'])->name('payroll.approve-all');
     Route::post('/payroll/cutoff',                  [PayrollRunController::class, 'updateCutoff'])->name('payroll.cutoff');
     Route::delete('/payroll/{run}',                 [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
+
+    // Training
+    Route::prefix('training')->name('training.')->group(function () {
+        Route::get('/',                                          [TrainingController::class, 'index'])->name('index');
+        Route::get('/{module}',                                  [TrainingController::class, 'module'])->name('module');
+        Route::get('/{module}/{lesson}',                         [TrainingController::class, 'watch'])->name('watch');
+        Route::post('/{lesson}/progress',                        [TrainingController::class, 'updateProgress'])->name('progress');
+        // Admin / Manager
+        Route::post('/modules',                                  [TrainingController::class, 'storeModule'])->name('modules.store');
+        Route::patch('/modules/{module}',                        [TrainingController::class, 'updateModule'])->name('modules.update');
+        Route::post('/modules/{module}/toggle',                  [TrainingController::class, 'toggleModule'])->name('modules.toggle');
+        Route::delete('/modules/{module}',                       [TrainingController::class, 'destroyModule'])->name('modules.destroy');
+        Route::post('/modules/{module}/lessons',                 [TrainingController::class, 'storeLesson'])->name('lessons.store');
+        Route::patch('/lessons/{lesson}',                        [TrainingController::class, 'updateLesson'])->name('lessons.update');
+        Route::post('/lessons/{lesson}/toggle',                  [TrainingController::class, 'toggleLesson'])->name('lessons.toggle');
+        Route::delete('/lessons/{lesson}',                       [TrainingController::class, 'destroyLesson'])->name('lessons.destroy');
+    });
 
     // Settings
     Route::get('/settings',              [SettingsController::class, 'index'])->name('settings');
