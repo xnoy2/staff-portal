@@ -14,7 +14,7 @@ return new class extends Migration
 
         Schema::create('training_progress', function (Blueprint $table) {
             $table->id();
-            $table->unsignedBigInteger('user_id');
+            $table->char('user_id', 36);
             $table->uuid('lesson_id');
             $table->timestamp('completed_at')->nullable();
             $table->unique(['user_id', 'lesson_id']);
