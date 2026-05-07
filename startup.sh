@@ -35,5 +35,9 @@ RSCHEME="${REVERB_SCHEME:-https}"
 echo "{\"key\":\"$RKEY\",\"host\":\"$RHOST\",\"port\":$RPORT,\"scheme\":\"$RSCHEME\"}" > storage/app/reverb.json
 echo "    reverb.json written: key=$RKEY host=$RHOST"
 
+echo "==> Applying PHP ini overrides..."
+EXISTING_SCAN_DIR=$(php -r 'echo PHP_CONFIG_FILE_SCAN_DIR;' 2>/dev/null || true)
+export PHP_INI_SCAN_DIR="${EXISTING_SCAN_DIR:+${EXISTING_SCAN_DIR}:}/app/php-cfg"
+
 echo "==> Starting server on port ${PORT:-8000}..."
 exec php artisan serve --host=0.0.0.0 --port="${PORT:-8000}"
