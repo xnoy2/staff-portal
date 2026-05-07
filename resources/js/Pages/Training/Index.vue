@@ -22,7 +22,7 @@
                 <AcademicCapIcon class="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p class="text-gray-600 font-medium">No training modules yet</p>
                 <p v-if="isPrivileged" class="text-sm text-gray-400 mt-1">Click "Add Module" to create your first training module.</p>
-                <p v-else class="text-sm text-gray-400 mt-1">Check back soon — training content is being prepared.</p>
+                <p v-else class="text-sm text-gray-400 mt-1">You have no training modules assigned yet.</p>
             </div>
 
             <!-- Module grid -->
@@ -45,6 +45,10 @@
                         <!-- Lesson count badge -->
                         <span class="absolute bottom-2 right-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full">
                             {{ mod.lesson_count }} lesson{{ mod.lesson_count !== 1 ? 's' : '' }}
+                        </span>
+                        <!-- Enrolled count badge (admin) -->
+                        <span v-if="isPrivileged" class="absolute bottom-2 left-2 bg-black/50 text-white text-xs px-2 py-0.5 rounded-full flex items-center gap-1">
+                            <UsersIcon class="w-3 h-3" /> {{ mod.enrolled_count }}
                         </span>
                     </div>
 
@@ -88,6 +92,9 @@
 
                             <!-- Admin controls -->
                             <template v-if="isPrivileged">
+                                <button @click="openEnroll(mod)" class="p-2 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Manage Enrollments">
+                                    <UsersIcon class="w-3.5 h-3.5" />
+                                </button>
                                 <button @click="openEdit(mod)" class="p-2 text-gray-400 hover:text-gray-700 hover:bg-gray-100 rounded-lg transition-colors" title="Edit">
                                     <PencilIcon class="w-3.5 h-3.5" />
                                 </button>
@@ -106,7 +113,7 @@
 
         </div>
 
-        <!-- Add Module modal -->
+        <!-- Add / Edit Module modal -->
         <BaseModal :open="showAddModule" @close="closeAddModal">
             <div class="flex items-center gap-3 p-6 border-b border-gray-100">
                 <div class="w-10 h-10 rounded-full bg-[#EF233C]/10 flex items-center justify-center flex-shrink-0">
@@ -133,6 +140,60 @@
             </form>
         </BaseModal>
 
+        <!-- Enrollment modal -->
+        <BaseModal :open="!!enrollingModule" max-width="sm:max-w-lg" @close="closeEnroll">
+            <div class="flex items-center gap-3 p-6 border-b border-gray-100">
+                <div class="w-10 h-10 rounded-full bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <UsersIcon class="w-5 h-5 text-blue-600" />
+                </div>
+                <div class="min-w-0">
+                    <h2 class="text-base font-semibold text-gray-800">Manage Enrollments</h2>
+                    <p class="text-xs text-gray-500 truncate">{{ enrollingModule?.title }}</p>
+                </div>
+            </div>
+
+            <div class="p-4 border-b border-gray-100">
+                <input
+                    v-model="enrollSearch"
+                    type="text"
+                    placeholder="Search staff..."
+                    class="w-full rounded-lg border-gray-200 text-sm focus:ring-[#EF233C] focus:border-[#EF233C]"
+                />
+            </div>
+
+            <div class="max-h-72 overflow-y-auto divide-y divide-gray-50">
+                <div v-if="filteredStaff.length === 0" class="py-8 text-center text-sm text-gray-400">No staff found</div>
+                <label
+                    v-for="s in filteredStaff"
+                    :key="s.id"
+                    class="flex items-center gap-3 px-4 py-3 hover:bg-gray-50 cursor-pointer transition-colors"
+                >
+                    <input
+                        type="checkbox"
+                        :value="s.id"
+                        v-model="selectedUserIds"
+                        class="rounded border-gray-300 text-[#EF233C] focus:ring-[#EF233C]"
+                    />
+                    <img :src="s.avatar_url" :alt="s.name" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                    <span class="text-sm text-gray-700">{{ s.name }}</span>
+                </label>
+            </div>
+
+            <div class="flex items-center justify-between gap-3 px-6 py-4 border-t border-gray-100">
+                <span class="text-xs text-gray-400">{{ selectedUserIds.length }} staff selected</span>
+                <div class="flex gap-2">
+                    <button type="button" @click="closeEnroll" class="text-sm text-gray-600 px-4 py-2 rounded-lg hover:bg-gray-100 transition-colors">Cancel</button>
+                    <button
+                        @click="saveEnrollments"
+                        :disabled="enrollForm.processing"
+                        class="text-sm font-semibold bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-50 text-white px-5 py-2 rounded-lg transition-colors"
+                    >
+                        Save
+                    </button>
+                </div>
+            </div>
+        </BaseModal>
+
         <!-- Delete confirm modal -->
         <ConfirmModal
             :open="!!deleteTarget"
@@ -148,19 +209,20 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, computed } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import BaseModal from '@/Components/BaseModal.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
 import {
     AcademicCapIcon, PlusIcon, PencilIcon, TrashIcon,
-    EyeIcon, EyeSlashIcon,
+    EyeIcon, EyeSlashIcon, UsersIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     modules:      { type: Array,   default: () => [] },
     isPrivileged: { type: Boolean, default: false },
+    staff:        { type: Array,   default: () => [] },
 });
 
 // ── Add / Edit module modal ───────────────────────────────────────────────────
@@ -171,15 +233,15 @@ const editingModule = ref(null);
 const moduleForm = useForm({ title: '', description: '' });
 
 function openEdit(mod) {
-    editingModule.value = mod;
+    editingModule.value    = mod;
     moduleForm.title       = mod.title;
     moduleForm.description = mod.description ?? '';
-    showAddModule.value = true;
+    showAddModule.value    = true;
 }
 
 function closeAddModal() {
-    showAddModule.value  = false;
-    editingModule.value  = null;
+    showAddModule.value = false;
+    editingModule.value = null;
     moduleForm.reset();
 }
 
@@ -205,13 +267,43 @@ function togglePublish(mod) {
 
 const deleteTarget = ref(null);
 
-function confirmDelete(mod) {
-    deleteTarget.value = mod;
-}
+function confirmDelete(mod) { deleteTarget.value = mod; }
 
 function doDelete() {
     router.delete(route('training.modules.destroy', deleteTarget.value.id), {
         onFinish: () => { deleteTarget.value = null; },
+    });
+}
+
+// ── Enrollments ───────────────────────────────────────────────────────────────
+
+const enrollingModule  = ref(null);
+const selectedUserIds  = ref([]);
+const enrollSearch     = ref('');
+const enrollForm       = useForm({ user_ids: [] });
+
+const filteredStaff = computed(() => {
+    const q = enrollSearch.value.toLowerCase().trim();
+    return q ? props.staff.filter(s => s.name.toLowerCase().includes(q)) : props.staff;
+});
+
+function openEnroll(mod) {
+    enrollingModule.value = mod;
+    selectedUserIds.value = [...(mod.enrolled_ids ?? [])];
+    enrollSearch.value    = '';
+}
+
+function closeEnroll() {
+    enrollingModule.value = null;
+    selectedUserIds.value = [];
+    enrollSearch.value    = '';
+}
+
+function saveEnrollments() {
+    enrollForm.user_ids = [...selectedUserIds.value];
+    enrollForm.post(route('training.modules.enrollments', enrollingModule.value.id), {
+        onSuccess: () => closeEnroll(),
+        preserveScroll: true,
     });
 }
 </script>

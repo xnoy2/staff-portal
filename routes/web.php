@@ -136,6 +136,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/modules/{module}',                        [TrainingController::class, 'updateModule'])->name('modules.update');
         Route::post('/modules/{module}/toggle',                  [TrainingController::class, 'toggleModule'])->name('modules.toggle');
         Route::delete('/modules/{module}',                       [TrainingController::class, 'destroyModule'])->name('modules.destroy');
+        Route::post('/modules/{module}/enrollments',             [TrainingController::class, 'manageEnrollments'])->name('modules.enrollments');
         Route::post('/modules/{module}/lessons',                 [TrainingController::class, 'storeLesson'])->name('lessons.store');
         Route::patch('/lessons/{lesson}',                        [TrainingController::class, 'updateLesson'])->name('lessons.update');
         Route::post('/lessons/{lesson}/toggle',                  [TrainingController::class, 'toggleLesson'])->name('lessons.toggle');

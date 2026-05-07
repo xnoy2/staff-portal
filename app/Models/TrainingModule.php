@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TrainingModule extends Model
@@ -31,6 +32,12 @@ class TrainingModule extends Model
         return $this->hasMany(TrainingLesson::class, 'module_id')
             ->where('is_published', true)
             ->orderBy('sort_order');
+    }
+
+    public function enrolledUsers(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'training_module_enrollments', 'module_id', 'user_id')
+            ->withTimestamps();
     }
 
     public function creator(): BelongsTo

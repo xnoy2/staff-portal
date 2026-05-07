@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\TrainingLesson;
 use App\Models\TrainingModule;
 use App\Models\TrainingProgress;
+use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -20,12 +21,14 @@ class TrainingController extends Controller
         $user         = auth()->user();
         $isPrivileged = $user->hasAnyRole(['admin', 'manager']);
 
-        $modules = TrainingModule::with(['publishedLessons'])
-            ->when(! $isPrivileged, fn ($q) => $q->published())
+        $modules = TrainingModule::with(['publishedLessons', 'enrolledUsers'])
+            ->when(! $isPrivileged, fn ($q) => $q->published()
+                ->whereHas('enrolledUsers', fn ($q) => $q->where('user_id', $user->id))
+            )
             ->orderBy('sort_order')
             ->orderBy('created_at')
             ->get()
-            ->map(function ($m) use ($user) {
+            ->map(function ($m) use ($user, $isPrivileged) {
                 $lessonIds      = $m->publishedLessons->pluck('id');
                 $completedCount = TrainingProgress::where('user_id', $user->id)
                     ->whereIn('lesson_id', $lessonIds)
@@ -33,20 +36,31 @@ class TrainingController extends Controller
                     ->count();
 
                 return [
-                    'id'           => $m->id,
-                    'title'        => $m->title,
-                    'description'  => $m->description,
-                    'thumbnail'    => $m->thumbnail,
-                    'is_published' => $m->is_published,
-                    'lesson_count' => $m->publishedLessons->count(),
-                    'completed'    => $completedCount,
-                    'first_lesson' => $m->publishedLessons->first()?->id,
+                    'id'             => $m->id,
+                    'title'          => $m->title,
+                    'description'    => $m->description,
+                    'thumbnail'      => $m->thumbnail,
+                    'is_published'   => $m->is_published,
+                    'lesson_count'   => $m->publishedLessons->count(),
+                    'completed'      => $completedCount,
+                    'first_lesson'   => $m->publishedLessons->first()?->id,
+                    'enrolled_count' => $m->enrolledUsers->count(),
+                    'enrolled_ids'   => $isPrivileged ? $m->enrolledUsers->pluck('id') : [],
                 ];
             });
+
+        $staff = $isPrivileged
+            ? User::orderBy('name')->get()->map(fn ($u) => [
+                'id'         => $u->id,
+                'name'       => $u->name,
+                'avatar_url' => $u->avatar_url,
+            ])
+            : collect();
 
         return Inertia::render('Training/Index', [
             'modules'      => $modules,
             'isPrivileged' => $isPrivileged,
+            'staff'        => $staff,
         ]);
     }
 
@@ -57,6 +71,7 @@ class TrainingController extends Controller
 
         if (! $isPrivileged) {
             abort_unless($module->is_published, 404);
+            abort_unless($module->enrolledUsers()->where('user_id', $user->id)->exists(), 403);
         }
 
         $first = $isPrivileged
@@ -85,6 +100,7 @@ class TrainingController extends Controller
 
         if (! $isPrivileged) {
             abort_unless($module->is_published && $lesson->is_published, 404);
+            abort_unless($module->enrolledUsers()->where('user_id', $user->id)->exists(), 403);
         }
         abort_unless($lesson->module_id === $module->id, 404);
 
@@ -278,6 +294,20 @@ class TrainingController extends Controller
         }
 
         return redirect()->route('training.index')->with('success', 'Lesson deleted.');
+    }
+
+    public function manageEnrollments(Request $request, TrainingModule $module): RedirectResponse
+    {
+        abort_unless(auth()->user()->hasAnyRole(['admin', 'manager']), 403);
+
+        $request->validate([
+            'user_ids'   => ['array'],
+            'user_ids.*' => ['string', 'exists:users,id'],
+        ]);
+
+        $module->enrolledUsers()->sync($request->input('user_ids', []));
+
+        return back()->with('success', 'Enrollments updated.');
     }
 
     // ── Helpers ───────────────────────────────────────────────────────────────
