@@ -108,9 +108,11 @@
                                             class="w-10 h-10 rounded-md overflow-hidden border border-gray-200 bg-gray-100 hover:border-[#EF233C] transition-colors"
                                         >
                                             <img
-                                                :src="proxyUrl(photo)"
+                                                :src="photo"
                                                 class="w-full h-full object-cover"
                                                 loading="lazy"
+                                                referrerpolicy="no-referrer"
+                                                @error="$event.target.style.display='none'"
                                             />
                                         </button>
                                     </div>
@@ -200,7 +202,7 @@
                                 @click="openPhoto(photo)"
                                 class="w-12 h-12 rounded-md overflow-hidden border border-gray-200 bg-gray-100"
                             >
-                                <img :src="proxyUrl(photo)" class="w-full h-full object-cover" loading="lazy" />
+                                <img :src="photo" class="w-full h-full object-cover" loading="lazy" referrerpolicy="no-referrer" @error="$event.target.style.display='none'" />
                             </button>
                         </div>
                         <div class="flex items-center justify-between text-[10px] text-gray-400 pt-1">
@@ -299,7 +301,10 @@
         <!-- Photo lightbox -->
         <Transition name="fade">
             <div v-if="lightboxUrl" class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" @click="lightboxUrl = null">
-                <img :src="lightboxUrl" class="max-w-full max-h-full rounded-lg object-contain" @click.stop />
+                <img :src="lightboxUrl" class="max-w-full max-h-full rounded-lg object-contain" referrerpolicy="no-referrer" @click.stop />
+                <a :href="lightboxUrl" target="_blank" rel="noopener" class="absolute top-4 right-16 text-white p-2 rounded-full bg-black/50 hover:bg-black/70" title="Open in BGR portal">
+                    <ArrowTopRightOnSquareIcon class="w-5 h-5" />
+                </a>
                 <button @click="lightboxUrl = null" class="absolute top-4 right-4 text-white p-2 rounded-full bg-black/50 hover:bg-black/70">
                     <XMarkIcon class="w-5 h-5" />
                 </button>
@@ -316,7 +321,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import BaseModal from '@/Components/BaseModal.vue';
 import {
     ArrowLeftIcon, MapPinIcon, ChevronDownIcon, CheckIcon,
-    PencilSquareIcon, PlusIcon, XMarkIcon,
+    PencilSquareIcon, PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon,
 } from '@heroicons/vue/24/outline';
 
 const STATUS_CLASSES = {
@@ -464,16 +469,12 @@ function submitUpdate() {
         });
 }
 
-// ── Photo proxy + lightbox ────────────────────────────────────────────────────
+// ── Lightbox ──────────────────────────────────────────────────────────────────
 
 const lightboxUrl = ref(null);
 
-function proxyUrl(originalUrl) {
-    return route('bgr.photo') + '?url=' + encodeURIComponent(originalUrl);
-}
-
-function openPhoto(originalUrl) {
-    lightboxUrl.value = proxyUrl(originalUrl);
+function openPhoto(url) {
+    lightboxUrl.value = url;
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
