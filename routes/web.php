@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\BgrController;
 use App\Http\Controllers\TrainingController;
 use App\Http\Controllers\AuditController;
 use App\Http\Controllers\NotificationController;
@@ -124,6 +125,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/payroll/approve-all',             [PayrollRunController::class, 'approveAll'])->name('payroll.approve-all');
     Route::post('/payroll/cutoff',                  [PayrollRunController::class, 'updateCutoff'])->name('payroll.cutoff');
     Route::delete('/payroll/{run}',                 [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
+
+    // BGR Client Projects
+    Route::prefix('client-projects')->name('bgr.')->group(function () {
+        Route::get('/',                                                                     [BgrController::class, 'index'])->name('index');
+        Route::get('/{id}',                                                                 [BgrController::class, 'show'])->name('show');
+        Route::post('/connect',                                                              [BgrController::class, 'connect'])->name('connect');
+        Route::delete('/disconnect',                                                         [BgrController::class, 'disconnect'])->name('disconnect');
+        Route::post('/{projectId}/tasks/{stageId}/{substageId}/toggle',                     [BgrController::class, 'toggleTask'])->name('tasks.toggle');
+        Route::post('/{projectId}/tasks/{stageId}/{substageId}/note',                       [BgrController::class, 'updateTaskNote'])->name('tasks.note');
+        Route::post('/{projectId}/updates',                                                  [BgrController::class, 'storeUpdate'])->name('updates.store');
+        Route::get('/photo',                                                                 [BgrController::class, 'photo'])->name('photo');
+    });
 
     // Training
     Route::prefix('training')->name('training.')->group(function () {

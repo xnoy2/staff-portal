@@ -40,4 +40,8 @@ return [
         'stream_token' => env('CLOUDFLARE_STREAM_TOKEN'),
     ],
 
+    'bgr' => [
+        'base_url' => env('BGR_API_URL', 'https://portal.bespokegardenroomsballycastle.co.uk'),
+    ],
+
 ];

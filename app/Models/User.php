@@ -62,11 +62,13 @@ class User extends Authenticatable
         'notes',
         'avatar',
         'preferences',
+        'bgr_token',
     ];
 
     protected $hidden = [
         'password',
         'remember_token',
+        'bgr_token',
     ];
 
     protected $appends = ['avatar_url'];

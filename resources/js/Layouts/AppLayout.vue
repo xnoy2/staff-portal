@@ -47,7 +47,8 @@
                     <NavItem href="/leave"                                     icon="CalendarDaysIcon"          label="Leave"      :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/my-qr"                                    icon="QrCodeIcon"                label="My QR Code" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem v-if="!isAdmin" :href="route('my-payslip')"  routeName="my-payslip"           icon="DocumentTextIcon"          label="My Payslip" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem :href="route('training.index')"                                               icon="AcademicCapIcon"            label="Training"   :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('training.index')"                                               icon="AcademicCapIcon"            label="Training"         :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('bgr.index')"                                                   icon="BuildingStorefrontIcon"      label="Client Projects"  :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
 
                 <NavGroup v-if="isSiteHead" label="Field" :collapsed="!sidebarOpen && !isMobile">
