@@ -37,7 +37,11 @@ class BgrController extends Controller
             'bgr_session' => $session,
         ]);
 
-        return redirect()->route('bgr.index')->with('success', 'BGR account connected.');
+        $message = $session
+            ? 'BGR account connected. Photos will load correctly.'
+            : 'BGR account connected, but photo session could not be established — photos may not display. Try disconnecting and reconnecting.';
+
+        return redirect()->route('bgr.index')->with('success', $message);
     }
 
     public function disconnect(): RedirectResponse
@@ -283,7 +287,8 @@ class BgrController extends Controller
     /**
      * Log into the BGR web interface and capture the authenticated session cookie.
      * BGR photo routes use session auth (not Bearer tokens), so we need this cookie
-     * to proxy photos server-side.
+     * to proxy photos server-side. BGR photos are served as 302 redirects to
+     * pre-signed Cloudflare R2 URLs — the session cookie unlocks that redirect.
      */
     private function captureBgrWebSession(string $email, string $password): ?string
     {
@@ -293,40 +298,50 @@ class BgrController extends Controller
             $jar    = new \GuzzleHttp\Cookie\CookieJar();
             $client = new \GuzzleHttp\Client([
                 'cookies'         => $jar,
-                'allow_redirects' => true,
+                'allow_redirects' => ['max' => 5, 'strict' => false, 'referer' => true],
                 'verify'          => true,
-                'timeout'         => 15,
+                'timeout'         => 20,
+                'headers'         => [
+                    'User-Agent' => 'Mozilla/5.0 (compatible; BCF-Staff-Portal/1.0)',
+                    'Accept'     => 'text/html,application/xhtml+xml,*/*',
+                ],
             ]);
 
-            // Step 1: Load login page to get CSRF token cookie
+            // Step 1: Load login page — sets XSRF-TOKEN + initial session cookie
             $client->get($base . '/login');
 
             $xsrfCookie = $jar->getCookieByName('XSRF-TOKEN');
             if (! $xsrfCookie) return null;
 
-            // Laravel stores CSRF token URL-encoded in the cookie value
+            // XSRF-TOKEN cookie value is URL-encoded; decode for the hidden _token field
             $csrfToken = urldecode($xsrfCookie->getValue());
 
-            // Step 2: Submit login form
+            // Step 2: Submit credentials — BGR responds with 302 → authenticated session
             $client->post($base . '/login', [
                 'form_params' => [
                     '_token'   => $csrfToken,
                     'email'    => $email,
                     'password' => $password,
                 ],
-                'headers' => [
-                    'Referer' => $base . '/login',
-                ],
+                'headers' => ['Referer' => $base . '/login'],
             ]);
 
-            // Step 3: Find the authenticated session cookie (any non-XSRF cookie)
-            foreach ($jar->toArray() as $cookie) {
-                if ($cookie['Name'] !== 'XSRF-TOKEN') {
-                    return $cookie['Name'] . '=' . $cookie['Value'];
-                }
+            // Step 3: Extract the authenticated session cookie.
+            // Prefer cookies whose name contains 'session'; fall back to any non-XSRF cookie.
+            $sessionCookies = array_filter(
+                $jar->toArray(),
+                fn ($c) => $c['Name'] !== 'XSRF-TOKEN' && str_contains(strtolower($c['Name']), 'session')
+            );
+
+            if (empty($sessionCookies)) {
+                // Fallback: any non-XSRF cookie
+                $sessionCookies = array_filter($jar->toArray(), fn ($c) => $c['Name'] !== 'XSRF-TOKEN');
             }
 
-            return null;
+            $sessionCookie = array_values($sessionCookies)[0] ?? null;
+            if (! $sessionCookie) return null;
+
+            return $sessionCookie['Name'] . '=' . $sessionCookie['Value'];
         } catch (\Throwable) {
             return null;
         }
