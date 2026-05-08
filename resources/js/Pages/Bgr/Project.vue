@@ -108,10 +108,9 @@
                                             class="w-10 h-10 rounded-md overflow-hidden border border-gray-200 bg-gray-100 hover:border-[#EF233C] transition-colors"
                                         >
                                             <img
-                                                :src="photo"
+                                                :src="proxyUrl(photo)"
                                                 class="w-full h-full object-cover"
                                                 loading="lazy"
-                                                referrerpolicy="no-referrer"
                                                 @error="$event.target.style.display='none'"
                                             />
                                         </button>
@@ -202,7 +201,7 @@
                                 @click="openPhoto(photo)"
                                 class="w-12 h-12 rounded-md overflow-hidden border border-gray-200 bg-gray-100"
                             >
-                                <img :src="photo" class="w-full h-full object-cover" loading="lazy" referrerpolicy="no-referrer" @error="$event.target.style.display='none'" />
+                                <img :src="proxyUrl(photo)" class="w-full h-full object-cover" loading="lazy" @error="$event.target.style.display='none'" />
                             </button>
                         </div>
                         <div class="flex items-center justify-between text-[10px] text-gray-400 pt-1">
@@ -469,12 +468,16 @@ function submitUpdate() {
         });
 }
 
-// ── Lightbox ──────────────────────────────────────────────────────────────────
+// ── Photo proxy + lightbox ────────────────────────────────────────────────────
 
 const lightboxUrl = ref(null);
 
-function openPhoto(url) {
-    lightboxUrl.value = url;
+function proxyUrl(originalUrl) {
+    return route('bgr.photo') + '?url=' + encodeURIComponent(originalUrl);
+}
+
+function openPhoto(originalUrl) {
+    lightboxUrl.value = proxyUrl(originalUrl);
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────

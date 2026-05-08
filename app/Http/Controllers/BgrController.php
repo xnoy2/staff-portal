@@ -28,7 +28,14 @@ class BgrController extends Controller
             return back()->withErrors(['bgr_password' => $result['message']])->withInput();
         }
 
-        auth()->user()->update(['bgr_token' => $result['token']]);
+        // Also capture a web session cookie so our photo proxy can bypass
+        // the BGR portal's session-based photo auth (Bearer tokens don't work there).
+        $session = $this->captureBgrWebSession($request->email, $request->password);
+
+        auth()->user()->update([
+            'bgr_token'   => $result['token'],
+            'bgr_session' => $session,
+        ]);
 
         return redirect()->route('bgr.index')->with('success', 'BGR account connected.');
     }
@@ -39,7 +46,7 @@ class BgrController extends Controller
 
         if ($user->bgr_token) {
             (new BgrApiService($user->bgr_token))->logout();
-            $user->update(['bgr_token' => null]);
+            $user->update(['bgr_token' => null, 'bgr_session' => null]);
         }
 
         return redirect()->route('bgr.index')->with('success', 'BGR account disconnected.');
@@ -229,18 +236,30 @@ class BgrController extends Controller
         abort_unless($url && str_starts_with($url, 'https://'), 403);
 
         try {
-            $bgrResponse = Http::withHeaders([
-                'Authorization' => 'Bearer ' . $user->bgr_token,
-                'Accept'        => 'image/*,*/*',
-            ])->timeout(20)->get($url);
+            // Use web session cookie — BGR photo routes use session auth, not Bearer tokens.
+            // Fall back to Bearer if no session is stored.
+            $headers = ['Accept' => 'image/*,*/*'];
+            if ($user->bgr_session) {
+                $headers['Cookie'] = $user->bgr_session;
+            } else {
+                $headers['Authorization'] = 'Bearer ' . $user->bgr_token;
+            }
+
+            $bgrResponse = Http::withHeaders($headers)->timeout(20)->get($url);
 
             if (! $bgrResponse->successful()) {
                 abort(404);
             }
 
-            $body        = $bgrResponse->body();
             $contentType = $bgrResponse->header('Content-Type') ?? 'image/jpeg';
             $contentType = trim(explode(';', $contentType)[0]) ?: 'image/jpeg';
+
+            // BGR returned an HTML page — session has expired or is invalid.
+            if (str_starts_with($contentType, 'text/')) {
+                abort(404);
+            }
+
+            $body = $bgrResponse->body();
 
             return response()->stream(function () use ($body) {
                 echo $body;
@@ -254,10 +273,62 @@ class BgrController extends Controller
         }
     }
 
-    // ── Helper ────────────────────────────────────────────────────────────────
+    // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function requireConnected($user): void
     {
         abort_unless($user->bgr_token, 403, 'BGR account not connected.');
+    }
+
+    /**
+     * Log into the BGR web interface and capture the authenticated session cookie.
+     * BGR photo routes use session auth (not Bearer tokens), so we need this cookie
+     * to proxy photos server-side.
+     */
+    private function captureBgrWebSession(string $email, string $password): ?string
+    {
+        $base = rtrim(config('services.bgr.base_url'), '/');
+
+        try {
+            $jar    = new \GuzzleHttp\Cookie\CookieJar();
+            $client = new \GuzzleHttp\Client([
+                'cookies'         => $jar,
+                'allow_redirects' => true,
+                'verify'          => true,
+                'timeout'         => 15,
+            ]);
+
+            // Step 1: Load login page to get CSRF token cookie
+            $client->get($base . '/login');
+
+            $xsrfCookie = $jar->getCookieByName('XSRF-TOKEN');
+            if (! $xsrfCookie) return null;
+
+            // Laravel stores CSRF token URL-encoded in the cookie value
+            $csrfToken = urldecode($xsrfCookie->getValue());
+
+            // Step 2: Submit login form
+            $client->post($base . '/login', [
+                'form_params' => [
+                    '_token'   => $csrfToken,
+                    'email'    => $email,
+                    'password' => $password,
+                ],
+                'headers' => [
+                    'Referer' => $base . '/login',
+                ],
+            ]);
+
+            // Step 3: Find the authenticated session cookie (any non-XSRF cookie)
+            foreach ($jar->toArray() as $cookie) {
+                if ($cookie['Name'] !== 'XSRF-TOKEN') {
+                    return $cookie['Name'] . '=' . $cookie['Value'];
+                }
+            }
+
+            return null;
+        } catch (\Throwable) {
+            return null;
+        }
     }
 }
