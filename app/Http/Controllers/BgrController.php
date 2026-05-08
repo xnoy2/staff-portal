@@ -226,8 +226,9 @@ class BgrController extends Controller
 
         $url = $request->query('url');
 
-        $base = rtrim(config('services.bgr.base_url'), '/');
-        abort_unless($url && str_starts_with($url, $base), 403);
+        // Accept any HTTPS URL — BGR photos may come from the custom domain or the
+        // underlying Railway deployment URL (bgr-portal.up.railway.app).
+        abort_unless($url && str_starts_with($url, 'https://'), 403);
 
         $response = (new BgrApiService($user->bgr_token))->fetchPhoto($url);
 
