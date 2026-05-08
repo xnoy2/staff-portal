@@ -129,13 +129,13 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // BGR Client Projects
     Route::prefix('client-projects')->name('bgr.')->group(function () {
         Route::get('/',                                                                     [BgrController::class, 'index'])->name('index');
+        Route::get('/photo',                                                                [BgrController::class, 'photo'])->name('photo');
+        Route::post('/connect',                                                             [BgrController::class, 'connect'])->name('connect');
+        Route::delete('/disconnect',                                                        [BgrController::class, 'disconnect'])->name('disconnect');
         Route::get('/{id}',                                                                 [BgrController::class, 'show'])->name('show');
-        Route::post('/connect',                                                              [BgrController::class, 'connect'])->name('connect');
-        Route::delete('/disconnect',                                                         [BgrController::class, 'disconnect'])->name('disconnect');
-        Route::post('/{projectId}/tasks/{stageId}/{substageId}/toggle',                     [BgrController::class, 'toggleTask'])->name('tasks.toggle');
-        Route::post('/{projectId}/tasks/{stageId}/{substageId}/note',                       [BgrController::class, 'updateTaskNote'])->name('tasks.note');
-        Route::post('/{projectId}/updates',                                                  [BgrController::class, 'storeUpdate'])->name('updates.store');
-        Route::get('/photo',                                                                 [BgrController::class, 'photo'])->name('photo');
+        Route::post('/{projectId}/tasks/{stageId}/{substageId}/toggle',                    [BgrController::class, 'toggleTask'])->name('tasks.toggle');
+        Route::post('/{projectId}/tasks/{stageId}/{substageId}/note',                      [BgrController::class, 'updateTaskNote'])->name('tasks.note');
+        Route::post('/{projectId}/updates',                                                 [BgrController::class, 'storeUpdate'])->name('updates.store');
     });
 
     // Training
