@@ -6,6 +6,7 @@ use App\Services\BgrApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
+use Illuminate\Support\Facades\Http;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -219,26 +220,38 @@ class BgrController extends Controller
 
     // ── Photo proxy ───────────────────────────────────────────────────────────
 
-    public function photo(Request $request): HttpResponse
+    public function photo(Request $request)
     {
         $user = auth()->user();
         $this->requireConnected($user);
 
         $url = $request->query('url');
-
-        // Accept any HTTPS URL — BGR photos may come from the custom domain or the
-        // underlying Railway deployment URL (bgr-portal.up.railway.app).
         abort_unless($url && str_starts_with($url, 'https://'), 403);
 
-        $response = (new BgrApiService($user->bgr_token))->fetchPhoto($url);
+        try {
+            $bgrResponse = Http::withHeaders([
+                'Authorization' => 'Bearer ' . $user->bgr_token,
+                'Accept'        => 'image/*,*/*',
+            ])->timeout(20)->get($url);
 
-        abort_unless($response->successful(), 404);
+            if (! $bgrResponse->successful()) {
+                abort(404);
+            }
 
-        return response(
-            $response->body(),
-            200,
-            ['Content-Type' => $response->header('Content-Type') ?? 'image/jpeg']
-        );
+            $body        = $bgrResponse->body();
+            $contentType = $bgrResponse->header('Content-Type') ?? 'image/jpeg';
+            $contentType = trim(explode(';', $contentType)[0]) ?: 'image/jpeg';
+
+            return response()->stream(function () use ($body) {
+                echo $body;
+            }, 200, [
+                'Content-Type'   => $contentType,
+                'Content-Length' => strlen($body),
+                'Cache-Control'  => 'private, max-age=3600',
+            ]);
+        } catch (\Throwable) {
+            abort(502);
+        }
     }
 
     // ── Helper ────────────────────────────────────────────────────────────────
