@@ -150,10 +150,14 @@
                         {{ canEdit ? 'Click a day cell to schedule one day, or use the pattern button to set the whole week at once.' : 'Scheduled working days for this week.' }}
                     </p>
                 </div>
-                <div class="flex items-center gap-2 text-xs text-gray-500">
+                <div class="flex items-center gap-3 text-xs text-gray-500">
                     <span class="inline-flex items-center gap-1">
                         <span class="w-2.5 h-2.5 rounded-sm bg-emerald-100 border border-emerald-300"></span>
                         Scheduled
+                    </span>
+                    <span class="inline-flex items-center gap-1">
+                        <span class="w-2.5 h-2.5 rounded-sm bg-violet-100 border border-dashed border-violet-300"></span>
+                        Recurring pattern
                     </span>
                     <span class="inline-flex items-center gap-1">
                         <span class="w-2.5 h-2.5 rounded-sm bg-gray-100 border border-gray-200"></span>
@@ -198,6 +202,11 @@
                                     <span class="mx-1 text-gray-200">·</span>
                                     {{ member.total_jobs }} job{{ member.total_jobs !== 1 ? 's' : '' }}
                                 </p>
+                                <!-- Recurring pattern badge -->
+                                <span v-if="member.has_pattern" class="inline-flex items-center gap-0.5 mt-1 text-[9px] font-semibold text-violet-600 bg-violet-50 border border-violet-200 rounded px-1.5 py-0.5 leading-none">
+                                    <ArrowPathIcon class="w-2.5 h-2.5" />
+                                    Recurring
+                                </span>
                                 <button
                                     v-if="canEdit"
                                     type="button"
@@ -205,7 +214,7 @@
                                     class="mt-1 flex items-center gap-1 text-[10px] font-medium text-[#EF233C] hover:underline leading-none"
                                 >
                                     <CalendarDaysIcon class="w-3 h-3 flex-shrink-0" />
-                                    Set pattern
+                                    {{ member.has_pattern ? 'Edit pattern' : 'Set pattern' }}
                                 </button>
                             </div>
                         </div>
@@ -221,8 +230,8 @@
                             ]"
                             @click="canEdit && openModal(member, day)"
                         >
-                            <!-- Scheduled indicator -->
-                            <div v-if="day.scheduled" class="mb-1">
+                            <!-- Scheduled indicator: explicit entry -->
+                            <div v-if="day.scheduled && !day.from_pattern" class="mb-1">
                                 <div class="flex items-center gap-1 bg-emerald-50 border border-emerald-200 rounded px-1.5 py-1">
                                     <CheckIcon class="w-2.5 h-2.5 text-emerald-500 flex-shrink-0" />
                                     <span class="text-[9px] font-semibold text-emerald-700 leading-none">
@@ -230,6 +239,16 @@
                                     </span>
                                 </div>
                                 <p v-if="day.notes" class="text-[9px] text-gray-400 truncate mt-0.5 px-0.5" :title="day.notes">{{ day.notes }}</p>
+                            </div>
+
+                            <!-- Scheduled indicator: from recurring pattern -->
+                            <div v-if="day.from_pattern" class="mb-1">
+                                <div class="flex items-center gap-1 bg-violet-50 border border-dashed border-violet-300 rounded px-1.5 py-1">
+                                    <ArrowPathIcon class="w-2.5 h-2.5 text-violet-400 flex-shrink-0" />
+                                    <span class="text-[9px] font-semibold text-violet-600 leading-none">
+                                        {{ day.shift_start && day.shift_end ? `${day.shift_start} – ${day.shift_end}` : 'Pattern' }}
+                                    </span>
+                                </div>
                             </div>
 
                             <!-- Job pills -->
@@ -490,7 +509,7 @@ import { ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/20/solid';
-import { ClockIcon, TruckIcon, UsersIcon, CheckIcon, PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ClipboardDocumentListIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline';
+import { ClockIcon, TruckIcon, UsersIcon, CheckIcon, PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ClipboardDocumentListIcon, CalendarDaysIcon, ArrowPathIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     weekDays:      { type: Array,   default: () => [] },
@@ -572,21 +591,23 @@ function weekDatesByIndex(indices) {
 }
 
 function openPatternModal(member) {
-    // Pre-tick days that are already scheduled for this member
-    const currentWorking = member.days
-        .filter(d => d.scheduled)
-        .map(d => d.date);
-
-    // Grab the first scheduled entry's shift times as defaults (if any)
-    const firstEntry = member.days.find(d => d.scheduled);
+    // If a stored pattern exists, pre-select those days-of-week mapped to this week's dates.
+    // Otherwise fall back to whichever days are explicitly scheduled this week.
+    let workingDates;
+    if (member.has_pattern && member.pattern_days.length > 0) {
+        // pattern_days are 0=Mon … 6=Sun indices; map to actual dates of the current week
+        workingDates = member.pattern_days.map(i => props.weekDays[i]?.date).filter(Boolean);
+    } else {
+        workingDates = member.days.filter(d => d.scheduled && !d.from_pattern).map(d => d.date);
+    }
 
     patternModal.value = {
         staffId:      member.id,
         staffName:    member.name,
-        workingDates: [...currentWorking],
-        shiftStart:   firstEntry?.shift_start ?? '07:00',
-        shiftEnd:     firstEntry?.shift_end   ?? '17:00',
-        notes:        firstEntry?.notes       ?? '',
+        workingDates: [...workingDates],
+        shiftStart:   member.pattern_shift_start ?? member.days.find(d => d.scheduled)?.shift_start ?? '07:00',
+        shiftEnd:     member.pattern_shift_end   ?? member.days.find(d => d.scheduled)?.shift_end   ?? '17:00',
+        notes:        member.pattern_notes       ?? member.days.find(d => d.scheduled)?.notes       ?? '',
     };
 }
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Job;
 use App\Models\LeaveRequest;
 use App\Models\StaffSchedule;
+use App\Models\StaffWeeklyPattern;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -69,20 +70,32 @@ class ScheduleController extends Controller
 
         // Staff schedule matrix — all active staff
         $activeStaff = User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'avatar']);
+        $staffIds    = $activeStaff->pluck('id');
 
-        // Roster entries for the week, indexed by [user_id][date]
-        $rosterEntries = StaffSchedule::whereIn('user_id', $activeStaff->pluck('id'))
+        // Explicit roster entries for the week, indexed by [user_id][date]
+        $rosterEntries = StaffSchedule::whereIn('user_id', $staffIds)
             ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
             ->get()
             ->groupBy('user_id')
             ->map(fn ($group) => $group->keyBy(fn ($e) => $e->date->toDateString()));
 
-        $staffSchedule = $activeStaff->map(function ($staffMember) use ($jobs, $weekStart, $rosterEntries) {
-            $userRoster = $rosterEntries->get($staffMember->id, collect());
+        // Recurring weekly patterns, indexed by [user_id][day_of_week]
+        $weeklyPatterns = StaffWeeklyPattern::whereIn('user_id', $staffIds)
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn ($group) => $group->keyBy('day_of_week'));
 
-            $days = collect(range(0, 6))->map(function ($i) use ($staffMember, $jobs, $weekStart, $userRoster) {
-                $date  = $weekStart->copy()->addDays($i)->toDateString();
-                $entry = $userRoster->get($date);
+        $staffSchedule = $activeStaff->map(function ($staffMember) use ($jobs, $weekStart, $rosterEntries, $weeklyPatterns) {
+            $userRoster  = $rosterEntries->get($staffMember->id, collect());
+            $userPattern = $weeklyPatterns->get($staffMember->id, collect());
+
+            $days = collect(range(0, 6))->map(function ($i) use ($staffMember, $jobs, $weekStart, $userRoster, $userPattern) {
+                $date    = $weekStart->copy()->addDays($i)->toDateString();
+                $entry   = $userRoster->get($date);       // explicit override
+                $pattern = $userPattern->get($i);          // recurring pattern (0=Mon)
+
+                // Explicit entry takes precedence; pattern fills the rest
+                $fromPattern = $entry === null && $pattern !== null;
 
                 $dayJobs = $jobs
                     ->filter(fn ($j) =>
@@ -99,13 +112,14 @@ class ScheduleController extends Controller
                     ->values();
 
                 return [
-                    'date'        => $date,
-                    'scheduled'   => $entry !== null,
-                    'schedule_id' => $entry?->id,
-                    'shift_start' => $entry?->shift_start,
-                    'shift_end'   => $entry?->shift_end,
-                    'notes'       => $entry?->notes,
-                    'jobs'        => $dayJobs,
+                    'date'         => $date,
+                    'scheduled'    => $entry !== null || $fromPattern,
+                    'from_pattern' => $fromPattern,
+                    'schedule_id'  => $entry?->id,
+                    'shift_start'  => $entry?->shift_start ?? $pattern?->shift_start,
+                    'shift_end'    => $entry?->shift_end   ?? $pattern?->shift_end,
+                    'notes'        => $entry?->notes        ?? $pattern?->notes,
+                    'jobs'         => $dayJobs,
                 ];
             });
 
@@ -116,6 +130,12 @@ class ScheduleController extends Controller
                 'days_scheduled' => $days->filter(fn ($d) => $d['scheduled'])->count(),
                 'total_jobs'     => $days->sum(fn ($d) => count($d['jobs'])),
                 'days'           => $days,
+                'has_pattern'    => $userPattern->isNotEmpty(),
+                // Pass stored pattern days-of-week so the modal can pre-select them
+                'pattern_days'   => $userPattern->keys()->values()->toArray(),
+                'pattern_shift_start' => $userPattern->first()?->shift_start,
+                'pattern_shift_end'   => $userPattern->first()?->shift_end,
+                'pattern_notes'       => $userPattern->first()?->notes,
             ];
         })->values();
 
@@ -144,18 +164,11 @@ class ScheduleController extends Controller
             'notes'       => ['nullable', 'string', 'max:500'],
         ]);
 
-        // Conflict detection
-        $conflicts = [];
-
         $onLeave = LeaveRequest::forUser($data['user_id'])
             ->approved()
             ->where('start_date', '<=', $data['date'])
             ->where('end_date', '>=', $data['date'])
             ->first();
-
-        if ($onLeave) {
-            $conflicts[] = 'Staff member has approved ' . $onLeave->type . ' leave on this date.';
-        }
 
         StaffSchedule::updateOrCreate(
             ['user_id' => $data['user_id'], 'date' => $data['date']],
@@ -168,8 +181,8 @@ class ScheduleController extends Controller
         );
 
         $message = 'Schedule saved.';
-        if (! empty($conflicts)) {
-            $message .= ' Warning: ' . implode(' ', $conflicts);
+        if ($onLeave) {
+            $message .= ' Warning: Staff member has approved ' . $onLeave->type . ' leave on this date.';
             return back()->with('warning', $message);
         }
 
@@ -182,7 +195,7 @@ class ScheduleController extends Controller
 
         $staffSchedule->delete();
 
-        return back()->with('success', 'Schedule removed.');
+        return back()->with('success', 'Schedule entry removed. Recurring pattern (if any) will still apply on future weeks.');
     }
 
     public function setWeeklyPattern(Request $request): RedirectResponse
@@ -203,7 +216,30 @@ class ScheduleController extends Controller
         $weekEnd      = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
         $workingDates = collect($data['working_dates'] ?? []);
 
-        // Remove entries for days not in the new pattern
+        // ── 1. Save recurring pattern ────────────────────────────────────────
+
+        // Convert selected dates → day-of-week indices (0=Mon … 6=Sun)
+        $workingDays = $workingDates->map(
+            fn ($d) => (int) Carbon::parse($d)->diffInDays($weekStart)
+        )->unique()->values();
+
+        // Replace all existing pattern entries for this staff member
+        StaffWeeklyPattern::where('user_id', $data['user_id'])->delete();
+
+        foreach ($workingDays as $dayOfWeek) {
+            StaffWeeklyPattern::create([
+                'user_id'     => $data['user_id'],
+                'day_of_week' => $dayOfWeek,
+                'shift_start' => $data['shift_start'] ?? null,
+                'shift_end'   => $data['shift_end']   ?? null,
+                'notes'       => $data['notes']        ?? null,
+                'created_by'  => $request->user()->id,
+            ]);
+        }
+
+        // ── 2. Apply to the current week's explicit entries ──────────────────
+
+        // Remove explicit entries for days not in the new working set
         StaffSchedule::where('user_id', $data['user_id'])
             ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
             ->when($workingDates->isNotEmpty(), fn ($q) => $q->whereNotIn('date', $workingDates->toArray()))
@@ -234,8 +270,8 @@ class ScheduleController extends Controller
 
         $count   = $workingDates->count();
         $message = $count > 0
-            ? "{$count} working day(s) set for the week."
-            : 'All scheduled days cleared for this staff member.';
+            ? "Recurring pattern saved: {$count} working day(s) per week, applied from now on."
+            : 'Recurring pattern cleared for this staff member.';
 
         if (! empty($warnings)) {
             $message .= ' Note: ' . implode(' ', $warnings);
