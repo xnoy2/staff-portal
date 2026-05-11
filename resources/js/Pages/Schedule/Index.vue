@@ -204,7 +204,7 @@
                                 v-if="canEdit"
                                 @click="openPatternModal(member)"
                                 title="Set weekly pattern"
-                                class="flex-shrink-0 p-1 rounded-md text-gray-300 hover:text-[#EF233C] hover:bg-red-50 transition-colors opacity-0 group-hover/row:opacity-100"
+                                class="flex-shrink-0 p-1 rounded-md text-gray-400 hover:text-[#EF233C] hover:bg-red-50 transition-colors"
                             >
                                 <CalendarDaysIcon class="w-4 h-4" />
                             </button>
