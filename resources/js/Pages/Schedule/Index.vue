@@ -189,26 +189,25 @@
                         style="grid-template-columns: 200px repeat(7, 1fr)"
                     >
                         <!-- Staff identity -->
-                        <div class="px-3 py-3 flex items-center gap-2 border-r border-gray-100">
+                        <div class="px-3 py-2.5 flex items-center gap-2.5 border-r border-gray-100">
                             <img :src="member.avatar_url" :alt="member.name" class="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-gray-100" />
-                            <div class="min-w-0 flex-1">
+                            <div class="min-w-0">
                                 <p class="text-xs font-semibold text-gray-800 truncate leading-snug">{{ member.name }}</p>
                                 <p class="text-[10px] text-gray-400 mt-0.5">
                                     <span class="text-emerald-600 font-medium">{{ member.days_scheduled }}d</span>
                                     <span class="mx-1 text-gray-200">·</span>
                                     {{ member.total_jobs }} job{{ member.total_jobs !== 1 ? 's' : '' }}
                                 </p>
+                                <button
+                                    v-if="canEdit"
+                                    type="button"
+                                    @click.stop="openPatternModal(member)"
+                                    class="mt-1 flex items-center gap-1 text-[10px] font-medium text-[#EF233C] hover:underline leading-none"
+                                >
+                                    <CalendarDaysIcon class="w-3 h-3 flex-shrink-0" />
+                                    Set pattern
+                                </button>
                             </div>
-                            <!-- Pattern button (managers only) -->
-                            <button
-                                v-if="canEdit"
-                                type="button"
-                                @click.stop="openPatternModal(member)"
-                                title="Set weekly pattern"
-                                class="flex-shrink-0 p-1 rounded-md text-gray-400 hover:text-[#EF233C] hover:bg-red-50 transition-colors"
-                            >
-                                <CalendarDaysIcon class="w-4 h-4" />
-                            </button>
                         </div>
 
                         <!-- Day cells -->
