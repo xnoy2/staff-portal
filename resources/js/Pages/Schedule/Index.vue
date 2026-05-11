@@ -147,7 +147,7 @@
                 <div>
                     <h2 class="text-sm font-semibold text-[#2B2D42]">Staff Roster</h2>
                     <p class="text-xs text-gray-400 mt-0.5">
-                        {{ canEdit ? 'Click any day cell to schedule a staff member.' : 'Scheduled working days for this week.' }}
+                        {{ canEdit ? 'Click a day cell to schedule one day, or use the pattern button to set the whole week at once.' : 'Scheduled working days for this week.' }}
                     </p>
                 </div>
                 <div class="flex items-center gap-2 text-xs text-gray-500">
@@ -166,7 +166,7 @@
                 <div class="bg-white rounded-xl border border-gray-200 min-w-[760px] overflow-hidden">
 
                     <!-- Header row -->
-                    <div class="grid border-b border-gray-100 bg-gray-50/80" style="grid-template-columns: 192px repeat(7, 1fr)">
+                    <div class="grid border-b border-gray-100 bg-gray-50/80" style="grid-template-columns: 200px repeat(7, 1fr)">
                         <div class="px-4 py-3">
                             <span class="text-[10px] font-semibold text-gray-400 uppercase tracking-wider">Staff Member</span>
                         </div>
@@ -186,12 +186,12 @@
                         v-for="(member, idx) in staffSchedule"
                         :key="member.id"
                         :class="['grid', idx < staffSchedule.length - 1 ? 'border-b border-gray-100' : '']"
-                        style="grid-template-columns: 192px repeat(7, 1fr)"
+                        style="grid-template-columns: 200px repeat(7, 1fr)"
                     >
                         <!-- Staff identity -->
-                        <div class="px-4 py-3 flex items-center gap-2.5 border-r border-gray-100">
+                        <div class="px-3 py-3 flex items-center gap-2 border-r border-gray-100 group/row">
                             <img :src="member.avatar_url" :alt="member.name" class="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-gray-100" />
-                            <div class="min-w-0">
+                            <div class="min-w-0 flex-1">
                                 <p class="text-xs font-semibold text-gray-800 truncate leading-snug">{{ member.name }}</p>
                                 <p class="text-[10px] text-gray-400 mt-0.5">
                                     <span class="text-emerald-600 font-medium">{{ member.days_scheduled }}d</span>
@@ -199,6 +199,15 @@
                                     {{ member.total_jobs }} job{{ member.total_jobs !== 1 ? 's' : '' }}
                                 </p>
                             </div>
+                            <!-- Pattern button (managers only) -->
+                            <button
+                                v-if="canEdit"
+                                @click="openPatternModal(member)"
+                                title="Set weekly pattern"
+                                class="flex-shrink-0 p-1 rounded-md text-gray-300 hover:text-[#EF233C] hover:bg-red-50 transition-colors opacity-0 group-hover/row:opacity-100"
+                            >
+                                <CalendarDaysIcon class="w-4 h-4" />
+                            </button>
                         </div>
 
                         <!-- Day cells -->
@@ -258,7 +267,7 @@
         </div>
         </div><!-- end roster tab -->
 
-        <!-- ── Schedule Modal ───────────────────────────────────────────── -->
+        <!-- ── Single-Day Schedule Modal ───────────────────────────────── -->
         <Transition name="modal">
             <div v-if="modal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="modal = null">
                 <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="modal = null" />
@@ -340,6 +349,139 @@
                 </div>
             </div>
         </Transition>
+
+        <!-- ── Weekly Pattern Modal ─────────────────────────────────────── -->
+        <Transition name="modal">
+            <div v-if="patternModal" class="fixed inset-0 z-50 flex items-center justify-center p-4" @click.self="patternModal = null">
+                <div class="absolute inset-0 bg-black/40 backdrop-blur-sm" @click="patternModal = null" />
+
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 z-10">
+                    <!-- Header -->
+                    <div class="flex items-start gap-3 mb-5">
+                        <div class="w-10 h-10 rounded-full bg-[#EF233C]/10 flex items-center justify-center flex-shrink-0">
+                            <CalendarDaysIcon class="w-5 h-5 text-[#EF233C]" />
+                        </div>
+                        <div class="min-w-0 flex-1">
+                            <h3 class="text-sm font-bold text-[#2B2D42]">Weekly Pattern</h3>
+                            <p class="text-xs text-gray-500 mt-0.5">{{ patternModal.staffName }} · {{ weekLabel }}</p>
+                        </div>
+                        <button @click="patternModal = null" class="text-gray-400 hover:text-gray-600 transition-colors flex-shrink-0">
+                            <XMarkIcon class="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <!-- Day toggles -->
+                    <div class="mb-5">
+                        <label class="block text-xs font-medium text-gray-600 mb-2">Working days</label>
+                        <div class="grid grid-cols-7 gap-1.5">
+                            <button
+                                v-for="(day, i) in patternWeekDays"
+                                :key="day.date"
+                                @click="togglePatternDay(day.date)"
+                                :class="[
+                                    'flex flex-col items-center py-2 px-1 rounded-xl border-2 transition-all text-center',
+                                    patternModal.workingDates.includes(day.date)
+                                        ? 'bg-emerald-50 border-emerald-400 text-emerald-700'
+                                        : 'bg-gray-50 border-gray-200 text-gray-400 hover:border-gray-300',
+                                ]"
+                            >
+                                <span class="text-[10px] font-bold uppercase tracking-wide">{{ day.label }}</span>
+                                <span class="text-xs font-semibold mt-0.5">{{ day.dayNum }}</span>
+                                <!-- Currently has a schedule entry -->
+                                <span
+                                    v-if="day.hasExisting"
+                                    class="mt-1 w-1 h-1 rounded-full"
+                                    :class="patternModal.workingDates.includes(day.date) ? 'bg-emerald-500' : 'bg-gray-300'"
+                                    title="Currently scheduled"
+                                />
+                                <span v-else class="mt-1 w-1 h-1" />
+                            </button>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-2">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-gray-400 mr-1 align-middle"></span>
+                            Dot = currently has a scheduled entry
+                        </p>
+                    </div>
+
+                    <!-- Quick presets -->
+                    <div class="flex flex-wrap gap-1.5 mb-5">
+                        <span class="text-[10px] font-medium text-gray-400 self-center mr-1">Presets:</span>
+                        <button
+                            v-for="preset in dayPresets"
+                            :key="preset.label"
+                            @click="applyPreset(preset.dates)"
+                            class="text-[10px] px-2.5 py-1 rounded-full border border-gray-200 text-gray-500 hover:border-[#EF233C] hover:text-[#EF233C] hover:bg-red-50 transition-colors font-medium"
+                        >
+                            {{ preset.label }}
+                        </button>
+                    </div>
+
+                    <!-- Shift times -->
+                    <div class="grid grid-cols-2 gap-3 mb-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Shift Start</label>
+                            <input
+                                v-model="patternModal.shiftStart"
+                                type="time"
+                                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/30 focus:border-[#EF233C]"
+                            />
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-600 mb-1">Shift End</label>
+                            <input
+                                v-model="patternModal.shiftEnd"
+                                type="time"
+                                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/30 focus:border-[#EF233C]"
+                            />
+                        </div>
+                    </div>
+
+                    <div class="mb-5">
+                        <label class="block text-xs font-medium text-gray-600 mb-1">Notes <span class="text-gray-400 font-normal">(optional, applies to all selected days)</span></label>
+                        <input
+                            v-model="patternModal.notes"
+                            type="text"
+                            maxlength="500"
+                            class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/30 focus:border-[#EF233C]"
+                            placeholder="e.g. On call, Early shift…"
+                        />
+                    </div>
+
+                    <!-- Summary -->
+                    <div class="rounded-lg bg-gray-50 border border-gray-100 px-3 py-2 mb-5 text-xs text-gray-600">
+                        <template v-if="patternModal.workingDates.length === 0">
+                            No working days selected — all existing entries will be cleared.
+                        </template>
+                        <template v-else>
+                            <span class="font-semibold text-emerald-600">{{ patternModal.workingDates.length }} working day(s):</span>
+                            {{ patternWorkingLabels }}
+                            <span v-if="patternModal.shiftStart || patternModal.shiftEnd" class="ml-1 text-gray-400">
+                                · {{ patternModal.shiftStart || '—' }} – {{ patternModal.shiftEnd || '—' }}
+                            </span>
+                        </template>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex items-center gap-2">
+                        <button
+                            @click="patternModal = null"
+                            class="text-xs px-4 py-2 rounded-lg border border-gray-200 text-gray-600 hover:bg-gray-50 transition-colors"
+                        >
+                            Cancel
+                        </button>
+                        <div class="flex-1" />
+                        <button
+                            @click="savePattern"
+                            :disabled="patternLoading"
+                            class="text-xs px-5 py-2 rounded-lg bg-[#EF233C] text-white hover:bg-[#D90429] transition-colors font-medium disabled:opacity-60 flex items-center gap-1.5"
+                        >
+                            <CheckIcon class="w-3.5 h-3.5" />
+                            {{ patternLoading ? 'Applying…' : 'Apply Pattern' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
     </AppLayout>
 </template>
 
@@ -348,7 +490,7 @@ import { ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { ChevronLeftIcon, ChevronRightIcon } from '@heroicons/vue/20/solid';
-import { ClockIcon, TruckIcon, UsersIcon, CheckIcon, PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline';
+import { ClockIcon, TruckIcon, UsersIcon, CheckIcon, PlusIcon, PencilIcon, TrashIcon, XMarkIcon, ClipboardDocumentListIcon, CalendarDaysIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     weekDays:      { type: Array,   default: () => [] },
@@ -366,9 +508,9 @@ const props = defineProps({
 
 const activeTab = ref('jobs');
 
-// ── Modal state ───────────────────────────────────────────────────────────────
+// ── Single-day modal ──────────────────────────────────────────────────────────
 
-const modal       = ref(null);
+const modal        = ref(null);
 const modalLoading = ref(false);
 
 function openModal(member, day) {
@@ -409,6 +551,104 @@ function removeSchedule() {
         onFinish:  () => { modalLoading.value = false; },
     });
 }
+
+// ── Weekly pattern modal ──────────────────────────────────────────────────────
+
+const patternModal   = ref(null);
+const patternLoading = ref(false);
+
+// Day presets — indices into weekDays (0=Mon … 6=Sun)
+const DAY_INDICES = { MON: 0, TUE: 1, WED: 2, THU: 3, FRI: 4, SAT: 5, SUN: 6 };
+
+const dayPresets = computed(() => [
+    { label: 'Mon – Fri',  dates: weekDatesByIndex([0, 1, 2, 3, 4]) },
+    { label: 'Mon – Sat',  dates: weekDatesByIndex([0, 1, 2, 3, 4, 5]) },
+    { label: 'Tue – Sat',  dates: weekDatesByIndex([1, 2, 3, 4, 5]) },
+    { label: 'Clear all',  dates: [] },
+]);
+
+function weekDatesByIndex(indices) {
+    return indices.map(i => props.weekDays[i]?.date).filter(Boolean);
+}
+
+function openPatternModal(member) {
+    // Pre-tick days that are already scheduled for this member
+    const currentWorking = member.days
+        .filter(d => d.scheduled)
+        .map(d => d.date);
+
+    // Grab the first scheduled entry's shift times as defaults (if any)
+    const firstEntry = member.days.find(d => d.scheduled);
+
+    patternModal.value = {
+        staffId:      member.id,
+        staffName:    member.name,
+        workingDates: [...currentWorking],
+        shiftStart:   firstEntry?.shift_start ?? '07:00',
+        shiftEnd:     firstEntry?.shift_end   ?? '17:00',
+        notes:        firstEntry?.notes       ?? '',
+    };
+}
+
+function togglePatternDay(date) {
+    const idx = patternModal.value.workingDates.indexOf(date);
+    if (idx === -1) {
+        patternModal.value.workingDates.push(date);
+    } else {
+        patternModal.value.workingDates.splice(idx, 1);
+    }
+}
+
+function applyPreset(dates) {
+    patternModal.value.workingDates = [...dates];
+}
+
+function savePattern() {
+    patternLoading.value = true;
+    router.post('/schedule/staff/pattern', {
+        user_id:       patternModal.value.staffId,
+        week_start:    props.weekStart,
+        working_dates: patternModal.value.workingDates,
+        shift_start:   patternModal.value.shiftStart || null,
+        shift_end:     patternModal.value.shiftEnd   || null,
+        notes:         patternModal.value.notes      || null,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => { patternModal.value = null; },
+        onFinish:  () => { patternLoading.value = false; },
+    });
+}
+
+const patternWorkingLabels = computed(() => {
+    if (!patternModal.value) return '';
+    return patternModal.value.workingDates
+        .map(date => {
+            const day = props.weekDays.find(d => d.date === date);
+            return day ? day.label : date;
+        })
+        .join(', ');
+});
+
+// Enrich weekDays with hasExisting flag (used in pattern modal dots)
+const enrichedWeekDays = computed(() => {
+    return props.weekDays.map(day => ({
+        ...day,
+        hasExisting: props.staffSchedule.some(m =>
+            m.days.some(d => d.date === day.date && d.scheduled)
+        ),
+    }));
+});
+
+// For the pattern modal dots we need per-member context, so pass through
+// the currently-open member's days instead
+const patternWeekDays = computed(() => {
+    if (!patternModal.value) return props.weekDays;
+    const member = props.staffSchedule.find(m => m.id === patternModal.value.staffId);
+    return props.weekDays.map(day => ({
+        ...day,
+        hasExisting: member?.days.find(d => d.date === day.date)?.scheduled ?? false,
+    }));
+});
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 

@@ -277,6 +277,69 @@ class BgrController extends Controller
         }
     }
 
+    // ── Debug (dev only) ──────────────────────────────────────────────────────
+
+    public function debugSession(Request $request): \Illuminate\Http\JsonResponse
+    {
+        abort_unless(app()->isLocal() || $request->has('_dev'), 403);
+
+        $request->validate(['email' => 'required|email', 'password' => 'required|string']);
+
+        $base   = rtrim(config('services.bgr.base_url'), '/');
+        $log    = [];
+        $result = null;
+
+        try {
+            $jar    = new \GuzzleHttp\Cookie\CookieJar();
+            $client = new \GuzzleHttp\Client([
+                'cookies'         => $jar,
+                'allow_redirects' => ['max' => 10, 'strict' => false, 'referer' => true, 'track_redirects' => true],
+                'verify'          => false,
+                'timeout'         => 30,
+                'headers'         => [
+                    'User-Agent' => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Accept'     => 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+                ],
+            ]);
+
+            $loginPage = $client->get($base . '/login');
+            $loginHtml = (string) $loginPage->getBody();
+            $log[]     = ['step' => 'GET /login', 'status' => $loginPage->getStatusCode(), 'cookies' => array_column($jar->toArray(), 'Name')];
+
+            $csrfToken = null;
+            if (preg_match('/<input[^>]+name=["\']_token["\'][^>]+value=["\']([^"\']+)["\']/', $loginHtml, $m) ||
+                preg_match('/value=["\']([^"\']+)["\'][^>]+name=["\']_token["\']/', $loginHtml, $m)) {
+                $csrfToken = $m[1];
+                $log[]     = ['step' => 'CSRF from HTML', 'token_length' => strlen($csrfToken)];
+            } elseif ($xsrf = $jar->getCookieByName('XSRF-TOKEN')) {
+                $csrfToken = urldecode($xsrf->getValue());
+                $log[]     = ['step' => 'CSRF from cookie', 'token_length' => strlen($csrfToken)];
+            } else {
+                $log[] = ['step' => 'CSRF', 'error' => 'not found'];
+                return response()->json(['log' => $log, 'html_snippet' => substr($loginHtml, 0, 2000)]);
+            }
+
+            $postResp = $client->post($base . '/login', [
+                'form_params' => ['_token' => $csrfToken, 'email' => $request->email, 'password' => $request->password],
+                'headers'     => ['Referer' => $base . '/login', 'Origin' => $base],
+            ]);
+
+            $allCookies = $jar->toArray();
+            $log[]      = ['step' => 'POST /login', 'status' => $postResp->getStatusCode(), 'all_cookies' => $allCookies];
+
+            $sessionCookies = array_values(array_filter($allCookies, fn ($c) => $c['Name'] !== 'XSRF-TOKEN'));
+            $result         = ! empty($sessionCookies)
+                ? implode('; ', array_map(fn ($c) => $c['Name'] . '=' . substr($c['Value'], 0, 20) . '...', $sessionCookies))
+                : null;
+
+            $log[] = ['step' => 'result', 'session_cookie' => $result ?? 'NONE'];
+        } catch (\Throwable $e) {
+            $log[] = ['step' => 'exception', 'message' => $e->getMessage(), 'class' => get_class($e)];
+        }
+
+        return response()->json(['log' => $log, 'captured' => $result !== null]);
+    }
+
     // ── Helpers ───────────────────────────────────────────────────────────────
 
     private function requireConnected($user): void
@@ -298,51 +361,93 @@ class BgrController extends Controller
             $jar    = new \GuzzleHttp\Cookie\CookieJar();
             $client = new \GuzzleHttp\Client([
                 'cookies'         => $jar,
-                'allow_redirects' => ['max' => 5, 'strict' => false, 'referer' => true],
-                'verify'          => true,
-                'timeout'         => 20,
+                'allow_redirects' => ['max' => 10, 'strict' => false, 'referer' => true, 'track_redirects' => true],
+                'verify'          => false,
+                'timeout'         => 30,
                 'headers'         => [
-                    'User-Agent' => 'Mozilla/5.0 (compatible; BCF-Staff-Portal/1.0)',
-                    'Accept'     => 'text/html,application/xhtml+xml,*/*',
+                    'User-Agent'      => 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+                    'Accept'          => 'text/html,application/xhtml+xml,application/xml;q=0.9,image/webp,*/*;q=0.8',
+                    'Accept-Language' => 'en-US,en;q=0.9',
+                    'Accept-Encoding' => 'gzip, deflate, br',
+                    'Connection'      => 'keep-alive',
                 ],
             ]);
 
             // Step 1: Load login page — sets XSRF-TOKEN + initial session cookie
-            $client->get($base . '/login');
+            $loginPageResponse = $client->get($base . '/login');
+            $loginHtml         = (string) $loginPageResponse->getBody();
 
-            $xsrfCookie = $jar->getCookieByName('XSRF-TOKEN');
-            if (! $xsrfCookie) return null;
+            \Log::channel('stderr')->info('BGR session: GET /login status=' . $loginPageResponse->getStatusCode());
+            \Log::channel('stderr')->info('BGR session: cookies after GET=' . json_encode(array_column($jar->toArray(), 'Name')));
 
-            // XSRF-TOKEN cookie value is URL-encoded; decode for the hidden _token field
-            $csrfToken = urldecode($xsrfCookie->getValue());
+            // Primary: extract _token from the HTML form (most reliable)
+            $csrfToken = null;
+            if (preg_match('/<input[^>]+name=["\']_token["\'][^>]+value=["\']([^"\']+)["\']/', $loginHtml, $m) ||
+                preg_match('/value=["\']([^"\']+)["\'][^>]+name=["\']_token["\']/', $loginHtml, $m)) {
+                $csrfToken = $m[1];
+                \Log::channel('stderr')->info('BGR session: CSRF token extracted from HTML, length=' . strlen($csrfToken));
+            }
+
+            // Fallback: decode XSRF-TOKEN cookie
+            if (! $csrfToken) {
+                $xsrfCookie = $jar->getCookieByName('XSRF-TOKEN');
+                if ($xsrfCookie) {
+                    $csrfToken = urldecode($xsrfCookie->getValue());
+                    \Log::channel('stderr')->info('BGR session: CSRF token from cookie, length=' . strlen($csrfToken));
+                }
+            }
+
+            if (! $csrfToken) {
+                \Log::channel('stderr')->warning('BGR session: No CSRF token found');
+                return null;
+            }
 
             // Step 2: Submit credentials — BGR responds with 302 → authenticated session
-            $client->post($base . '/login', [
+            $postResponse = $client->post($base . '/login', [
                 'form_params' => [
                     '_token'   => $csrfToken,
                     'email'    => $email,
                     'password' => $password,
                 ],
-                'headers' => ['Referer' => $base . '/login'],
+                'headers' => [
+                    'Referer' => $base . '/login',
+                    'Origin'  => $base,
+                ],
             ]);
+
+            \Log::channel('stderr')->info('BGR session: POST /login final status=' . $postResponse->getStatusCode());
+            \Log::channel('stderr')->info('BGR session: cookies after POST=' . json_encode(array_column($jar->toArray(), 'Name')));
 
             // Step 3: Extract the authenticated session cookie.
             // Prefer cookies whose name contains 'session'; fall back to any non-XSRF cookie.
-            $sessionCookies = array_filter(
-                $jar->toArray(),
+            $allCookies     = $jar->toArray();
+            $sessionCookies = array_values(array_filter(
+                $allCookies,
                 fn ($c) => $c['Name'] !== 'XSRF-TOKEN' && str_contains(strtolower($c['Name']), 'session')
-            );
+            ));
 
             if (empty($sessionCookies)) {
                 // Fallback: any non-XSRF cookie
-                $sessionCookies = array_filter($jar->toArray(), fn ($c) => $c['Name'] !== 'XSRF-TOKEN');
+                $sessionCookies = array_values(array_filter($allCookies, fn ($c) => $c['Name'] !== 'XSRF-TOKEN'));
             }
 
-            $sessionCookie = array_values($sessionCookies)[0] ?? null;
-            if (! $sessionCookie) return null;
+            if (empty($sessionCookies)) {
+                \Log::channel('stderr')->warning('BGR session: No session cookie found in jar. All cookies: ' . json_encode($allCookies));
+                return null;
+            }
 
-            return $sessionCookie['Name'] . '=' . $sessionCookie['Value'];
-        } catch (\Throwable) {
+            $cookie = $sessionCookies[0];
+            \Log::channel('stderr')->info('BGR session: captured cookie=' . $cookie['Name']);
+
+            // Return ALL non-XSRF cookies as a header string (catches multi-cookie setups)
+            $cookieHeader = implode('; ', array_map(
+                fn ($c) => $c['Name'] . '=' . $c['Value'],
+                $sessionCookies
+            ));
+
+            return $cookieHeader;
+        } catch (\Throwable $e) {
+            \Log::channel('stderr')->error('BGR session capture exception: ' . $e->getMessage());
             return null;
         }
     }

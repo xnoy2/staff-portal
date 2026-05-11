@@ -184,4 +184,64 @@ class ScheduleController extends Controller
 
         return back()->with('success', 'Schedule removed.');
     }
+
+    public function setWeeklyPattern(Request $request): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'manager']), 403);
+
+        $data = $request->validate([
+            'user_id'         => ['required', 'exists:users,id'],
+            'week_start'      => ['required', 'date'],
+            'working_dates'   => ['nullable', 'array', 'max:7'],
+            'working_dates.*' => ['date'],
+            'shift_start'     => ['nullable', 'date_format:H:i'],
+            'shift_end'       => ['nullable', 'date_format:H:i'],
+            'notes'           => ['nullable', 'string', 'max:500'],
+        ]);
+
+        $weekStart    = Carbon::parse($data['week_start'])->startOfWeek(Carbon::MONDAY);
+        $weekEnd      = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);
+        $workingDates = collect($data['working_dates'] ?? []);
+
+        // Remove entries for days not in the new pattern
+        StaffSchedule::where('user_id', $data['user_id'])
+            ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+            ->when($workingDates->isNotEmpty(), fn ($q) => $q->whereNotIn('date', $workingDates->toArray()))
+            ->delete();
+
+        $warnings = [];
+        foreach ($workingDates as $date) {
+            $onLeave = LeaveRequest::forUser($data['user_id'])
+                ->approved()
+                ->where('start_date', '<=', $date)
+                ->where('end_date', '>=', $date)
+                ->first();
+
+            if ($onLeave) {
+                $warnings[] = Carbon::parse($date)->format('D d M') . ': on approved leave.';
+            }
+
+            StaffSchedule::updateOrCreate(
+                ['user_id' => $data['user_id'], 'date' => $date],
+                [
+                    'shift_start' => $data['shift_start'] ?? null,
+                    'shift_end'   => $data['shift_end']   ?? null,
+                    'notes'       => $data['notes']        ?? null,
+                    'created_by'  => $request->user()->id,
+                ]
+            );
+        }
+
+        $count   = $workingDates->count();
+        $message = $count > 0
+            ? "{$count} working day(s) set for the week."
+            : 'All scheduled days cleared for this staff member.';
+
+        if (! empty($warnings)) {
+            $message .= ' Note: ' . implode(' ', $warnings);
+            return back()->with('warning', $message);
+        }
+
+        return back()->with('success', $message);
+    }
 }

@@ -32,6 +32,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/schedule',                              [ScheduleController::class, 'index'])->name('schedule');
     Route::get('/calendar',                              [CalendarController::class,  'index'])->name('calendar');
     Route::post('/schedule/staff',                       [ScheduleController::class, 'store'])->name('schedule.staff.store');
+    Route::post('/schedule/staff/pattern',               [ScheduleController::class, 'setWeeklyPattern'])->name('schedule.staff.pattern');
     Route::delete('/schedule/staff/{staffSchedule}',     [ScheduleController::class, 'destroyEntry'])->name('schedule.staff.destroy');
 
     // Attendance
@@ -130,6 +131,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('client-projects')->name('bgr.')->group(function () {
         Route::get('/',                                                                     [BgrController::class, 'index'])->name('index');
         Route::get('/photo',                                                                [BgrController::class, 'photo'])->name('photo');
+        Route::post('/debug-session',                                                       [BgrController::class, 'debugSession'])->name('debug-session');
         Route::post('/connect',                                                             [BgrController::class, 'connect'])->name('connect');
         Route::delete('/disconnect',                                                        [BgrController::class, 'disconnect'])->name('disconnect');
         Route::get('/{id}',                                                                 [BgrController::class, 'show'])->name('show');
