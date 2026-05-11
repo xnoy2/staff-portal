@@ -159,10 +159,14 @@ class ScheduleController extends Controller
         $data = $request->validate([
             'user_id'     => ['required', 'exists:users,id'],
             'date'        => ['required', 'date'],
-            'shift_start' => ['nullable', 'date_format:H:i'],
-            'shift_end'   => ['nullable', 'date_format:H:i'],
+            'shift_start' => ['nullable', 'date_format:H:i,H:i:s'],
+            'shift_end'   => ['nullable', 'date_format:H:i,H:i:s'],
             'notes'       => ['nullable', 'string', 'max:500'],
         ]);
+
+        // Normalize to H:i (MySQL may return H:i:s)
+        if (isset($data['shift_start'])) $data['shift_start'] = substr($data['shift_start'], 0, 5);
+        if (isset($data['shift_end']))   $data['shift_end']   = substr($data['shift_end'], 0, 5);
 
         $onLeave = LeaveRequest::forUser($data['user_id'])
             ->approved()
@@ -207,10 +211,14 @@ class ScheduleController extends Controller
             'week_start'      => ['required', 'date'],
             'working_dates'   => ['nullable', 'array', 'max:7'],
             'working_dates.*' => ['date'],
-            'shift_start'     => ['nullable', 'date_format:H:i'],
-            'shift_end'       => ['nullable', 'date_format:H:i'],
+            'shift_start'     => ['nullable', 'date_format:H:i,H:i:s'],
+            'shift_end'       => ['nullable', 'date_format:H:i,H:i:s'],
             'notes'           => ['nullable', 'string', 'max:500'],
         ]);
+
+        // Normalize to H:i (MySQL may return H:i:s)
+        if (isset($data['shift_start'])) $data['shift_start'] = substr($data['shift_start'], 0, 5);
+        if (isset($data['shift_end']))   $data['shift_end']   = substr($data['shift_end'], 0, 5);
 
         $weekStart    = Carbon::parse($data['week_start'])->startOfWeek(Carbon::MONDAY);
         $weekEnd      = $weekStart->copy()->endOfWeek(Carbon::SUNDAY);

@@ -551,8 +551,8 @@ function saveSchedule() {
     router.post('/schedule/staff', {
         user_id:     modal.value.staffId,
         date:        modal.value.date,
-        shift_start: modal.value.shiftStart || null,
-        shift_end:   modal.value.shiftEnd   || null,
+        shift_start: modal.value.shiftStart ? modal.value.shiftStart.substring(0, 5) : null,
+        shift_end:   modal.value.shiftEnd   ? modal.value.shiftEnd.substring(0, 5)   : null,
         notes:       modal.value.notes      || null,
     }, {
         preserveScroll: true,
@@ -630,8 +630,8 @@ function savePattern() {
         user_id:       patternModal.value.staffId,
         week_start:    props.weekStart,
         working_dates: patternModal.value.workingDates,
-        shift_start:   patternModal.value.shiftStart || null,
-        shift_end:     patternModal.value.shiftEnd   || null,
+        shift_start:   patternModal.value.shiftStart ? patternModal.value.shiftStart.substring(0, 5) : null,
+        shift_end:     patternModal.value.shiftEnd   ? patternModal.value.shiftEnd.substring(0, 5)   : null,
         notes:         patternModal.value.notes      || null,
     }, {
         preserveScroll: true,
