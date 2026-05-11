@@ -219,8 +219,10 @@ class ScheduleController extends Controller
         // ── 1. Save recurring pattern ────────────────────────────────────────
 
         // Convert selected dates → day-of-week indices (0=Mon … 6=Sun)
+        // Use PHP's ISO day number (N): 1=Mon … 7=Sun, then subtract 1.
+        // diffInDays against weekStart is unreliable across timezones.
         $workingDays = $workingDates->map(
-            fn ($d) => (int) Carbon::parse($d)->diffInDays($weekStart)
+            fn ($d) => (int) Carbon::parse($d)->format('N') - 1
         )->unique()->values();
 
         // Replace all existing pattern entries for this staff member
