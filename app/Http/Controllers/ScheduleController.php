@@ -220,31 +220,36 @@ class ScheduleController extends Controller
 
         // Convert selected dates → day-of-week indices (0=Mon … 6=Sun)
         // Use PHP's ISO day number (N): 1=Mon … 7=Sun, then subtract 1.
-        // diffInDays against weekStart is unreliable across timezones.
         $workingDays = $workingDates->map(
             fn ($d) => (int) Carbon::parse($d)->format('N') - 1
         )->unique()->values();
 
-        // Replace all existing pattern entries for this staff member
-        StaffWeeklyPattern::where('user_id', $data['user_id'])->delete();
-
+        // Upsert working-day patterns, then remove days no longer in the set.
+        // This avoids a delete-then-create gap that caused silent failures on update.
         foreach ($workingDays as $dayOfWeek) {
-            StaffWeeklyPattern::create([
-                'user_id'     => $data['user_id'],
-                'day_of_week' => $dayOfWeek,
-                'shift_start' => $data['shift_start'] ?? null,
-                'shift_end'   => $data['shift_end']   ?? null,
-                'notes'       => $data['notes']        ?? null,
-                'created_by'  => $request->user()->id,
-            ]);
+            StaffWeeklyPattern::updateOrCreate(
+                ['user_id' => $data['user_id'], 'day_of_week' => $dayOfWeek],
+                [
+                    'shift_start' => $data['shift_start'] ?? null,
+                    'shift_end'   => $data['shift_end']   ?? null,
+                    'notes'       => $data['notes']        ?? null,
+                    'created_by'  => $request->user()->id,
+                ]
+            );
         }
+
+        // Delete pattern entries for days NOT in the new working set
+        StaffWeeklyPattern::where('user_id', $data['user_id'])
+            ->when($workingDays->isNotEmpty(), fn ($q) => $q->whereNotIn('day_of_week', $workingDays->toArray()))
+            ->when($workingDays->isEmpty(),    fn ($q) => $q) // deletes all when clearing
+            ->delete();
 
         // ── 2. Apply to the current week's explicit entries ──────────────────
 
-        // Remove explicit entries for days not in the new working set
+        // Always wipe the week's explicit entries first, then re-create working ones.
+        // The old `when(isNotEmpty, whereNotIn)` left stale entries when clearing all.
         StaffSchedule::where('user_id', $data['user_id'])
             ->whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
-            ->when($workingDates->isNotEmpty(), fn ($q) => $q->whereNotIn('date', $workingDates->toArray()))
             ->delete();
 
         $warnings = [];
@@ -259,15 +264,14 @@ class ScheduleController extends Controller
                 $warnings[] = Carbon::parse($date)->format('D d M') . ': on approved leave.';
             }
 
-            StaffSchedule::updateOrCreate(
-                ['user_id' => $data['user_id'], 'date' => $date],
-                [
-                    'shift_start' => $data['shift_start'] ?? null,
-                    'shift_end'   => $data['shift_end']   ?? null,
-                    'notes'       => $data['notes']        ?? null,
-                    'created_by'  => $request->user()->id,
-                ]
-            );
+            StaffSchedule::create([
+                'user_id'     => $data['user_id'],
+                'date'        => $date,
+                'shift_start' => $data['shift_start'] ?? null,
+                'shift_end'   => $data['shift_end']   ?? null,
+                'notes'       => $data['notes']        ?? null,
+                'created_by'  => $request->user()->id,
+            ]);
         }
 
         $count   = $workingDates->count();
