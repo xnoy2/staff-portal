@@ -189,7 +189,7 @@
                         style="grid-template-columns: 200px repeat(7, 1fr)"
                     >
                         <!-- Staff identity -->
-                        <div class="px-3 py-3 flex items-center gap-2 border-r border-gray-100 group/row">
+                        <div class="px-3 py-3 flex items-center gap-2 border-r border-gray-100">
                             <img :src="member.avatar_url" :alt="member.name" class="w-8 h-8 rounded-full object-cover flex-shrink-0 border border-gray-100" />
                             <div class="min-w-0 flex-1">
                                 <p class="text-xs font-semibold text-gray-800 truncate leading-snug">{{ member.name }}</p>
@@ -202,7 +202,8 @@
                             <!-- Pattern button (managers only) -->
                             <button
                                 v-if="canEdit"
-                                @click="openPatternModal(member)"
+                                type="button"
+                                @click.stop="openPatternModal(member)"
                                 title="Set weekly pattern"
                                 class="flex-shrink-0 p-1 rounded-md text-gray-400 hover:text-[#EF233C] hover:bg-red-50 transition-colors"
                             >
