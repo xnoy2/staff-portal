@@ -15,6 +15,7 @@ export function usePermission() {
 
     const isAdmin    = computed(() => hasRole('admin'));
     const isManager  = computed(() => hasRole('admin', 'manager'));
+    const isHR       = computed(() => hasRole('hr'));
     const isSiteHead = computed(() => hasRole('admin', 'manager', 'site_head'));
     const isStaff    = computed(() => hasRole('staff'));
 
@@ -25,6 +26,7 @@ export function usePermission() {
         hasPermission,
         isAdmin,
         isManager,
+        isHR,
         isSiteHead,
         isStaff,
     };

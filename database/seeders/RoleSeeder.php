@@ -47,6 +47,13 @@ class RoleSeeder extends Seeder
                 'view_own_attendance', 'create_time_entry',
                 'view_jobs', 'view_own_qr',
             ],
+            'hr' => [
+                'view_own_attendance', 'view_all_attendance',
+                'create_time_entry', 'approve_time_entry', 'bulk_time_entry',
+                'view_staff', 'manage_staff',
+                'view_reports',
+                'view_own_qr',
+            ],
             'site_head' => [
                 'view_own_attendance', 'view_all_attendance',
                 'create_time_entry', 'bulk_time_entry',

@@ -17,7 +17,7 @@ class AttendanceController extends Controller
     public function index(Request $request): Response
     {
         $user         = $request->user();
-        $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'site_head']);
+        $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'hr', 'site_head']);
 
         $query = TimeEntry::with(['user:id,name,avatar', 'enteredBy:id,name', 'approvedBy:id,name'])
             ->withSum('breaks', 'duration_minutes')
@@ -53,7 +53,7 @@ class AttendanceController extends Controller
             'pendingCount' => $pendingCount,
             'staffList'    => $staffList,
             'isPrivileged' => $isPrivileged,
-            'isManager'    => $user->hasAnyRole(['admin', 'manager']),
+            'isManager'    => $user->hasAnyRole(['admin', 'manager', 'hr']),
             'filters'      => $request->only(['user_id', 'status', 'from', 'to']),
             'activeEntry'  => $activeEntry ? $this->entryPayload($activeEntry) : null,
         ]);
@@ -67,7 +67,7 @@ class AttendanceController extends Controller
             return back()->with('error', 'You already have an active clock-in entry.');
         }
 
-        $autoApprove = $user->hasAnyRole(['admin', 'manager']);
+        $autoApprove = $user->hasAnyRole(['admin', 'manager', 'hr']);
 
         $entry = TimeEntry::create([
             'user_id'     => $user->id,
@@ -202,7 +202,7 @@ class AttendanceController extends Controller
         $this->authorizeManagerAction($request);
 
         $user         = $request->user();
-        $isPrivileged = $user->hasAnyRole(['admin', 'manager']);
+        $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'hr']);
 
         $query = TimeEntry::with(['user:id,name,employee_id'])
             ->withSum('breaks', 'duration_minutes')
@@ -354,7 +354,7 @@ class AttendanceController extends Controller
     private function authorizeManagerAction(Request $request): void
     {
         abort_unless(
-            $request->user()->hasAnyRole(['admin', 'manager']),
+            $request->user()->hasAnyRole(['admin', 'manager', 'hr']),
             403,
             'Only managers can approve or reject time entries.'
         );

@@ -20,7 +20,7 @@ class PayslipController extends Controller
     {
         $viewer = auth()->user();
         abort_unless(
-            $viewer->hasAnyRole(['admin', 'manager']) || $viewer->id === $staff->id,
+            $viewer->hasAnyRole(['admin', 'manager', 'hr']) || $viewer->id === $staff->id,
             403
         );
 

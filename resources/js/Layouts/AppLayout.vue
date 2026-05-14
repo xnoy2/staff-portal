@@ -55,6 +55,12 @@
                     <NavItem href="/qr-scanner" icon="CameraIcon" label="QR Scanner" :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
 
+                <NavGroup v-if="isHR" label="Human Resources" :collapsed="!sidebarOpen && !isMobile">
+                    <NavItem href="/staff"                          icon="UsersIcon"         label="Staff"       :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/attendance"                     icon="ClockIcon"          label="Attendance"  :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('payroll.index')"         icon="BanknotesIcon"      label="Payroll"     :collapsed="!sidebarOpen && !isMobile" />
+                </NavGroup>
+
                 <NavGroup v-if="isManager" label="Management" :collapsed="!sidebarOpen && !isMobile">
                     <NavItem href="/projects" icon="FolderIcon"  label="Projects" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/staff"    icon="UsersIcon"   label="Staff"    :collapsed="!sidebarOpen && !isMobile" />
@@ -205,7 +211,7 @@ defineProps({
 });
 
 const page = usePage();
-const { isAdmin, isManager, isSiteHead } = usePermission();
+const { isAdmin, isManager, isHR, isSiteHead } = usePermission();
 
 const isMobile    = ref(window.innerWidth < 768);
 const sidebarOpen = ref(window.innerWidth >= 768);

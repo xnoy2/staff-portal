@@ -17,7 +17,7 @@ class PayrollRunController extends Controller
 {
     public function index(Request $request): Response
     {
-        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager']), 403);
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
 
         $cutoffDay = (int) Setting::get('payroll_cutoff_day', 25);
         $current   = PayrollRun::currentPeriod($cutoffDay);
@@ -66,7 +66,7 @@ class PayrollRunController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
-        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager']), 403);
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
 
         $request->validate([
             'from' => ['required', 'date'],
@@ -108,7 +108,7 @@ class PayrollRunController extends Controller
 
     public function approve(PayrollRun $run): RedirectResponse
     {
-        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager']), 403);
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
 
         $run->update([
             'status'      => 'approved',
@@ -127,7 +127,7 @@ class PayrollRunController extends Controller
 
     public function approveAll(Request $request): RedirectResponse
     {
-        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager']), 403);
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
 
         $request->validate([
             'from' => ['required', 'date'],
@@ -161,7 +161,7 @@ class PayrollRunController extends Controller
 
     public function updateCutoff(Request $request): RedirectResponse
     {
-        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager']), 403);
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
 
         $request->validate([
             'cutoff_day' => ['required', 'integer', 'min:1', 'max:28'],
@@ -179,7 +179,7 @@ class PayrollRunController extends Controller
 
     public function destroy(PayrollRun $run): RedirectResponse
     {
-        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager']), 403);
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
         abort_if($run->status === 'approved', 403, 'Cannot delete an approved payslip.');
 
         $run->delete();
