@@ -9,7 +9,7 @@ class UpdateUserRequest extends FormRequest
 {
     public function authorize(): bool
     {
-        return $this->user()->hasAnyRole(['admin', 'manager']);
+        return $this->user()->hasAnyRole(['admin', 'manager', 'hr']);
     }
 
     public function rules(): array
@@ -19,7 +19,7 @@ class UpdateUserRequest extends FormRequest
         return [
             'name'                    => ['required', 'string', 'max:255'],
             'email'                   => ['required', 'string', 'lowercase', 'email', 'max:255', Rule::unique('users')->ignore($userId)],
-            'role'                    => ['required', 'string', 'in:admin,manager,site_head,staff'],
+            'role'                    => ['required', 'string', 'in:admin,manager,hr,site_head,staff'],
             'is_active'               => ['boolean'],
             'must_change_password'    => ['boolean'],
             'hire_date'               => ['nullable', 'date'],
