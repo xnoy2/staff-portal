@@ -24,6 +24,9 @@ php artisan migrate --force
 echo "==> Seeding default settings..."
 php artisan db:seed --class=SettingSeeder --force
 
+echo "==> Seeding roles and permissions..."
+php artisan db:seed --class=RoleSeeder --force
+
 echo "==> Linking storage..."
 php artisan storage:link 2>/dev/null || true
 
