@@ -2,20 +2,42 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\StaffMedicalDocument;
 use App\Models\StaffOnboardingForm;
 use App\Models\User;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class OnboardingController extends Controller
 {
+    private function canAccess(User $staff): bool
+    {
+        return request()->user()->hasAnyRole(['admin', 'manager', 'hr'])
+            || request()->user()->id === $staff->id;
+    }
+
     public function show(User $staff): Response
     {
         $this->authorize('view', $staff);
 
-        $form = StaffOnboardingForm::where('user_id', $staff->id)->first();
+        $form      = StaffOnboardingForm::where('user_id', $staff->id)->first();
+        $documents = StaffMedicalDocument::where('user_id', $staff->id)
+            ->with('uploadedBy:id,name')
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(fn ($d) => [
+                'id'            => $d->id,
+                'original_name' => $d->original_name,
+                'mime_type'     => $d->mime_type,
+                'size'          => $d->size,
+                'uploaded_by'   => $d->uploadedBy?->name,
+                'uploaded_at'   => $d->created_at->toDateString(),
+            ]);
 
         return Inertia::render('Staff/Onboarding', [
             'staffMember' => [
@@ -28,17 +50,15 @@ class OnboardingController extends Controller
                 'emergency_contact_name'  => $staff->emergency_contact_name,
                 'emergency_contact_phone' => $staff->emergency_contact_phone,
             ],
-            'form'    => $form ? $this->formPayload($form) : null,
-            'canEdit' => request()->user()->hasAnyRole(['admin', 'manager', 'hr']) || request()->user()->id === $staff->id,
+            'form'      => $form ? $this->formPayload($form) : null,
+            'documents' => $documents,
+            'canEdit'   => $this->canAccess($staff),
         ]);
     }
 
     public function store(Request $request, User $staff): RedirectResponse
     {
-        abort_unless(
-            $request->user()->hasAnyRole(['admin', 'manager', 'hr']) || $request->user()->id === $staff->id,
-            403
-        );
+        abort_unless($this->canAccess($staff), 403);
 
         $data = $request->validate([
             'address'                 => ['nullable', 'string', 'max:500'],
@@ -68,17 +88,64 @@ class OnboardingController extends Controller
             'declaration_signed_date' => ['nullable', 'date'],
         ]);
 
-        $exists = StaffOnboardingForm::where('user_id', $staff->id)->exists();
+        $existing = StaffOnboardingForm::where('user_id', $staff->id)->first();
 
         StaffOnboardingForm::updateOrCreate(
             ['user_id' => $staff->id],
             array_merge($data, [
-                'created_by' => $exists ? StaffOnboardingForm::where('user_id', $staff->id)->value('created_by') : $request->user()->id,
+                'created_by' => $existing?->created_by ?? $request->user()->id,
                 'updated_by' => $request->user()->id,
             ])
         );
 
         return back()->with('success', 'Onboarding form saved.');
+    }
+
+    public function uploadDocument(Request $request, User $staff): RedirectResponse
+    {
+        abort_unless($this->canAccess($staff), 403);
+
+        $request->validate([
+            'document' => ['required', 'file', 'max:10240', // 10 MB
+                'mimes:pdf,jpg,jpeg,png,webp,doc,docx'],
+        ]);
+
+        $file       = $request->file('document');
+        $storedName = Str::uuid() . '.' . $file->getClientOriginalExtension();
+        $path       = $file->storeAs("medical-documents/{$staff->id}", $storedName, 'private');
+
+        StaffMedicalDocument::create([
+            'user_id'       => $staff->id,
+            'original_name' => $file->getClientOriginalName(),
+            'stored_name'   => $storedName,
+            'mime_type'     => $file->getMimeType(),
+            'size'          => $file->getSize(),
+            'path'          => $path,
+            'uploaded_by'   => $request->user()->id,
+        ]);
+
+        return back()->with('success', 'Document uploaded.');
+    }
+
+    public function downloadDocument(User $staff, StaffMedicalDocument $document): StreamedResponse
+    {
+        abort_unless($this->canAccess($staff), 403);
+        abort_if($document->user_id !== $staff->id, 404);
+
+        abort_unless(Storage::disk('private')->exists($document->path), 404);
+
+        return Storage::disk('private')->download($document->path, $document->original_name);
+    }
+
+    public function deleteDocument(Request $request, User $staff, StaffMedicalDocument $document): RedirectResponse
+    {
+        abort_unless($request->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
+        abort_if($document->user_id !== $staff->id, 404);
+
+        Storage::disk('private')->delete($document->path);
+        $document->delete();
+
+        return back()->with('success', 'Document deleted.');
     }
 
     private function formPayload(StaffOnboardingForm $f): array

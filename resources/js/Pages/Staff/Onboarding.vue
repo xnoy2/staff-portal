@@ -246,6 +246,68 @@
                 </div>
             </div>
 
+            <!-- ── Medical Documents ─────────────────────────────────────── -->
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <div class="bg-[#2B2D42] px-5 py-3 flex items-center justify-between">
+                    <h2 class="text-sm font-semibold text-white uppercase tracking-wider">Medical Documents</h2>
+                    <span class="text-xs text-white/60">PDF, JPG, PNG, DOC · max 10 MB each</span>
+                </div>
+                <div class="p-5 space-y-4">
+
+                    <!-- Upload area -->
+                    <div v-if="canEdit">
+                        <label
+                            class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-200 rounded-xl py-8 px-4 cursor-pointer hover:border-[#EF233C]/40 hover:bg-red-50/30 transition-colors"
+                            :class="uploading ? 'opacity-60 pointer-events-none' : ''"
+                        >
+                            <ArrowUpTrayIcon class="w-7 h-7 text-gray-400" />
+                            <span class="text-sm font-medium text-gray-600">
+                                {{ uploading ? 'Uploading…' : 'Click to upload a medical document' }}
+                            </span>
+                            <span class="text-xs text-gray-400">or drag and drop</span>
+                            <input type="file" class="hidden"
+                                accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx"
+                                :disabled="uploading"
+                                @change="uploadDocument" />
+                        </label>
+                    </div>
+
+                    <!-- Document list -->
+                    <div v-if="documents.length" class="space-y-2">
+                        <div
+                            v-for="doc in documents"
+                            :key="doc.id"
+                            class="flex items-center gap-3 bg-gray-50 border border-gray-100 rounded-lg px-4 py-3"
+                        >
+                            <component :is="fileIcon(doc.mime_type)" class="w-5 h-5 text-gray-400 flex-shrink-0" />
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-800 truncate">{{ doc.original_name }}</p>
+                                <p class="text-xs text-gray-400">
+                                    {{ formatSize(doc.size) }} · Uploaded {{ doc.uploaded_at }}
+                                    <span v-if="doc.uploaded_by"> by {{ doc.uploaded_by }}</span>
+                                </p>
+                            </div>
+                            <a
+                                :href="route('staff.onboarding.documents.download', [staffMember.id, doc.id])"
+                                target="_blank"
+                                class="text-xs text-blue-600 hover:underline flex-shrink-0"
+                            >Download</a>
+                            <button
+                                v-if="canEdit"
+                                type="button"
+                                @click="deleteDocument(doc)"
+                                class="text-gray-400 hover:text-red-500 transition-colors flex-shrink-0"
+                                title="Delete"
+                            >
+                                <TrashIcon class="w-4 h-4" />
+                            </button>
+                        </div>
+                    </div>
+
+                    <p v-else class="text-sm text-gray-400 text-center py-2">No documents uploaded yet.</p>
+                </div>
+            </div>
+
             <!-- Bottom save -->
             <div v-if="canEdit" class="flex justify-end">
                 <button type="button" @click="save" :disabled="saving"
@@ -263,11 +325,16 @@
 import { reactive, ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ArrowLeftIcon, CheckIcon, PrinterIcon } from '@heroicons/vue/24/outline';
+import {
+    ArrowLeftIcon, CheckIcon, PrinterIcon,
+    ArrowUpTrayIcon, TrashIcon,
+    DocumentTextIcon, PhotoIcon, DocumentIcon,
+} from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     staffMember: { type: Object, required: true },
     form:        { type: Object, default: null },
+    documents:   { type: Array,  default: () => [] },
     canEdit:     { type: Boolean, default: false },
 });
 
@@ -305,6 +372,48 @@ function save() {
         preserveScroll: true,
         onFinish: () => { saving.value = false; },
     });
+}
+
+// ── Document upload / delete ───────────────────────────────────────────────
+
+const uploading = ref(false);
+
+function uploadDocument(event) {
+    const file = event.target.files?.[0];
+    if (!file) return;
+    uploading.value = true;
+    router.post(
+        route('staff.onboarding.documents.upload', props.staffMember.id),
+        { document: file },
+        {
+            forceFormData: true,
+            preserveScroll: true,
+            onFinish: () => {
+                uploading.value = false;
+                event.target.value = ''; // reset input
+            },
+        }
+    );
+}
+
+function deleteDocument(doc) {
+    if (!confirm(`Delete "${doc.original_name}"?`)) return;
+    router.delete(
+        route('staff.onboarding.documents.delete', [props.staffMember.id, doc.id]),
+        { preserveScroll: true }
+    );
+}
+
+function fileIcon(mime) {
+    if (mime?.startsWith('image/')) return PhotoIcon;
+    if (mime === 'application/pdf')  return DocumentTextIcon;
+    return DocumentIcon;
+}
+
+function formatSize(bytes) {
+    if (bytes < 1024)       return bytes + ' B';
+    if (bytes < 1048576)    return (bytes / 1024).toFixed(1) + ' KB';
+    return (bytes / 1048576).toFixed(1) + ' MB';
 }
 
 function formatDate(d) {
