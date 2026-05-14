@@ -29,13 +29,16 @@ class OnboardingController extends Controller
                 'emergency_contact_phone' => $staff->emergency_contact_phone,
             ],
             'form'    => $form ? $this->formPayload($form) : null,
-            'canEdit' => request()->user()->hasAnyRole(['admin', 'manager', 'hr']),
+            'canEdit' => request()->user()->hasAnyRole(['admin', 'manager', 'hr']) || request()->user()->id === $staff->id,
         ]);
     }
 
     public function store(Request $request, User $staff): RedirectResponse
     {
-        abort_unless($request->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
+        abort_unless(
+            $request->user()->hasAnyRole(['admin', 'manager', 'hr']) || $request->user()->id === $staff->id,
+            403
+        );
 
         $data = $request->validate([
             'address'                 => ['nullable', 'string', 'max:500'],

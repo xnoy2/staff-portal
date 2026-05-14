@@ -18,7 +18,10 @@ class ProfileController extends Controller
     {
         $user = $request->user()->load('projects');
 
+        $hasOnboarding = \App\Models\StaffOnboardingForm::where('user_id', $user->id)->exists();
+
         return Inertia::render('Profile/Edit', [
+            'hasOnboarding' => $hasOnboarding,
             'profileUser' => [
                 'id'                      => $user->id,
                 'employee_id'             => $user->employee_id,

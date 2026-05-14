@@ -43,12 +43,24 @@
                         </p>
                     </div>
 
-                    <!-- QR Code -->
-                    <div class="flex flex-col items-center gap-1 flex-shrink-0">
+                    <!-- QR Code + Onboarding -->
+                    <div class="flex flex-col items-center gap-2 flex-shrink-0">
                         <div class="bg-white border-2 border-gray-200 rounded-xl p-2">
                             <img :src="qrCodeUrl" :alt="`QR for ${profileUser.name}`" class="w-20 h-20" />
                         </div>
                         <p class="text-xs text-gray-400">My QR Code</p>
+                        <Link
+                            :href="route('staff.onboarding', profileUser.id)"
+                            :class="[
+                                'inline-flex items-center gap-1.5 text-xs px-3 py-1.5 rounded-lg transition-colors font-medium',
+                                hasOnboarding
+                                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                                    : 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100',
+                            ]"
+                        >
+                            <ClipboardDocumentCheckIcon class="w-3.5 h-3.5 flex-shrink-0" />
+                            {{ hasOnboarding ? 'Onboarding Form' : 'Onboarding Form ⚠' }}
+                        </Link>
                     </div>
                 </div>
             </div>
@@ -215,14 +227,16 @@
 import { ref, computed } from 'vue';
 import { Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
+import { ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline';
 import {
     CameraIcon, UserIcon, LockClosedIcon,
     XMarkIcon, FolderIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    profileUser: { type: Object, required: true },
-    projects:    { type: Array,  default: () => [] },
+    profileUser:    { type: Object,  required: true },
+    projects:       { type: Array,   default: () => [] },
+    hasOnboarding:  { type: Boolean, default: false },
 });
 
 const qrCodeUrl = computed(() => {
