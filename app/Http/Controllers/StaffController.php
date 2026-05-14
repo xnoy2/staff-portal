@@ -112,6 +112,9 @@ class StaffController extends Controller
         $this->authorize('view', $staff);
         $staff->load(['roles', 'projects']);
 
+        $hasOnboarding = \App\Models\StaffOnboardingForm::where('user_id', $staff->id)->exists();
+        $canEdit       = request()->user()->hasAnyRole(['admin', 'manager', 'hr']);
+
         $recentEntries = TimeEntry::forUser($staff->id)
             ->with('approvedBy:id,name')
             ->orderBy('clock_in', 'desc')
@@ -149,6 +152,8 @@ class StaffController extends Controller
                 'annual_leave_days'      => $staff->annual_leave_days,
                 'contracted_hours'       => $staff->contracted_hours ?? 40,
             ],
+            'canEdit'          => $canEdit,
+            'hasOnboarding'    => $hasOnboarding,
             'recentEntries'    => $recentEntries,
             'totalHours'       => round($totalHours, 2),
             'recentPayrollRuns'=> PayrollRun::where('user_id', $staff->id)

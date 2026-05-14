@@ -20,6 +20,7 @@ use App\Http\Controllers\StaffController;
 use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QrScanController;
@@ -105,6 +106,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::resource('staff', StaffController::class);
     Route::post('/staff/{staff}/toggle-active',       [StaffController::class, 'toggleActive'])->name('staff.toggle-active');
     Route::post('/staff/{staff}/force-password-reset',[StaffController::class, 'forcePasswordReset'])->name('staff.force-password-reset');
+    Route::get('/staff/{staff}/onboarding',           [OnboardingController::class, 'show'])->name('staff.onboarding');
+    Route::post('/staff/{staff}/onboarding',          [OnboardingController::class, 'store'])->name('staff.onboarding.store');
     Route::get('/my-payslip',                          [PayslipController::class, 'mine'])->name('my-payslip');
     Route::get('/staff/{staff}/payslip',              [PayslipController::class, 'show'])->name('staff.payslip');
 

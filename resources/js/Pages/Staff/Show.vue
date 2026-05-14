@@ -36,6 +36,19 @@
                             <DocumentTextIcon class="w-4 h-4" /> Payslip
                         </Link>
                         <Link
+                            v-if="canEdit"
+                            :href="route('staff.onboarding', staffMember.id)"
+                            :class="[
+                                'inline-flex items-center gap-1.5 text-sm px-3 py-2 rounded-lg transition-colors',
+                                hasOnboarding
+                                    ? 'bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100'
+                                    : 'bg-amber-50 border border-amber-200 text-amber-700 hover:bg-amber-100',
+                            ]"
+                        >
+                            <ClipboardDocumentCheckIcon class="w-4 h-4" />
+                            {{ hasOnboarding ? 'Onboarding Form' : 'Onboarding Form ⚠' }}
+                        </Link>
+                        <Link
                             :href="route('staff.edit', staffMember.id)"
                             class="inline-flex items-center gap-1.5 bg-[#EF233C] text-white text-sm px-3 py-2 rounded-lg hover:bg-[#D90429] transition-colors"
                         >
@@ -242,7 +255,7 @@
 <script setup>
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { PencilIcon, NoSymbolIcon, CheckCircleIcon, FolderIcon, DocumentTextIcon } from '@heroicons/vue/24/outline';
+import { PencilIcon, NoSymbolIcon, CheckCircleIcon, FolderIcon, DocumentTextIcon, ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     staffMember:        { type: Object, required: true },
@@ -250,6 +263,8 @@ const props = defineProps({
     totalHours:         { type: Number, default: 0 },
     projects:           { type: Array,  default: () => [] },
     recentPayrollRuns:  { type: Array,  default: () => [] },
+    canEdit:            { type: Boolean, default: false },
+    hasOnboarding:      { type: Boolean, default: false },
 });
 
 function toggleActive() {
