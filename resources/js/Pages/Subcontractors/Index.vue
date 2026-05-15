@@ -84,8 +84,6 @@
                                 {{ s.is_active ? 'Active' : 'Inactive' }}
                             </span>
                         </div>
-
-                        <!-- Trade badge -->
                         <span class="mt-2.5 inline-flex items-center gap-1 text-xs bg-blue-50 text-blue-700 border border-blue-100 px-2 py-0.5 rounded-full font-medium">
                             {{ s.trade }}
                         </span>
@@ -93,8 +91,6 @@
 
                     <!-- Card body -->
                     <div class="px-4 py-3 flex flex-col gap-2.5 flex-1">
-
-                        <!-- Contact -->
                         <div v-if="s.email || s.phone" class="flex flex-col gap-1">
                             <a v-if="s.email" :href="`mailto:${s.email}`" class="text-xs text-blue-500 hover:underline truncate flex items-center gap-1.5">
                                 <EnvelopeIcon class="w-3.5 h-3.5 flex-shrink-0 text-gray-400" />
@@ -105,8 +101,6 @@
                                 {{ s.phone }}
                             </a>
                         </div>
-
-                        <!-- Verifications -->
                         <div class="flex gap-2">
                             <span
                                 class="inline-flex items-center gap-1 text-xs px-2 py-0.5 rounded-full border font-medium"
@@ -129,8 +123,6 @@
                                 Insurance
                             </span>
                         </div>
-
-                        <!-- Notes -->
                         <p v-if="s.notes" class="text-xs text-gray-500 line-clamp-2 leading-relaxed">{{ s.notes }}</p>
                     </div>
 
@@ -144,18 +136,10 @@
                             {{ s.photos.length }} photo{{ s.photos.length !== 1 ? 's' : '' }}
                         </button>
                         <div v-if="canEdit" class="flex items-center gap-0.5">
-                            <button
-                                @click="openEdit(s)"
-                                class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors"
-                                title="Edit"
-                            >
+                            <button @click="openEdit(s)" class="p-1.5 text-gray-400 hover:text-blue-600 hover:bg-blue-50 rounded-lg transition-colors" title="Edit">
                                 <PencilIcon class="w-3.5 h-3.5" />
                             </button>
-                            <button
-                                @click="confirmDelete(s)"
-                                class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                                title="Delete"
-                            >
+                            <button @click="confirmDelete(s)" class="p-1.5 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors" title="Delete">
                                 <TrashIcon class="w-3.5 h-3.5" />
                             </button>
                         </div>
@@ -171,8 +155,9 @@
             </div>
         </div>
 
-        <!-- ── Add / Edit Modal ────────────────────────────────────────── -->
         <Teleport to="body">
+
+            <!-- ── Add / Edit Modal ─────────────────────────────────── -->
             <Transition name="modal">
                 <div v-if="modal.open" class="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closeModal" />
@@ -184,12 +169,10 @@
                             </button>
                         </div>
                         <form @submit.prevent="submitModal" class="p-5 space-y-4">
-                            <!-- Name -->
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1.5">Name <span class="text-red-500">*</span></label>
                                 <input v-model="form.name" type="text" required placeholder="Full name" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
                             </div>
-                            <!-- Trade -->
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1.5">Trade <span class="text-red-500">*</span></label>
                                 <select v-model="form.trade" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C] text-gray-800">
@@ -197,12 +180,10 @@
                                     <option v-for="t in trades" :key="t" :value="t">{{ t }}</option>
                                 </select>
                             </div>
-                            <!-- Company -->
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1.5">Company <span class="text-gray-400 font-normal">(optional)</span></label>
                                 <input v-model="form.company" type="text" placeholder="Company name" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
                             </div>
-                            <!-- Email / Phone -->
                             <div class="grid grid-cols-2 gap-3">
                                 <div>
                                     <label class="block text-xs font-medium text-gray-700 mb-1.5">Email</label>
@@ -213,7 +194,6 @@
                                     <input v-model="form.phone" type="tel" placeholder="+44…" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
                                 </div>
                             </div>
-                            <!-- Verifications -->
                             <div class="rounded-lg bg-gray-50 border border-gray-200 p-3 flex gap-6">
                                 <label class="flex items-center gap-2 cursor-pointer">
                                     <input v-model="form.qualification_verified" type="checkbox" class="w-4 h-4 rounded accent-green-600" />
@@ -224,17 +204,14 @@
                                     <span class="text-sm text-gray-700">Insurance verified</span>
                                 </label>
                             </div>
-                            <!-- Notes -->
                             <div>
                                 <label class="block text-xs font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
                                 <textarea v-model="form.notes" rows="3" placeholder="Any relevant notes…" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C] resize-none" />
                             </div>
-                            <!-- Active -->
                             <label class="flex items-center gap-2 cursor-pointer">
                                 <input v-model="form.is_active" type="checkbox" class="w-4 h-4 rounded accent-green-600" />
                                 <span class="text-sm text-gray-700">Mark as active</span>
                             </label>
-                            <!-- Footer -->
                             <div class="flex items-center justify-end gap-3 pt-1 border-t border-gray-100">
                                 <button type="button" @click="closeModal" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 transition-colors">Cancel</button>
                                 <button type="submit" :disabled="processing" class="bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-60 text-white text-sm font-medium px-5 py-1.5 rounded-lg transition-colors flex items-center gap-2">
@@ -247,12 +224,11 @@
                 </div>
             </Transition>
 
-            <!-- ── Photos Modal ────────────────────────────────────────── -->
+            <!-- ── Photos Modal ─────────────────────────────────────── -->
             <Transition name="modal">
                 <div v-if="photosModal.open" class="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="closePhotos" />
                     <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col overflow-hidden">
-                        <!-- Header -->
                         <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100 flex-shrink-0">
                             <div>
                                 <h2 class="text-sm font-semibold text-gray-800">{{ photosModal.sub?.name }}</h2>
@@ -264,9 +240,11 @@
                         </div>
 
                         <div class="overflow-y-auto flex-1 p-5 space-y-5">
-                            <!-- Upload -->
+                            <!-- Upload section -->
                             <div v-if="canEdit" class="bg-gray-50 border border-gray-200 rounded-xl p-4 space-y-3">
-                                <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider">Upload photo</p>
+                                <p class="text-xs font-semibold text-gray-700 uppercase tracking-wider">Add photo</p>
+
+                                <!-- Type + Caption -->
                                 <div class="flex gap-3 flex-wrap">
                                     <div class="flex-1 min-w-[130px]">
                                         <label class="block text-xs text-gray-500 mb-1">Type</label>
@@ -280,16 +258,34 @@
                                         <input v-model="photoUpload.caption" type="text" placeholder="Short description…" class="w-full px-3 py-1.5 text-sm border border-gray-300 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
                                     </div>
                                 </div>
-                                <label class="flex items-center justify-center gap-2 border-2 border-dashed border-gray-300 hover:border-[#EF233C] rounded-xl py-4 cursor-pointer transition-colors group">
-                                    <ArrowUpTrayIcon class="w-5 h-5 text-gray-400 group-hover:text-[#EF233C] transition-colors" />
-                                    <span class="text-sm text-gray-500 group-hover:text-gray-700 transition-colors">
-                                        {{ photoUploading ? 'Uploading…' : 'Choose photo (max 5 MB)' }}
-                                    </span>
-                                    <input type="file" accept="image/*" class="hidden" :disabled="photoUploading" @change="uploadPhoto" />
-                                </label>
+
+                                <!-- Upload / Camera buttons -->
+                                <div class="grid grid-cols-2 gap-2">
+                                    <!-- File upload -->
+                                    <label class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 hover:border-[#EF233C] rounded-xl py-4 cursor-pointer transition-colors group" :class="{ 'opacity-50 pointer-events-none': photoUploading }">
+                                        <ArrowUpTrayIcon class="w-6 h-6 text-gray-400 group-hover:text-[#EF233C] transition-colors" />
+                                        <span class="text-xs font-medium text-gray-500 group-hover:text-gray-700 transition-colors text-center">
+                                            {{ photoUploading ? 'Uploading…' : 'Upload file' }}
+                                        </span>
+                                        <span class="text-[10px] text-gray-400">JPG, PNG · max 5 MB</span>
+                                        <input type="file" accept="image/*" class="hidden" :disabled="photoUploading" @change="handleFileUpload" />
+                                    </label>
+
+                                    <!-- Camera -->
+                                    <button
+                                        type="button"
+                                        @click="openCamera"
+                                        :disabled="photoUploading"
+                                        class="flex flex-col items-center justify-center gap-2 border-2 border-dashed border-gray-300 hover:border-blue-400 rounded-xl py-4 cursor-pointer transition-colors group disabled:opacity-50 disabled:pointer-events-none"
+                                    >
+                                        <CameraIcon class="w-6 h-6 text-gray-400 group-hover:text-blue-500 transition-colors" />
+                                        <span class="text-xs font-medium text-gray-500 group-hover:text-gray-700 transition-colors text-center">Open Camera</span>
+                                        <span class="text-[10px] text-gray-400">Take a photo</span>
+                                    </button>
+                                </div>
                             </div>
 
-                            <!-- Before -->
+                            <!-- Before photos -->
                             <div v-if="beforePhotos.length">
                                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">Before</p>
                                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -304,7 +300,7 @@
                                 </div>
                             </div>
 
-                            <!-- After -->
+                            <!-- After photos -->
                             <div v-if="afterPhotos.length">
                                 <p class="text-xs font-semibold text-gray-500 uppercase tracking-wider mb-2">After</p>
                                 <div class="grid grid-cols-2 sm:grid-cols-3 gap-3">
@@ -327,7 +323,90 @@
                 </div>
             </Transition>
 
-            <!-- ── Delete Confirm ─────────────────────────────────────── -->
+            <!-- ── Camera Modal ─────────────────────────────────────── -->
+            <Transition name="modal">
+                <div v-if="cameraModal.open" class="fixed inset-0 z-[60] flex items-center justify-center p-4">
+                    <div class="absolute inset-0 bg-black/80 backdrop-blur-sm" />
+                    <div class="relative bg-[#0D0D1A] rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden flex flex-col">
+                        <!-- Camera header -->
+                        <div class="flex items-center justify-between px-4 py-3 border-b border-white/10">
+                            <div class="flex items-center gap-2">
+                                <CameraIcon class="w-4 h-4 text-white/60" />
+                                <span class="text-sm font-medium text-white">Take Photo</span>
+                            </div>
+                            <div class="flex items-center gap-2">
+                                <!-- Flip camera (mobile) -->
+                                <button
+                                    type="button"
+                                    @click="flipCamera"
+                                    class="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors"
+                                    title="Flip camera"
+                                >
+                                    <ArrowPathIcon class="w-4 h-4" />
+                                </button>
+                                <button type="button" @click="closeCamera" class="p-1.5 text-white/60 hover:text-white hover:bg-white/10 rounded-lg transition-colors">
+                                    <XMarkIcon class="w-4 h-4" />
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Video preview -->
+                        <div class="relative bg-black" style="aspect-ratio:4/3">
+                            <video
+                                ref="videoEl"
+                                autoplay
+                                playsinline
+                                muted
+                                class="w-full h-full object-cover"
+                            />
+                            <!-- Error state -->
+                            <div v-if="cameraModal.error" class="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-black/80 p-6 text-center">
+                                <ExclamationTriangleIcon class="w-8 h-8 text-amber-400" />
+                                <p class="text-sm text-white font-medium">Camera unavailable</p>
+                                <p class="text-xs text-white/60">{{ cameraModal.error }}</p>
+                            </div>
+                            <!-- Loading -->
+                            <div v-if="cameraModal.loading && !cameraModal.error" class="absolute inset-0 flex items-center justify-center bg-black/60">
+                                <div class="w-6 h-6 border-2 border-white/20 border-t-white rounded-full animate-spin" />
+                            </div>
+                        </div>
+
+                        <!-- Hidden canvas for capture -->
+                        <canvas ref="canvasEl" class="hidden" />
+
+                        <!-- Preview of captured frame -->
+                        <div v-if="cameraModal.preview" class="relative">
+                            <img :src="cameraModal.preview" class="w-full" style="aspect-ratio:4/3;object-fit:cover" />
+                            <div class="absolute inset-0 flex items-center justify-center gap-3 bg-black/40">
+                                <button type="button" @click="retakePhoto" class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-white/20 hover:bg-white/30 text-white text-sm font-medium transition-colors">
+                                    <ArrowPathIcon class="w-4 h-4" />
+                                    Retake
+                                </button>
+                                <button type="button" @click="confirmCapture" :disabled="photoUploading" class="flex items-center gap-1.5 px-4 py-2 rounded-lg bg-[#EF233C] hover:bg-red-500 text-white text-sm font-medium transition-colors disabled:opacity-60">
+                                    <span v-if="photoUploading" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                    <CheckIcon v-else class="w-4 h-4" />
+                                    Use Photo
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Capture bar -->
+                        <div v-if="!cameraModal.preview" class="flex items-center justify-center gap-4 px-5 py-4 bg-[#0D0D1A]">
+                            <button
+                                type="button"
+                                @click="capturePhoto"
+                                :disabled="cameraModal.loading || !!cameraModal.error"
+                                class="w-14 h-14 rounded-full border-4 border-white/30 bg-white hover:bg-gray-100 flex items-center justify-center transition-colors disabled:opacity-40 shadow-lg"
+                                title="Capture"
+                            >
+                                <span class="w-10 h-10 rounded-full bg-[#EF233C]" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </Transition>
+
+            <!-- ── Delete Confirm ───────────────────────────────────── -->
             <Transition name="modal">
                 <div v-if="deleteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
                     <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="deleteTarget = null" />
@@ -341,7 +420,7 @@
                                 <p class="text-xs text-gray-500">{{ deleteTarget?.name }}</p>
                             </div>
                         </div>
-                        <p class="text-sm text-gray-500 mb-5 ml-13">All photos will be permanently deleted. This cannot be undone.</p>
+                        <p class="text-sm text-gray-500 mb-5">All photos will be permanently deleted. This cannot be undone.</p>
                         <div class="flex justify-end gap-3">
                             <button @click="deleteTarget = null" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 transition-colors">Cancel</button>
                             <button @click="doDelete" class="bg-[#EF233C] hover:bg-[#D90429] text-white text-sm font-medium px-5 py-1.5 rounded-lg transition-colors">Delete</button>
@@ -349,6 +428,7 @@
                     </div>
                 </div>
             </Transition>
+
         </Teleport>
     </AppLayout>
 </template>
@@ -370,6 +450,10 @@ import {
     TrashIcon,
     EnvelopeIcon,
     PhoneIcon,
+    CameraIcon,
+    ArrowPathIcon,
+    CheckIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -414,11 +498,7 @@ function emptyForm() {
 }
 const form = ref(emptyForm());
 
-function openAdd() {
-    form.value = emptyForm();
-    modal.value = { open: true, editing: null };
-}
-
+function openAdd() { form.value = emptyForm(); modal.value = { open: true, editing: null }; }
 function openEdit(s) {
     form.value = {
         name: s.name, trade: s.trade, company: s.company ?? '',
@@ -429,7 +509,6 @@ function openEdit(s) {
     };
     modal.value = { open: true, editing: s };
 }
-
 function closeModal() { modal.value.open = false; }
 
 function submitModal() {
@@ -461,10 +540,7 @@ const photoUpload    = ref({ type: 'before', caption: '' });
 const beforePhotos = computed(() => photosModal.value.sub?.photos.filter(p => p.type === 'before') ?? []);
 const afterPhotos  = computed(() => photosModal.value.sub?.photos.filter(p => p.type === 'after')  ?? []);
 
-function openPhotos(s) {
-    photosModal.value = { open: true, sub: s };
-    photoUpload.value = { type: 'before', caption: '' };
-}
+function openPhotos(s) { photosModal.value = { open: true, sub: s }; photoUpload.value = { type: 'before', caption: '' }; }
 function closePhotos() { photosModal.value.open = false; }
 
 watch(() => props.subcontractors, (list) => {
@@ -474,9 +550,15 @@ watch(() => props.subcontractors, (list) => {
     }
 }, { deep: true });
 
-function uploadPhoto(event) {
+function handleFileUpload(event) {
     const file = event.target.files?.[0];
     if (!file || !photosModal.value.sub) return;
+    submitPhoto(file);
+    event.target.value = '';
+}
+
+function submitPhoto(file) {
+    if (!photosModal.value.sub) return;
     photoUploading.value = true;
     router.post(
         route('subcontractors.photos.upload', photosModal.value.sub.id),
@@ -486,7 +568,6 @@ function uploadPhoto(event) {
             preserveScroll: true,
             onFinish: () => {
                 photoUploading.value = false;
-                event.target.value  = '';
                 photoUpload.value.caption = '';
             },
         }
@@ -499,6 +580,83 @@ function deletePhoto(photo) {
         route('subcontractors.photos.delete', { subcontractor: photosModal.value.sub.id, photo: photo.id }),
         { preserveScroll: true }
     );
+}
+
+// Camera
+const videoEl   = ref(null);
+const canvasEl  = ref(null);
+let   stream    = null;
+let   facingMode = 'environment'; // rear camera first
+
+const cameraModal = ref({ open: false, loading: false, error: null, preview: null });
+
+async function openCamera() {
+    cameraModal.value = { open: true, loading: true, error: null, preview: null };
+    await startStream();
+}
+
+async function startStream() {
+    stopStream();
+    cameraModal.value.loading = true;
+    cameraModal.value.error   = null;
+    try {
+        stream = await navigator.mediaDevices.getUserMedia({
+            video: { facingMode, width: { ideal: 1280 }, height: { ideal: 960 } },
+            audio: false,
+        });
+        if (videoEl.value) {
+            videoEl.value.srcObject = stream;
+            await videoEl.value.play();
+        }
+    } catch (err) {
+        cameraModal.value.error = err.name === 'NotAllowedError'
+            ? 'Camera permission denied. Please allow access in your browser settings.'
+            : err.name === 'NotFoundError'
+                ? 'No camera found on this device.'
+                : `Could not access camera: ${err.message}`;
+    } finally {
+        cameraModal.value.loading = false;
+    }
+}
+
+function stopStream() {
+    stream?.getTracks().forEach(t => t.stop());
+    stream = null;
+}
+
+async function flipCamera() {
+    facingMode = facingMode === 'environment' ? 'user' : 'environment';
+    await startStream();
+}
+
+function capturePhoto() {
+    if (!videoEl.value || !canvasEl.value) return;
+    const video  = videoEl.value;
+    const canvas = canvasEl.value;
+    canvas.width  = video.videoWidth  || 1280;
+    canvas.height = video.videoHeight || 960;
+    canvas.getContext('2d').drawImage(video, 0, 0, canvas.width, canvas.height);
+    cameraModal.value.preview = canvas.toDataURL('image/jpeg', 0.92);
+    stopStream();
+}
+
+function retakePhoto() {
+    cameraModal.value.preview = null;
+    startStream();
+}
+
+function confirmCapture() {
+    if (!cameraModal.value.preview || !canvasEl.value) return;
+    canvasEl.value.toBlob((blob) => {
+        const file = new File([blob], `photo-${Date.now()}.jpg`, { type: 'image/jpeg' });
+        closeCamera();
+        submitPhoto(file);
+    }, 'image/jpeg', 0.92);
+}
+
+function closeCamera() {
+    stopStream();
+    cameraModal.value = { open: false, loading: false, error: null, preview: null };
 }
 </script>
 
