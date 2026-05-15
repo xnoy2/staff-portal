@@ -62,9 +62,10 @@
                 </NavGroup>
 
                 <NavGroup v-if="isManager" label="Management" :collapsed="!sidebarOpen && !isMobile">
-                    <NavItem href="/projects" icon="FolderIcon"  label="Projects" :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/staff"    icon="UsersIcon"   label="Staff"    :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem href="/vans"     icon="TruckIcon"   label="Vans"     :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/projects"         icon="FolderIcon"   label="Projects"        :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/staff"             icon="UsersIcon"    label="Staff"           :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/vans"              icon="TruckIcon"    label="Vans"            :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem href="/subcontractors"    icon="WrenchIcon"   label="Subcontractors"  :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
 
                 <NavGroup v-if="isAdmin || isManager" label="Admin" :collapsed="!sidebarOpen && !isMobile">

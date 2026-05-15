@@ -22,6 +22,7 @@ use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\SubcontractorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\QrScanController;
 use Illuminate\Support\Facades\Route;
@@ -162,6 +163,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/lessons/{lesson}',                        [TrainingController::class, 'updateLesson'])->name('lessons.update');
         Route::post('/lessons/{lesson}/toggle',                  [TrainingController::class, 'toggleLesson'])->name('lessons.toggle');
         Route::delete('/lessons/{lesson}',                       [TrainingController::class, 'destroyLesson'])->name('lessons.destroy');
+    });
+
+    // Subcontractors
+    Route::prefix('subcontractors')->name('subcontractors.')->group(function () {
+        Route::get('/',                                              [SubcontractorController::class, 'index'])->name('index');
+        Route::post('/',                                             [SubcontractorController::class, 'store'])->name('store');
+        Route::put('/{subcontractor}',                               [SubcontractorController::class, 'update'])->name('update');
+        Route::delete('/{subcontractor}',                            [SubcontractorController::class, 'destroy'])->name('destroy');
+        Route::post('/{subcontractor}/photos',                       [SubcontractorController::class, 'uploadPhoto'])->name('photos.upload');
+        Route::delete('/{subcontractor}/photos/{photo}',             [SubcontractorController::class, 'deletePhoto'])->name('photos.delete');
     });
 
     // Settings
