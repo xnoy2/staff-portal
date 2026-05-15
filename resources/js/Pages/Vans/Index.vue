@@ -56,6 +56,7 @@
                             <th class="text-left text-xs font-medium text-gray-500 px-4 py-3">Make / Model</th>
                             <th class="text-center text-xs font-medium text-gray-500 px-4 py-3 hidden sm:table-cell">Year</th>
                             <th class="text-center text-xs font-medium text-gray-500 px-4 py-3 hidden md:table-cell">Projects</th>
+                            <th class="text-left text-xs font-medium text-gray-500 px-4 py-3 hidden lg:table-cell">Current Driver</th>
                             <th class="text-left text-xs font-medium text-gray-500 px-4 py-3">Status</th>
                             <th class="px-4 py-3"></th>
                         </tr>
@@ -83,6 +84,16 @@
                             </td>
                             <td class="px-4 py-3.5 text-center hidden md:table-cell">
                                 <span class="text-sm font-semibold text-gray-700">{{ van.projects_count }}</span>
+                            </td>
+                            <td class="px-4 py-3.5 hidden lg:table-cell">
+                                <div v-if="van.current_driver" class="flex items-center gap-2">
+                                    <img :src="van.current_driver.avatar_url" :alt="van.current_driver.name" class="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                                    <div class="min-w-0">
+                                        <p class="text-xs font-medium text-gray-700 truncate">{{ van.current_driver.name }}</p>
+                                        <p class="text-[10px] text-gray-400">since {{ van.current_driver.since }}</p>
+                                    </div>
+                                </div>
+                                <span v-else class="text-xs text-gray-300">—</span>
                             </td>
                             <td class="px-4 py-3.5">
                                 <span :class="van.is_active ? 'bg-green-50 text-green-700 border-green-200' : 'bg-gray-100 text-gray-500 border-gray-200'" class="inline-flex items-center gap-1 text-xs font-medium px-2 py-0.5 rounded-full border">

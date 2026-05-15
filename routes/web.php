@@ -93,9 +93,9 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::put('/vans/{van}/allocations/{allocation}',              [VanAllocationController::class, 'update'])->name('vans.allocations.update');
     Route::delete('/vans/{van}/allocations/{allocation}',           [VanAllocationController::class, 'destroy'])->name('vans.allocations.destroy');
 
-    // Van Staff assignment
-    Route::post('/vans/{van}/staff',              [VanController::class, 'assignStaff'])->name('vans.staff.assign');
-    Route::delete('/vans/{van}/staff/{user}',     [VanController::class, 'unassignStaff'])->name('vans.staff.unassign');
+    // Van assignment (individual, with history)
+    Route::post('/vans/{van}/assign',  [VanController::class, 'assign'])->name('vans.assign');
+    Route::post('/vans/{van}/return',  [VanController::class, 'returnVan'])->name('vans.return');
 
     // Businesses (admin only)
     Route::get('/businesses',                               [BusinessController::class, 'index'])->name('businesses.index');

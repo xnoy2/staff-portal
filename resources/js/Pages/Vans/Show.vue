@@ -123,74 +123,93 @@
                 </div>
             </div>
 
-            <!-- Staff -->
+            <!-- Driver Assignment -->
             <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
                 <div class="flex items-center justify-between mb-4">
                     <h2 class="text-sm font-semibold text-gray-700 flex items-center gap-2">
-                        <UsersIcon class="w-4 h-4 text-[#EF233C]" /> Staff
+                        <UsersIcon class="w-4 h-4 text-[#EF233C]" /> Driver Assignment
                     </h2>
-                </div>
-
-                <!-- Assigned Staff -->
-                <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-2">Assigned to this van</p>
-                <div v-if="assignedStaff.length === 0" class="text-sm text-gray-400 py-3 mb-3">No staff assigned yet.</div>
-                <div v-else class="space-y-2 mb-4">
-                    <div
-                        v-for="s in assignedStaff"
-                        :key="s.id"
-                        class="flex items-center gap-3 p-2.5 rounded-lg border border-gray-100 hover:border-gray-200 bg-gray-50/50 transition-all"
-                    >
-                        <img :src="s.avatar_url" :alt="s.name" class="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-800 truncate">{{ s.name }}</p>
-                            <p class="text-xs text-gray-400 capitalize">{{ s.role.replace('_', ' ') }}</p>
-                        </div>
-                        <button
-                            @click="unassignStaff(s)"
-                            class="p-1.5 text-gray-300 hover:text-red-500 hover:bg-red-50 rounded-lg transition-colors flex-shrink-0"
-                            title="Remove assignment"
-                        >
-                            <XMarkIcon class="w-3.5 h-3.5" />
-                        </button>
-                    </div>
-                </div>
-
-                <!-- Assign staff input -->
-                <div v-if="staffOptions.length > 0" class="flex flex-col sm:flex-row gap-2">
-                    <select v-model="staffToAssign" class="flex-1 px-3 py-1.5 text-sm border border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]">
-                        <option :value="null">— Select staff to assign —</option>
-                        <option v-for="s in staffOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
-                    </select>
                     <button
-                        @click="doAssignStaff"
-                        :disabled="!staffToAssign || assigningStaff"
-                        class="bg-[#2B2D42] hover:bg-[#3d405e] disabled:opacity-40 text-white text-xs font-medium px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 flex-shrink-0"
+                        @click="assignModal = true"
+                        class="inline-flex items-center gap-1.5 text-xs font-medium bg-[#2B2D42] hover:bg-[#3d405e] text-white px-3 py-1.5 rounded-lg transition-colors"
                     >
-                        <span v-if="assigningStaff" class="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
-                        <PlusIcon v-else class="w-3.5 h-3.5" />
-                        Assign
+                        <UserPlusIcon class="w-3.5 h-3.5" />
+                        {{ currentDriver ? 'Reassign' : 'Assign Van' }}
                     </button>
                 </div>
-                <p v-else-if="assignedStaff.length > 0" class="text-xs text-gray-400 italic">All active staff are already assigned.</p>
 
-                <!-- Usage History from Jobs -->
-                <template v-if="staffUsage.length > 0">
-                    <div class="border-t border-gray-100 mt-5 pt-4">
-                        <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Usage history (via jobs)</p>
-                        <div class="space-y-2">
-                            <div v-for="u in staffUsage" :key="u.id" class="flex items-center gap-3">
-                                <img :src="u.avatar_url" :alt="u.name" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-                                <div class="flex-1 min-w-0">
-                                    <p class="text-sm font-medium text-gray-700 truncate">{{ u.name }}</p>
-                                    <p class="text-xs text-gray-400">Last used {{ formatDate(u.last_used) }}</p>
-                                </div>
-                                <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0">
-                                    {{ u.job_count }} job{{ u.job_count !== 1 ? 's' : '' }}
-                                </span>
+                <!-- Currently With -->
+                <div v-if="currentDriver" class="flex items-center gap-4 p-4 rounded-xl bg-emerald-50 border border-emerald-200">
+                    <img
+                        :src="currentDriver.user?.avatar_url"
+                        :alt="currentDriver.user?.name"
+                        class="w-12 h-12 rounded-full object-cover flex-shrink-0 ring-2 ring-emerald-300"
+                    />
+                    <div class="flex-1 min-w-0">
+                        <p class="text-sm font-semibold text-gray-800 truncate">{{ currentDriver.user?.name }}</p>
+                        <p class="text-xs text-emerald-700 mt-0.5">
+                            Since {{ formatDatetime(currentDriver.assigned_at) }}
+                            <span class="text-emerald-500 mx-1">·</span>
+                            <span class="font-medium">{{ currentDriver.duration }}</span>
+                        </p>
+                        <p v-if="currentDriver.notes" class="text-xs text-gray-400 mt-1 italic">{{ currentDriver.notes }}</p>
+                    </div>
+                    <div class="flex-shrink-0">
+                        <span class="inline-flex items-center gap-1 text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700 border border-emerald-200">
+                            <span class="w-1.5 h-1.5 rounded-full bg-emerald-500"></span> In Use
+                        </span>
+                    </div>
+                </div>
+                <div v-else class="flex items-center gap-3 p-4 rounded-xl bg-gray-50 border border-dashed border-gray-200">
+                    <div class="w-12 h-12 rounded-full bg-gray-100 flex items-center justify-center flex-shrink-0">
+                        <UserIcon class="w-6 h-6 text-gray-300" />
+                    </div>
+                    <div>
+                        <p class="text-sm font-medium text-gray-400">No one currently assigned</p>
+                        <p class="text-xs text-gray-300 mt-0.5">Click "Assign Van" to assign a driver</p>
+                    </div>
+                </div>
+
+                <!-- Return button -->
+                <div v-if="currentDriver" class="mt-3 flex justify-end">
+                    <button
+                        @click="doReturn"
+                        class="inline-flex items-center gap-1.5 text-xs font-medium text-red-600 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg transition-colors"
+                    >
+                        <ArrowUturnLeftIcon class="w-3.5 h-3.5" />
+                        Mark as Returned
+                    </button>
+                </div>
+
+                <!-- Assignment History -->
+                <div v-if="assignmentHistory.length > 0" class="mt-5 pt-4 border-t border-gray-100">
+                    <p class="text-xs font-medium text-gray-500 uppercase tracking-wide mb-3">Assignment History</p>
+                    <div class="space-y-2">
+                        <div
+                            v-for="a in assignmentHistory"
+                            :key="a.id"
+                            class="flex items-start gap-3 p-3 rounded-lg border border-gray-100 bg-gray-50/50"
+                        >
+                            <img
+                                :src="a.user?.avatar_url"
+                                :alt="a.user?.name"
+                                class="w-8 h-8 rounded-full object-cover flex-shrink-0 mt-0.5"
+                            />
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-700 truncate">{{ a.user?.name }}</p>
+                                <p class="text-xs text-gray-400 mt-0.5">
+                                    {{ formatDatetime(a.assigned_at) }}
+                                    <span class="mx-1 text-gray-300">→</span>
+                                    {{ formatDatetime(a.returned_at) }}
+                                </p>
+                                <p v-if="a.returned_by" class="text-xs text-gray-400">Returned by {{ a.returned_by }}</p>
                             </div>
+                            <span class="text-xs font-semibold text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5">
+                                {{ a.duration }}
+                            </span>
                         </div>
                     </div>
-                </template>
+                </div>
             </div>
 
             <!-- Assigned Projects -->
@@ -331,6 +350,47 @@
             </div>
         </Transition>
 
+        <!-- Assign Van Modal -->
+        <Transition name="modal">
+            <div v-if="assignModal" class="fixed inset-0 z-50 flex items-center justify-center p-4">
+                <div class="absolute inset-0 bg-black/50 backdrop-blur-sm" @click="assignModal = false" />
+                <div class="relative bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+                    <div class="flex items-center justify-between px-5 py-4 border-b border-gray-100">
+                        <h3 class="text-sm font-semibold text-gray-800">
+                            {{ currentDriver ? 'Reassign Van' : 'Assign Van' }}
+                        </h3>
+                        <button @click="assignModal = false" class="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                            <XMarkIcon class="w-4 h-4" />
+                        </button>
+                    </div>
+                    <form @submit.prevent="doAssign" class="p-5 space-y-4">
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">Driver <span class="text-red-500">*</span></label>
+                            <select v-model="assignForm.user_id" required class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]">
+                                <option :value="null">— Select a staff member —</option>
+                                <option v-for="s in staffOptions" :key="s.id" :value="s.id">{{ s.name }}</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs font-medium text-gray-700 mb-1.5">Notes <span class="text-gray-400 font-normal">(optional)</span></label>
+                            <textarea v-model="assignForm.notes" rows="2" maxlength="500" placeholder="Any notes about this assignment…" class="w-full px-3 py-2 text-sm border border-gray-300 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C] resize-none" />
+                        </div>
+                        <p v-if="currentDriver" class="text-xs text-amber-600 bg-amber-50 rounded-lg px-3 py-2 border border-amber-100">
+                            This will end {{ currentDriver.user?.name }}'s current assignment and start a new one.
+                        </p>
+                        <div class="flex items-center justify-end gap-3 pt-1 border-t border-gray-100">
+                            <button type="button" @click="assignModal = false" class="text-sm text-gray-500 hover:text-gray-700 px-3 py-1.5 transition-colors">Cancel</button>
+                            <button type="submit" :disabled="!assignForm.user_id || assigning" class="bg-[#2B2D42] hover:bg-[#3d405e] disabled:opacity-60 text-white text-sm font-medium px-5 py-1.5 rounded-lg transition-colors flex items-center gap-2">
+                                <span v-if="assigning" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                <UserPlusIcon v-else class="w-3.5 h-3.5" />
+                                Assign
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </Transition>
+
         <!-- Delete Allocation Confirm Modal -->
         <Transition name="modal">
             <div v-if="deleteTarget" class="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -366,16 +426,17 @@ import {
     TruckIcon, PencilIcon, FolderIcon, PlusIcon, TrashIcon,
     CalendarDaysIcon, CalendarIcon, XMarkIcon, UsersIcon,
     ClipboardDocumentListIcon, ExclamationTriangleIcon,
+    UserPlusIcon, UserIcon, ArrowUturnLeftIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    van:            { type: Object, required: true },
-    recentJobs:     { type: Array,  default: () => [] },
-    allocations:    { type: Array,  default: () => [] },
-    projectOptions: { type: Array,  default: () => [] },
-    assignedStaff:  { type: Array,  default: () => [] },
-    staffUsage:     { type: Array,  default: () => [] },
-    staffOptions:   { type: Array,  default: () => [] },
+    van:               { type: Object, required: true },
+    recentJobs:        { type: Array,  default: () => [] },
+    allocations:       { type: Array,  default: () => [] },
+    projectOptions:    { type: Array,  default: () => [] },
+    currentDriver:     { type: Object, default: null },
+    assignmentHistory: { type: Array,  default: () => [] },
+    staffOptions:      { type: Array,  default: () => [] },
 });
 
 // ── Van actions ──────────────────────────────────────────────────────
@@ -388,24 +449,22 @@ function doDelete() {
     router.delete(route('vans.destroy', props.van.id));
 }
 
-// ── Staff assignment ─────────────────────────────────────────────────
-const staffToAssign = ref(null);
-const assigningStaff = ref(false);
+// ── Driver assignment ────────────────────────────────────────────────
+const assignModal = ref(false);
+const assignForm  = ref({ user_id: null, notes: '' });
+const assigning   = ref(false);
 
-function doAssignStaff() {
-    if (!staffToAssign.value) return;
-    assigningStaff.value = true;
-    router.post(route('vans.staff.assign', props.van.id), { user_id: staffToAssign.value }, {
+function doAssign() {
+    assigning.value = true;
+    router.post(route('vans.assign', props.van.id), assignForm.value, {
         preserveScroll: true,
-        onSuccess: () => { staffToAssign.value = null; },
-        onFinish:  () => { assigningStaff.value = false; },
+        onSuccess: () => { assignModal.value = false; assignForm.value = { user_id: null, notes: '' }; },
+        onFinish:  () => { assigning.value = false; },
     });
 }
 
-function unassignStaff(staff) {
-    router.delete(route('vans.staff.unassign', { van: props.van.id, user: staff.id }), {
-        preserveScroll: true,
-    });
+function doReturn() {
+    router.post(route('vans.return', props.van.id), {}, { preserveScroll: true });
 }
 
 // ── Allocation filter ────────────────────────────────────────────────
@@ -504,6 +563,11 @@ function doDeleteAllocation() {
 // ── Helpers ──────────────────────────────────────────────────────────
 function formatDate(d) {
     return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function formatDatetime(d) {
+    if (!d) return '—';
+    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
 function dayCount(from, to) {

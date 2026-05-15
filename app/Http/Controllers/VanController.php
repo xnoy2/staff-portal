@@ -7,6 +7,7 @@ use App\Models\Project;
 use App\Models\User;
 use App\Models\Van;
 use App\Models\VanAllocation;
+use App\Models\VanAssignment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -31,6 +32,8 @@ class VanController extends Controller
         if ($request->filled('status')) {
             $query->where('is_active', $request->status === 'active');
         }
+
+        $query->with(['currentAssignment.user:id,name,avatar']);
 
         $vans = $query->orderBy('registration')->paginate(20)->withQueryString()
             ->through(fn ($v) => $this->summarise($v));
@@ -115,44 +118,27 @@ class VanController extends Controller
             ->orderBy('name')
             ->get(['id', 'name', 'customer', 'business', 'status']);
 
-        // Formally assigned staff (van_user pivot)
-        $assignedStaff = $van->staff()->get()->map(fn ($u) => [
-            'id'          => $u->id,
-            'name'        => $u->name,
-            'avatar_url'  => $u->avatar_url,
-            'role'        => $u->roles->first()?->name ?? 'staff',
-            'assigned_at' => $u->pivot->assigned_at,
-        ]);
+        // Current assignment
+        $current = VanAssignment::where('van_id', $van->id)
+            ->whereNull('returned_at')
+            ->with('user:id,name,avatar', 'assignedBy:id,name')
+            ->orderBy('assigned_at', 'desc')
+            ->first();
 
-        // Historical usage derived from jobs
-        $staffUsage = DB::table('work_order_user')
-            ->join('work_orders', 'work_orders.id', '=', 'work_order_user.work_order_id')
-            ->join('users', 'users.id', '=', 'work_order_user.user_id')
-            ->where('work_orders.van_id', $van->id)
-            ->select(
-                'users.id',
-                'users.name',
-                'users.avatar',
-                DB::raw('COUNT(*) as job_count'),
-                DB::raw('MAX(work_orders.date) as last_used')
-            )
-            ->groupBy('users.id', 'users.name', 'users.avatar')
-            ->orderByDesc('last_used')
+        $currentDriver = $current ? $this->assignmentPayload($current) : null;
+
+        // Full assignment history (excluding current active one)
+        $history = VanAssignment::where('van_id', $van->id)
+            ->whereNotNull('returned_at')
+            ->with('user:id,name,avatar', 'assignedBy:id,name', 'returnedBy:id,name')
+            ->orderBy('assigned_at', 'desc')
+            ->limit(50)
             ->get()
-            ->map(fn ($u) => [
-                'id'        => $u->id,
-                'name'      => $u->name,
-                'avatar_url'=> $u->avatar
-                    ? asset('storage/' . $u->avatar)
-                    : 'https://ui-avatars.com/api/?name=' . urlencode($u->name) . '&background=3B6D11&color=fff&size=128',
-                'job_count' => $u->job_count,
-                'last_used' => $u->last_used,
-            ]);
+            ->map(fn ($a) => $this->assignmentPayload($a));
 
-        // Staff options for the assign dropdown (exclude already assigned)
-        $assignedIds   = $assignedStaff->pluck('id')->toArray();
-        $staffOptions  = User::where('is_active', true)
-            ->whereNotIn('id', $assignedIds)
+        // Staff options — all active users (the new driver replaces the current one)
+        $staffOptions = User::where('is_active', true)
+            ->when($current, fn ($q) => $q->where('id', '!=', $current->user_id))
             ->orderBy('name')
             ->get(['id', 'name', 'avatar'])
             ->map(fn ($u) => [
@@ -166,8 +152,8 @@ class VanController extends Controller
             'recentJobs'     => $recentJobs,
             'allocations'    => $allocations,
             'projectOptions' => $projectOptions,
-            'assignedStaff'  => $assignedStaff,
-            'staffUsage'     => $staffUsage,
+            'currentDriver'  => $currentDriver,
+            'assignmentHistory' => $history,
             'staffOptions'   => $staffOptions,
         ]);
     }
@@ -217,32 +203,55 @@ class VanController extends Controller
         return back()->with('success', "Van {$van->registration} {$status}.");
     }
 
-    public function assignStaff(Request $request, Van $van): RedirectResponse
+    public function assign(Request $request, Van $van): RedirectResponse
     {
         $this->authorize('update', $van);
-        $request->validate([
+        $data = $request->validate([
             'user_id' => ['required', 'exists:users,id'],
+            'notes'   => ['nullable', 'string', 'max:500'],
         ]);
 
-        $van->staff()->syncWithoutDetaching([
-            $request->user_id => ['assigned_at' => now()],
+        $now = now();
+
+        // End any current active assignment
+        VanAssignment::where('van_id', $van->id)
+            ->whereNull('returned_at')
+            ->update(['returned_at' => $now, 'returned_by' => $request->user()->id]);
+
+        VanAssignment::create([
+            'van_id'      => $van->id,
+            'user_id'     => $data['user_id'],
+            'assigned_by' => $request->user()->id,
+            'assigned_at' => $now,
+            'notes'       => $data['notes'] ?? null,
         ]);
 
-        return back()->with('success', 'Staff member assigned to van.');
+        $driver = User::find($data['user_id']);
+
+        return back()->with('success', "{$driver->name} is now assigned to {$van->registration}.");
     }
 
-    public function unassignStaff(Van $van, User $user): RedirectResponse
+    public function returnVan(Request $request, Van $van): RedirectResponse
     {
         $this->authorize('update', $van);
-        $van->staff()->detach($user->id);
 
-        return back()->with('success', 'Staff member removed from van.');
+        $updated = VanAssignment::where('van_id', $van->id)
+            ->whereNull('returned_at')
+            ->update(['returned_at' => now(), 'returned_by' => $request->user()->id]);
+
+        if (! $updated) {
+            return back()->with('error', 'This van has no active assignment.');
+        }
+
+        return back()->with('success', "{$van->registration} marked as returned.");
     }
 
     // ── Helpers ───────────────────────────────────────────────────────
 
     private function summarise(Van $van): array
     {
+        $ca = $van->relationLoaded('currentAssignment') ? $van->currentAssignment : null;
+
         return [
             'id'             => $van->id,
             'registration'   => $van->registration,
@@ -252,6 +261,31 @@ class VanController extends Controller
             'is_active'      => $van->is_active,
             'projects_count' => $van->projects_count ?? 0,
             'display_name'   => $van->display_name,
+            'current_driver' => $ca && $ca->user ? [
+                'id'         => $ca->user->id,
+                'name'       => $ca->user->name,
+                'avatar_url' => $ca->user->avatar_url,
+                'since'      => $ca->assigned_at->toDateString(),
+            ] : null,
+        ];
+    }
+
+    private function assignmentPayload(VanAssignment $a): array
+    {
+        return [
+            'id'          => $a->id,
+            'user'        => $a->user ? [
+                'id'         => $a->user->id,
+                'name'       => $a->user->name,
+                'avatar_url' => $a->user->avatar_url,
+            ] : null,
+            'assigned_by'  => $a->assignedBy?->name,
+            'assigned_at'  => $a->assigned_at->toIso8601String(),
+            'returned_at'  => $a->returned_at?->toIso8601String(),
+            'returned_by'  => $a->returnedBy?->name,
+            'duration'     => $a->duration,
+            'is_active'    => $a->is_active,
+            'notes'        => $a->notes,
         ];
     }
 
