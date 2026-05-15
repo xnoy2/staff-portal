@@ -18,6 +18,11 @@ class SubcontractorController extends Controller
         abort_unless(request()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
     }
 
+    private function photoDisk(): string
+    {
+        return config('filesystems.disks.r2.bucket') ? 'r2' : 'public';
+    }
+
     public function index(Request $request): Response
     {
         abort_unless(request()->user()->hasAnyRole(['admin', 'manager', 'hr', 'site_head']), 403);
@@ -99,9 +104,8 @@ class SubcontractorController extends Controller
     {
         $this->authorise();
 
-        // Delete photos from storage
         foreach ($subcontractor->photos as $photo) {
-            Storage::disk('public')->delete($photo->path);
+            Storage::disk($this->photoDisk())->delete($photo->path);
         }
 
         $subcontractor->delete();
@@ -121,7 +125,7 @@ class SubcontractorController extends Controller
 
         $file       = $request->file('photo');
         $storedName = Str::uuid() . '.' . $file->getClientOriginalExtension();
-        $path       = $file->storeAs("subcontractors/{$subcontractor->id}", $storedName, 'public');
+        $path       = $file->storeAs("subcontractors/{$subcontractor->id}", $storedName, $this->photoDisk());
 
         SubcontractorPhoto::create([
             'subcontractor_id' => $subcontractor->id,
@@ -140,7 +144,7 @@ class SubcontractorController extends Controller
         $this->authorise();
         abort_if($photo->subcontractor_id !== $subcontractor->id, 404);
 
-        Storage::disk('public')->delete($photo->path);
+        Storage::disk($this->photoDisk())->delete($photo->path);
         $photo->delete();
 
         return back()->with('success', 'Photo deleted.');

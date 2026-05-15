@@ -21,6 +21,14 @@ class SubcontractorPhoto extends Model
 
     public function getUrlAttribute(): string
     {
+        try {
+            $publicUrl = config('filesystems.disks.r2.url');
+            if ($publicUrl) {
+                return rtrim($publicUrl, '/') . '/' . $this->path;
+            }
+            return Storage::disk('r2')->temporaryUrl($this->path, now()->addWeek());
+        } catch (\Throwable) {}
+
         return Storage::disk('public')->url($this->path);
     }
 }
