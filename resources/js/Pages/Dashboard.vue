@@ -94,6 +94,10 @@
                                 <span :class="['text-xs font-semibold', clockState === 'idle' ? 'text-gray-500' : 'text-white']">
                                     {{ headerLabel }}
                                 </span>
+                                <!-- OT badge when actively clocked in as OT/RDOT -->
+                                <span v-if="activeEntry?.ot_type" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-white/20 text-white uppercase tracking-wide">
+                                    {{ activeEntry.ot_type === 'rdot' ? 'RDOT' : 'OT' }}
+                                </span>
                             </div>
                             <span v-if="activeEntry" class="text-xs text-white/80 font-medium">
                                 Since {{ clockInTime }}
@@ -104,6 +108,21 @@
                         <div class="p-6 text-center">
                             <p class="text-xs text-gray-400 mb-0.5">{{ currentDate }}</p>
                             <p class="text-5xl font-bold text-gray-800 tabular-nums tracking-tight mb-5">{{ formattedClock }}</p>
+
+                            <!-- OT Mode selector (only when idle / not yet clocked in) -->
+                            <div v-if="clockState === 'idle'" class="flex items-center justify-center gap-1 bg-gray-100 rounded-xl p-1 mb-4">
+                                <button
+                                    v-for="opt in otOpts"
+                                    :key="opt.value"
+                                    @click="otMode = opt.value"
+                                    :class="[
+                                        'flex-1 text-xs font-semibold px-3 py-1.5 rounded-lg transition-colors',
+                                        otMode === opt.value
+                                            ? opt.activeClass
+                                            : 'text-gray-500 hover:text-gray-700',
+                                    ]"
+                                >{{ opt.label }}</button>
+                            </div>
 
                             <!-- Duration badge -->
                             <div class="flex flex-col items-center mb-5 gap-1" style="min-height:2.25rem;">
@@ -323,6 +342,7 @@ const props = defineProps({
     recentEntries:    { type: Array,  default: () => [] },
     leaveBalance:     { type: Object, default: () => ({ entitlement: 28, used: 0, pending: 0, remaining: 28 }) },
     upcomingJobs:     { type: Array,  default: () => [] },
+    todayApprovedOt:  { type: String, default: null },
 });
 
 const page = usePage();
@@ -429,6 +449,14 @@ const qrCodeUrl = computed(() => {
     return `https://api.qrserver.com/v1/create-qr-code/?size=128x128&data=${encodeURIComponent(encoded)}&margin=10`;
 });
 
+// OT mode — pre-selected from today's approved OT request if any
+const otOpts = [
+    { value: 'regular', label: 'Regular',  activeClass: 'bg-white text-gray-800 shadow-sm' },
+    { value: 'ot',      label: 'OT',       activeClass: 'bg-amber-500 text-white shadow-sm' },
+    { value: 'rdot',    label: 'RDOT',     activeClass: 'bg-purple-600 text-white shadow-sm' },
+];
+const otMode = ref(props.todayApprovedOt ?? 'regular');
+
 // Clock actions
 const clockLoading = ref(false);
 const breakLoading = ref(false);
@@ -436,7 +464,8 @@ const breakLoading = ref(false);
 function handleCenterClick() {
     if (clockState.value === 'idle') {
         clockLoading.value = true;
-        router.post('/attendance/clock-in', {}, { preserveScroll: true, onFinish: () => { clockLoading.value = false; } });
+        const payload = otMode.value !== 'regular' ? { ot_type: otMode.value } : {};
+        router.post('/attendance/clock-in', payload, { preserveScroll: true, onFinish: () => { clockLoading.value = false; } });
     } else if (clockState.value === 'working') {
         doClockOut();
     } else {

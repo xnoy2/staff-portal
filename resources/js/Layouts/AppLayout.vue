@@ -44,6 +44,7 @@
                     <NavItem href="/schedule"                                  icon="CalendarIcon"              label="Schedule"   :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/calendar"                                  icon="CalendarDaysIcon"          label="Calendar"   :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/attendance"                                icon="ClockIcon"                 label="Attendance" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('overtime.index')"              routeName="overtime.index" icon="BriefcaseIcon"             label="Overtime"   :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/leave"                                     icon="CalendarDaysIcon"          label="Leave"      :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/my-qr"                                    icon="QrCodeIcon"                label="My QR Code" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem v-if="!isAdmin" :href="route('my-payslip')"  routeName="my-payslip"           icon="DocumentTextIcon"          label="My Payslip" :collapsed="!sidebarOpen && !isMobile" />

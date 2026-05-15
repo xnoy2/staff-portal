@@ -21,6 +21,7 @@ use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\OvertimeController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\SubcontractorController;
 use App\Http\Controllers\ProfileController;
@@ -163,6 +164,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::patch('/lessons/{lesson}',                        [TrainingController::class, 'updateLesson'])->name('lessons.update');
         Route::post('/lessons/{lesson}/toggle',                  [TrainingController::class, 'toggleLesson'])->name('lessons.toggle');
         Route::delete('/lessons/{lesson}',                       [TrainingController::class, 'destroyLesson'])->name('lessons.destroy');
+    });
+
+    // Overtime
+    Route::prefix('overtime')->name('overtime.')->group(function () {
+        Route::get('/',                           [OvertimeController::class, 'index'])->name('index');
+        Route::post('/',                          [OvertimeController::class, 'store'])->name('store');
+        Route::put('/{overtimeRequest}',          [OvertimeController::class, 'update'])->name('update');
+        Route::delete('/{overtimeRequest}',       [OvertimeController::class, 'destroy'])->name('destroy');
+        Route::post('/{overtimeRequest}/approve', [OvertimeController::class, 'approve'])->name('approve');
+        Route::post('/{overtimeRequest}/reject',  [OvertimeController::class, 'reject'])->name('reject');
     });
 
     // Subcontractors

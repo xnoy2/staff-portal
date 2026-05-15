@@ -67,6 +67,10 @@ class AttendanceController extends Controller
             return back()->with('error', 'You already have an active clock-in entry.');
         }
 
+        $data = $request->validate([
+            'ot_type' => ['nullable', 'in:ot,rdot'],
+        ]);
+
         $autoApprove = $user->hasAnyRole(['admin', 'manager', 'hr']);
 
         $entry = TimeEntry::create([
@@ -78,9 +82,16 @@ class AttendanceController extends Controller
             'entered_by'  => $user->id,
             'approved_by' => $autoApprove ? $user->id : null,
             'approved_at' => $autoApprove ? now() : null,
+            'ot_type'     => $data['ot_type'] ?? null,
         ]);
 
-        return back()->with('success', 'Clocked in at ' . $entry->clock_in->format('H:i'));
+        $label = match ($data['ot_type'] ?? null) {
+            'ot'   => 'OT clock-in',
+            'rdot' => 'RDOT clock-in',
+            default => 'Clocked in',
+        };
+
+        return back()->with('success', $label . ' at ' . $entry->clock_in->format('H:i'));
     }
 
     public function clockOut(Request $request): RedirectResponse

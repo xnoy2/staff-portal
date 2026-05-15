@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Job;
 use App\Models\LeaveRequest;
+use App\Models\OvertimeRequest;
 use App\Models\TimeEntry;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -106,6 +107,7 @@ class DashboardController extends Controller
                 'id'                  => $activeEntry->id,
                 'clock_in'            => $activeEntry->clock_in->toIso8601String(),
                 'clock_state'         => $activeEntry->clock_state ?? 'working',
+                'ot_type'             => $activeEntry->ot_type,
                 'active_break'        => $activeBreak ? [
                     'id'         => $activeBreak->id,
                     'type'       => $activeBreak->type,
@@ -140,10 +142,17 @@ class DashboardController extends Controller
                 'business'   => $j->project?->business,
             ]);
 
+        // Today's approved OT request (to pre-select the toggle)
+        $todayOt = OvertimeRequest::where('user_id', $user->id)
+            ->where('date', today()->toDateString())
+            ->where('status', 'approved')
+            ->first();
+
         return [
             'activeEntry'   => $activeEntryPayload,
             'weeklyHours'   => $weeklyHours,
             'recentEntries' => $recentEntries,
+            'todayApprovedOt' => $todayOt ? $todayOt->type : null,
             'leaveBalance'  => [
                 'entitlement' => $entitlement,
                 'used'        => $used,

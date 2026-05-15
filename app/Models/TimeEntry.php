@@ -21,6 +21,7 @@ class TimeEntry extends Model
         'clock_out',
         'total_hours',
         'is_overtime',
+        'ot_type',
         'status',
         'source',
         'entered_by',
