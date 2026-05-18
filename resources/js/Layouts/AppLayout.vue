@@ -49,7 +49,49 @@
                     <NavItem href="/my-qr"                                    icon="QrCodeIcon"                label="My QR Code" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem v-if="!isAdmin" :href="route('my-payslip')"  routeName="my-payslip"           icon="DocumentTextIcon"          label="My Payslip" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem :href="route('training.index')"                                               icon="AcademicCapIcon"            label="Training"         :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem :href="route('bgr.index')"                                                   icon="BuildingStorefrontIcon"      label="Client Projects"  :collapsed="!sidebarOpen && !isMobile" />
+                    <!-- Client Projects tree -->
+                    <div>
+                        <!-- Collapsed: single icon linking to BGR -->
+                        <Link
+                            v-if="!sidebarOpen && !isMobile"
+                            :href="route('bgr.index')"
+                            :class="['flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors group relative', clientProjectsActive ? 'bg-[#EF233C] text-white' : 'text-[#8D99AE] hover:bg-white/10 hover:text-white']"
+                        >
+                            <BuildingStorefrontIcon class="w-5 h-5 flex-shrink-0" />
+                            <div class="absolute left-full ml-2 px-2 py-1 bg-[#2B2D42] border border-white/10 text-white text-xs rounded whitespace-nowrap opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none z-50">
+                                Client Projects
+                            </div>
+                        </Link>
+
+                        <!-- Expanded: toggle parent -->
+                        <button
+                            v-else
+                            @click="clientProjectsOpen = !clientProjectsOpen"
+                            :class="['w-full flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors', clientProjectsActive ? 'text-white' : 'text-[#8D99AE] hover:bg-white/10 hover:text-white']"
+                        >
+                            <BuildingStorefrontIcon class="w-5 h-5 flex-shrink-0" />
+                            <span class="flex-1 text-left truncate">Client Projects</span>
+                            <ChevronDownIcon class="w-4 h-4 flex-shrink-0 transition-transform duration-200" :class="clientProjectsOpen ? 'rotate-180' : ''" />
+                        </button>
+
+                        <!-- Children -->
+                        <Transition name="tree">
+                            <div v-if="clientProjectsOpen && (sidebarOpen || isMobile)" class="ml-3 mt-0.5 pl-3 border-l border-white/10 space-y-0.5">
+                                <Link
+                                    :href="route('bgr.index')"
+                                    :class="['flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors', route().current('bgr.*') ? 'bg-[#EF233C] text-white font-medium' : 'text-[#8D99AE] hover:bg-white/10 hover:text-white']"
+                                >
+                                    BGR
+                                </Link>
+                                <Link
+                                    href="/projects"
+                                    :class="['flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors', route().current('projects.*') ? 'bg-[#EF233C] text-white font-medium' : 'text-[#8D99AE] hover:bg-white/10 hover:text-white']"
+                                >
+                                    BCF
+                                </Link>
+                            </div>
+                        </Transition>
+                    </div>
                 </NavGroup>
 
                 <NavGroup v-if="isSiteHead" label="Field" :collapsed="!sidebarOpen && !isMobile">
@@ -206,7 +248,7 @@ import NavItem from '@/Components/Layout/NavItem.vue';
 import ToastContainer from '@/Components/ToastContainer.vue';
 import TempPasswordModal from '@/Components/TempPasswordModal.vue';
 import AppLogo from '@/Components/AppLogo.vue';
-import { Bars3Icon, ArrowRightOnRectangleIcon, XMarkIcon, BellIcon } from '@heroicons/vue/24/outline';
+import { Bars3Icon, ArrowRightOnRectangleIcon, XMarkIcon, BellIcon, ChevronDownIcon, BuildingStorefrontIcon } from '@heroicons/vue/24/outline';
 
 defineProps({
     title: { type: String, default: '' },
@@ -214,6 +256,14 @@ defineProps({
 
 const page = usePage();
 const { isAdmin, isManager, isHR, isSiteHead } = usePermission();
+
+// Client Projects tree
+const clientProjectsActive = computed(() => {
+    try { return !!route().current('bgr.*') || !!route().current('projects.*'); } catch { return false; }
+});
+const clientProjectsOpen = ref(false);
+// Auto-open tree when on a child route
+watch(clientProjectsActive, (val) => { if (val) clientProjectsOpen.value = true; }, { immediate: true });
 
 const isMobile    = ref(window.innerWidth < 768);
 const sidebarOpen = ref(window.innerWidth >= 768);
@@ -342,4 +392,8 @@ const formattedDate = computed(() =>
 .page-leave-active { transition: opacity 0.12s ease, transform 0.12s ease; }
 .page-enter-from   { opacity: 0; transform: translateY(6px); }
 .page-leave-to     { opacity: 0; transform: translateY(-4px); }
+
+.tree-enter-active { transition: opacity 0.15s ease, transform 0.15s ease; }
+.tree-leave-active { transition: opacity 0.1s ease, transform 0.1s ease; }
+.tree-enter-from, .tree-leave-to { opacity: 0; transform: translateY(-4px); }
 </style>
