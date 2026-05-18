@@ -54,7 +54,7 @@
                         <!-- Collapsed: single icon linking to BGR -->
                         <Link
                             v-if="!sidebarOpen && !isMobile"
-                            :href="route('bgr.index')"
+                            href="/client-projects"
                             :class="['flex items-center gap-3 px-2 py-2 rounded-lg text-sm transition-colors group relative', clientProjectsActive ? 'bg-[#EF233C] text-white' : 'text-[#8D99AE] hover:bg-white/10 hover:text-white']"
                         >
                             <BuildingStorefrontIcon class="w-5 h-5 flex-shrink-0" />
@@ -78,7 +78,7 @@
                         <Transition name="tree">
                             <div v-if="clientProjectsOpen && (sidebarOpen || isMobile)" class="ml-3 mt-0.5 pl-3 border-l border-white/10 space-y-0.5">
                                 <Link
-                                    :href="route('bgr.index')"
+                                    href="/client-projects"
                                     :class="['flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors', route().current('bgr.*') ? 'bg-[#EF233C] text-white font-medium' : 'text-[#8D99AE] hover:bg-white/10 hover:text-white']"
                                 >
                                     BGR
