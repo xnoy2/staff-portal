@@ -11,7 +11,7 @@
                 </Link>
             </div>
             <form @submit.prevent="submit">
-                <UserForm :form="form" :roles="roles" submit-label="Save Changes" />
+                <UserForm :form="form" :roles="roles" :bcf-workers="bcfWorkers" submit-label="Save Changes" />
             </form>
         </div>
     </AppLayout>
@@ -25,6 +25,7 @@ import UserForm from './Partials/UserForm.vue';
 const props = defineProps({
     staffMember: { type: Object, required: true },
     roles:       { type: Array,  required: true },
+    bcfWorkers:  { type: Array,  default: () => [] },
 });
 
 const form = useForm({
@@ -43,6 +44,7 @@ const form = useForm({
     contracted_hours:        props.staffMember.contracted_hours ?? 40,
     avatar:                  null,
     current_avatar_url:      props.staffMember.avatar_url ?? null,
+    bcf_worker_id:           props.staffMember.bcf_worker_id ?? null,
 });
 
 function submit() {

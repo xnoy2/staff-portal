@@ -64,6 +64,7 @@ class User extends Authenticatable
         'preferences',
         'bgr_token',
         'bgr_session',
+        'bcf_worker_id',
     ];
 
     protected $hidden = [

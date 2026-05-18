@@ -202,8 +202,10 @@ class StaffController extends Controller
                 'annual_leave_days'       => $staff->annual_leave_days,
                 'hourly_rate'             => $staff->hourly_rate,
                 'contracted_hours'        => $staff->contracted_hours ?? 40,
+                'bcf_worker_id'           => $staff->bcf_worker_id,
             ],
-            'roles' => Role::orderBy('name')->pluck('name'),
+            'roles'       => Role::orderBy('name')->pluck('name'),
+            'bcfWorkers'  => $this->getBcfWorkers(),
         ]);
     }
 
@@ -224,6 +226,7 @@ class StaffController extends Controller
             'annual_leave_days'       => $request->integer('annual_leave_days', 28),
             'hourly_rate'             => $request->filled('hourly_rate') ? round((float) $request->input('hourly_rate'), 2) : null,
             'contracted_hours'        => $request->integer('contracted_hours', 40),
+            'bcf_worker_id'           => $request->filled('bcf_worker_id') ? $request->bcf_worker_id : null,
         ];
 
         if ($request->hasFile('avatar')) {
@@ -250,6 +253,24 @@ class StaffController extends Controller
     private function avatarDisk(): string
     {
         return config('filesystems.disks.r2.bucket') ? 'r2' : 'public';
+    }
+
+    private function getBcfWorkers(): array
+    {
+        try {
+            $raw = (new \App\Services\BcfApiService())->getOrders();
+            $orders = $raw['orders'] ?? [];
+            $workers = [];
+            foreach ($orders as $order) {
+                $w = $order['worker'] ?? null;
+                if ($w && isset($w['id']) && ! isset($workers[$w['id']])) {
+                    $workers[$w['id']] = ['id' => $w['id'], 'name' => $w['name']];
+                }
+            }
+            return array_values($workers);
+        } catch (\Throwable) {
+            return [];
+        }
     }
 
     public function destroy(Request $request, User $staff): RedirectResponse

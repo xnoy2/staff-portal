@@ -12,14 +12,27 @@ class BcfController extends Controller
 {
     public function index(): Response
     {
+        $user    = auth()->user();
         $service = new BcfApiService();
         $raw     = $service->getOrders();
+        $all     = $raw['orders'] ?? [];
 
-        // API may return array directly or wrapped in a key
-        $orders = is_array($raw) && isset($raw[0]) ? $raw : ($raw['orders'] ?? $raw['data'] ?? []);
+        // Admins and managers see all orders; other staff see only their assigned ones
+        $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'hr']);
+
+        if ($isPrivileged || ! $user->bcf_worker_id) {
+            $orders = $all;
+        } else {
+            $orders = array_values(array_filter(
+                $all,
+                fn ($o) => ($o['worker']['id'] ?? null) === $user->bcf_worker_id
+            ));
+        }
 
         return Inertia::render('Bcf/Orders', [
-            'orders' => $orders,
+            'orders'       => $orders,
+            'isPrivileged' => $isPrivileged,
+            'linked'       => (bool) $user->bcf_worker_id,
         ]);
     }
 
@@ -28,15 +41,13 @@ class BcfController extends Controller
         $service = new BcfApiService();
         $raw     = $service->getOrder($id);
 
-        if (empty($raw)) {
+        if (empty($raw) || empty($raw['order'])) {
             return redirect()->route('bcf.index')->with('error', 'Order not found.');
         }
 
-        // API may return the order directly or wrapped
-        $order = $raw['order'] ?? $raw['data'] ?? $raw;
-
         return Inertia::render('Bcf/Order', [
-            'order' => $order,
+            'order'  => $raw['order'],
+            'stages' => $raw['stages'] ?? [],
         ]);
     }
 

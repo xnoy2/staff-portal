@@ -1,155 +1,251 @@
 <template>
-    <AppLayout :title="order.title ?? order.reference ?? `Order #${order.id}`">
-        <div class="max-w-4xl mx-auto space-y-5">
+    <AppLayout :title="order.client?.name ?? order.order_number">
+        <div class="max-w-6xl mx-auto space-y-4">
+
+            <!-- Back -->
+            <Link :href="route('bcf.index')" class="inline-flex items-center gap-1.5 text-xs text-gray-400 hover:text-gray-700 transition-colors">
+                <ArrowLeftIcon class="w-3.5 h-3.5" /> Back to Orders
+            </Link>
 
             <!-- Header card -->
             <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
-                <div class="flex items-start gap-4 flex-wrap">
-                    <div class="w-14 h-14 rounded-2xl bg-[#2B2D42] flex items-center justify-center flex-shrink-0">
-                        <ClipboardDocumentListIcon class="w-7 h-7 text-white" />
-                    </div>
+                <div class="flex items-start gap-4">
                     <div class="flex-1 min-w-0">
-                        <div class="flex items-center gap-2 flex-wrap">
-                            <span class="text-xs font-bold px-2 py-0.5 rounded bg-[#EF233C] text-white tracking-wide">BCF</span>
-                            <h1 class="text-xl font-bold text-gray-900">
-                                {{ order.title ?? order.reference ?? `Order #${order.id}` }}
-                            </h1>
-                            <span :class="statusBadge(order.status)" class="text-xs font-semibold px-2.5 py-1 rounded-full capitalize">
-                                {{ (order.status ?? 'pending').replace('_', ' ') }}
+                        <!-- Title -->
+                        <h1 class="text-xl font-bold text-gray-900">{{ order.client?.name ?? order.order_number }}</h1>
+
+                        <!-- Meta row -->
+                        <div class="flex flex-wrap items-center gap-x-5 gap-y-1.5 mt-2">
+                            <span class="flex items-center gap-1.5 text-xs text-gray-500">
+                                <span class="text-[10px] font-bold tracking-widest text-gray-400">📋</span>
+                                <span class="font-mono text-xs text-gray-600">{{ order.order_number }}</span>
+                            </span>
+                            <span v-if="order.address" class="flex items-center gap-1.5 text-xs text-gray-500">
+                                <MapPinIcon class="w-3.5 h-3.5 text-[#EF233C] flex-shrink-0" />
+                                {{ order.address }}
+                            </span>
+                            <span v-if="order.installation_date" class="flex items-center gap-1.5 text-xs text-gray-500">
+                                <CalendarIcon class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                {{ formatDate(order.installation_date) }}
+                            </span>
+                            <span v-if="order.build_date" class="flex items-center gap-1.5 text-xs text-gray-500">
+                                <WrenchScrewdriverIcon class="w-3.5 h-3.5 text-gray-400 flex-shrink-0" />
+                                Build: {{ formatDate(order.build_date) }}
                             </span>
                         </div>
-
-                        <div class="flex flex-wrap gap-4 mt-2">
-                            <div v-if="order.client?.name ?? order.client_name" class="flex items-center gap-1.5 text-sm text-gray-500">
-                                <UserIcon class="w-4 h-4 flex-shrink-0 text-gray-400" />
-                                <span>{{ order.client?.name ?? order.client_name }}</span>
-                            </div>
-                            <div v-if="order.worker?.name ?? order.worker_name" class="flex items-center gap-1.5 text-sm text-gray-500">
-                                <WrenchScrewdriverIcon class="w-4 h-4 flex-shrink-0 text-gray-400" />
-                                <span>{{ order.worker?.name ?? order.worker_name }}</span>
-                            </div>
-                            <div v-if="order.created_at" class="flex items-center gap-1.5 text-sm text-gray-400">
-                                <CalendarIcon class="w-4 h-4 flex-shrink-0" />
-                                <span>{{ formatDate(order.created_at) }}</span>
-                            </div>
-                        </div>
-
-                        <p v-if="order.description" class="text-sm text-gray-400 mt-2 italic">{{ order.description }}</p>
                     </div>
 
-                    <Link :href="route('bcf.index')" class="text-sm text-gray-400 hover:text-gray-700 flex items-center gap-1 flex-shrink-0 transition-colors">
-                        <ArrowLeftIcon class="w-4 h-4" /> Orders
-                    </Link>
+                    <!-- Progress badge -->
+                    <div class="flex-shrink-0 w-16 h-16 rounded-xl bg-[#2B2D42] flex flex-col items-center justify-center text-white">
+                        <span class="text-lg font-extrabold leading-none">{{ overallPct }}%</span>
+                        <span class="text-[9px] font-semibold tracking-wide opacity-70 mt-0.5">Complete</span>
+                    </div>
                 </div>
 
-                <!-- Overall progress -->
-                <div v-if="allTasks.length > 0" class="mt-5 pt-5 border-t border-gray-100">
-                    <div class="flex items-center justify-between mb-2">
-                        <span class="text-xs font-medium text-gray-500">Overall Progress</span>
-                        <span class="text-xs font-bold text-gray-700">{{ doneTasks }} / {{ allTasks.length }} tasks</span>
-                    </div>
-                    <div class="h-2 bg-gray-100 rounded-full overflow-hidden">
-                        <div class="h-full bg-[#EF233C] rounded-full transition-all duration-500" :style="{ width: overallPct + '%' }" />
+                <!-- Progress bar -->
+                <div class="mt-4">
+                    <div class="h-2.5 bg-gray-100 rounded-full overflow-hidden">
+                        <div
+                            class="h-full rounded-full transition-all duration-500"
+                            :class="overallPct === 100 ? 'bg-emerald-500' : 'bg-amber-400'"
+                            :style="{ width: overallPct + '%' }"
+                        />
                     </div>
                 </div>
             </div>
 
-            <!-- Stages -->
-            <div v-if="stages.length === 0" class="bg-white rounded-xl border border-gray-200 py-12 text-center">
-                <p class="text-sm text-gray-400">No stages found for this order.</p>
-            </div>
+            <!-- Two-column layout -->
+            <div class="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
-            <div v-for="stage in stages" :key="stage.id" class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <!-- ── Left: Build Stages ── -->
+                <div class="lg:col-span-2 space-y-3">
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <h2 class="text-sm font-bold text-gray-800 mb-4 flex items-center gap-2">
+                            🏗️ Build Stages
+                        </h2>
 
-                <!-- Stage header -->
-                <div class="flex items-center gap-3 px-5 py-4 border-b border-gray-100">
-                    <div :class="stageDot(stage.status)" class="w-3 h-3 rounded-full flex-shrink-0" />
-                    <div class="flex-1 min-w-0">
-                        <h2 class="text-sm font-semibold text-gray-800 truncate">{{ stage.title ?? stage.name ?? `Stage ${stage.id}` }}</h2>
-                        <p v-if="stage.description" class="text-xs text-gray-400 mt-0.5">{{ stage.description }}</p>
-                    </div>
+                        <div class="space-y-2">
+                            <div
+                                v-for="(stage, idx) in sortedStages"
+                                :key="stage.id"
+                                class="rounded-xl border transition-all"
+                                :class="stageRowClass(stage, idx)"
+                            >
+                                <!-- Stage header row -->
+                                <div class="flex items-center gap-3 px-4 py-3">
 
-                    <!-- Stage status selector -->
-                    <select
-                        :value="stage.status ?? 'pending'"
-                        @change="updateStage(stage.id, $event.target.value)"
-                        class="text-xs border border-gray-200 rounded-lg px-2 py-1 focus:ring-[#EF233C] focus:border-[#EF233C] flex-shrink-0"
-                    >
-                        <option value="pending">Pending</option>
-                        <option value="in_progress">In Progress</option>
-                        <option value="done">Done</option>
-                    </select>
-                </div>
+                                    <!-- Status icon -->
+                                    <div class="flex-shrink-0">
+                                        <!-- Done: green check -->
+                                        <div v-if="stage.status === 'done'" class="w-7 h-7 rounded-full bg-emerald-500 flex items-center justify-center">
+                                            <CheckIcon class="w-4 h-4 text-white" />
+                                        </div>
+                                        <!-- Locked: hourglass -->
+                                        <div v-else-if="isLocked(idx)" class="w-7 h-7 rounded-full bg-gray-100 flex items-center justify-center">
+                                            <span class="text-sm">⏳</span>
+                                        </div>
+                                        <!-- Active: blue -->
+                                        <div v-else class="w-7 h-7 rounded-full bg-blue-500 flex items-center justify-center">
+                                            <span class="text-xs font-bold text-white">{{ stage.stage_number }}</span>
+                                        </div>
+                                    </div>
 
-                <!-- Tasks -->
-                <div v-if="(stage.tasks ?? []).length > 0" class="divide-y divide-gray-50">
-                    <div
-                        v-for="task in stage.tasks"
-                        :key="task.id"
-                        class="flex items-start gap-3 px-5 py-3.5 hover:bg-gray-50/50 transition-colors"
-                    >
-                        <!-- Checkbox -->
-                        <button
-                            @click="toggleTask(task)"
-                            :class="[
-                                'w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all',
-                                task.completed
-                                    ? 'bg-emerald-500 border-emerald-500 text-white'
-                                    : 'border-gray-300 hover:border-[#EF233C]'
-                            ]"
-                        >
-                            <CheckIcon v-if="task.completed" class="w-3 h-3" />
-                        </button>
+                                    <!-- Label + subtitle -->
+                                    <div class="flex-1 min-w-0">
+                                        <p :class="['text-sm font-semibold', isLocked(idx) ? 'text-gray-400' : 'text-gray-800']">
+                                            {{ stage.label }}
+                                        </p>
+                                        <p v-if="stage.status === 'done' && stage.completed_at" class="text-xs text-emerald-600 mt-0.5">
+                                            Completed {{ formatShortDate(stage.completed_at) }}
+                                        </p>
+                                        <p v-else-if="isLocked(idx)" class="text-xs text-gray-400 mt-0.5">
+                                            Complete the previous stage first
+                                        </p>
+                                        <p v-else-if="(stage.tasks ?? []).length > 0 && allTasksDone(stage)" class="text-xs text-emerald-600 mt-0.5">
+                                            All {{ stage.tasks.length }} task{{ stage.tasks.length !== 1 ? 's' : '' }} done
+                                        </p>
+                                    </div>
 
-                        <!-- Content -->
-                        <div class="flex-1 min-w-0">
-                            <p :class="['text-sm font-medium transition-colors', task.completed ? 'line-through text-gray-400' : 'text-gray-800']">
-                                {{ task.title ?? task.name ?? `Task ${task.id}` }}
-                            </p>
-                            <p v-if="task.description && !task.completed" class="text-xs text-gray-400 mt-0.5">{{ task.description }}</p>
-
-                            <!-- Notes area -->
-                            <div v-if="task.completed && task.notes" class="mt-1.5 text-xs text-gray-500 bg-gray-50 rounded-lg px-2.5 py-1.5 italic">
-                                {{ task.notes }}
-                            </div>
-
-                            <!-- Expand notes input -->
-                            <Transition name="slide">
-                                <div v-if="activeTask === task.id" class="mt-2 space-y-2">
-                                    <textarea
-                                        v-model="taskNotes[task.id]"
-                                        rows="2"
-                                        maxlength="2000"
-                                        placeholder="Add notes (optional)…"
-                                        class="w-full text-xs border border-gray-200 rounded-lg px-3 py-2 focus:ring-[#EF233C] focus:border-[#EF233C] resize-none"
-                                    />
-                                    <div class="flex gap-2">
-                                        <button
-                                            @click="confirmTaskComplete(task)"
-                                            class="text-xs bg-emerald-500 hover:bg-emerald-600 text-white px-3 py-1 rounded-lg transition-colors"
+                                    <!-- Actions (right side) -->
+                                    <div v-if="!isLocked(idx)" class="flex items-center gap-2 flex-shrink-0">
+                                        <!-- Task count chip -->
+                                        <span
+                                            v-if="(stage.tasks ?? []).length > 0"
+                                            class="text-xs font-medium text-gray-500 border border-gray-200 rounded-full px-2 py-0.5"
                                         >
-                                            Mark Complete
+                                            + Task ({{ doneTaskCount(stage) }}/{{ stage.tasks.length }})
+                                        </span>
+
+                                        <!-- Done stage: Undo -->
+                                        <button
+                                            v-if="stage.status === 'done'"
+                                            @click="undoStage(stage)"
+                                            :disabled="updatingStage === stage.id"
+                                            class="text-xs text-gray-400 hover:text-gray-700 border border-gray-200 hover:border-gray-300 rounded-lg px-2.5 py-1 transition-colors disabled:opacity-40"
+                                        >
+                                            Undo
                                         </button>
+
+                                        <!-- Active stage: Done -->
                                         <button
-                                            @click="activeTask = null"
-                                            class="text-xs text-gray-400 hover:text-gray-600 px-3 py-1 rounded-lg transition-colors"
+                                            v-else
+                                            @click="markStageDone(stage)"
+                                            :disabled="updatingStage === stage.id"
+                                            class="text-xs font-semibold bg-[#2B2D42] hover:bg-[#3d405e] disabled:opacity-40 text-white rounded-lg px-3 py-1 transition-colors flex items-center gap-1"
                                         >
-                                            Cancel
+                                            <span v-if="updatingStage === stage.id" class="w-3 h-3 border-2 border-white/40 border-t-white rounded-full animate-spin" />
+                                            <CheckIcon v-else class="w-3 h-3" />
+                                            Done
+                                        </button>
+
+                                        <!-- Expand chevron -->
+                                        <button
+                                            v-if="(stage.tasks ?? []).length > 0"
+                                            @click="toggleStageExpand(stage.id)"
+                                            class="p-1 text-gray-400 hover:text-gray-600 rounded transition-colors"
+                                        >
+                                            <ChevronDownIcon class="w-4 h-4 transition-transform" :class="expandedStages.has(stage.id) ? 'rotate-180' : ''" />
                                         </button>
                                     </div>
                                 </div>
-                            </Transition>
-                        </div>
 
-                        <!-- Status badge -->
-                        <span :class="task.completed ? 'text-emerald-600 bg-emerald-50' : 'text-gray-400 bg-gray-50'" class="text-[10px] font-semibold px-2 py-0.5 rounded-full flex-shrink-0 mt-0.5">
-                            {{ task.completed ? 'Done' : 'Open' }}
-                        </span>
+                                <!-- Tasks (expanded) -->
+                                <Transition name="slide">
+                                    <div
+                                        v-if="!isLocked(idx) && expandedStages.has(stage.id) && (stage.tasks ?? []).length > 0"
+                                        class="border-t border-gray-100 px-4 py-3 space-y-2"
+                                    >
+                                        <div
+                                            v-for="task in stage.tasks"
+                                            :key="task.id"
+                                            class="flex items-start gap-3 py-1"
+                                        >
+                                            <button
+                                                @click="toggleTask(task)"
+                                                :class="[
+                                                    'w-5 h-5 rounded border-2 flex-shrink-0 mt-0.5 flex items-center justify-center transition-all',
+                                                    task.completed
+                                                        ? 'bg-emerald-500 border-emerald-500 text-white'
+                                                        : 'border-gray-300 hover:border-[#EF233C]'
+                                                ]"
+                                            >
+                                                <CheckIcon v-if="task.completed" class="w-3 h-3" />
+                                            </button>
+                                            <div class="flex-1 min-w-0">
+                                                <p :class="['text-sm', task.completed ? 'line-through text-gray-400' : 'text-gray-700']">
+                                                    {{ task.title ?? task.label ?? `Task ${task.id}` }}
+                                                </p>
+                                                <p v-if="task.notes" class="text-xs text-gray-400 mt-0.5 italic">{{ task.notes }}</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </Transition>
+                            </div>
+                        </div>
                     </div>
                 </div>
-                <div v-else class="px-5 py-3 text-xs text-gray-400 italic">No tasks in this stage.</div>
-            </div>
 
+                <!-- ── Right: Sidebar ── -->
+                <div class="space-y-3">
+
+                    <!-- Birthday booking notice -->
+                    <div v-if="order.is_birthday_booking" class="bg-amber-50 border border-amber-200 rounded-xl p-4 flex gap-3">
+                        <span class="text-xl flex-shrink-0">🎂</span>
+                        <div>
+                            <p class="text-sm font-semibold text-amber-800">Birthday Booking</p>
+                            <p class="text-xs text-amber-700 mt-0.5">Remember to bring freebies for this installation!</p>
+                        </div>
+                    </div>
+
+                    <!-- Client Details -->
+                    <div class="bg-white rounded-xl border border-gray-200 p-5">
+                        <h3 class="text-xs font-bold text-gray-700 uppercase tracking-wide mb-3 flex items-center gap-1.5">
+                            <UserIcon class="w-3.5 h-3.5" /> Client Details
+                        </h3>
+                        <dl class="space-y-2.5">
+                            <div class="flex justify-between gap-2">
+                                <dt class="text-xs text-gray-400">Name</dt>
+                                <dd class="text-xs font-semibold text-gray-800 text-right">{{ order.client?.name ?? '—' }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <dt class="text-xs text-gray-400">Email</dt>
+                                <dd class="text-xs font-semibold text-[#EF233C] text-right truncate">{{ order.client?.email ?? '—' }}</dd>
+                            </div>
+                            <div class="flex justify-between gap-2">
+                                <dt class="text-xs text-gray-400">Phone</dt>
+                                <dd class="text-xs font-semibold text-gray-800 text-right">{{ order.client?.phone ?? '—' }}</dd>
+                            </div>
+                            <div v-if="order.address" class="flex justify-between gap-2">
+                                <dt class="text-xs text-gray-400">Address</dt>
+                                <dd class="text-xs font-semibold text-gray-800 text-right">{{ order.address }}</dd>
+                            </div>
+                            <div v-if="order.product_order" class="flex justify-between gap-2">
+                                <dt class="text-xs text-gray-400">Product</dt>
+                                <dd class="text-xs font-semibold text-gray-800 text-right">{{ order.product_order }}</dd>
+                            </div>
+                            <div v-if="order.contract_amount" class="flex justify-between gap-2">
+                                <dt class="text-xs text-gray-400">Contract</dt>
+                                <dd class="text-xs font-semibold text-gray-800 text-right">£{{ Number(order.contract_amount).toLocaleString('en-GB') }}</dd>
+                            </div>
+                        </dl>
+                    </div>
+
+                    <!-- Notes -->
+                    <div v-if="order.notes" class="bg-white rounded-xl border border-gray-200 p-5">
+                        <h3 class="text-xs font-bold text-[#EF233C] uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                            📌 Notes
+                        </h3>
+                        <p class="text-xs text-gray-600 whitespace-pre-line">{{ order.notes }}</p>
+                    </div>
+
+                    <!-- Access Notes -->
+                    <div v-if="order.access_notes" class="bg-amber-50 border border-amber-200 rounded-xl p-4">
+                        <p class="text-xs font-semibold text-amber-700">
+                            🔑 Access Notes: <span class="font-normal">{{ order.access_notes }}</span>
+                        </p>
+                    </div>
+                </div>
+            </div>
         </div>
     </AppLayout>
 </template>
@@ -159,64 +255,92 @@ import { ref, computed } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
-    ClipboardDocumentListIcon, UserIcon, WrenchScrewdriverIcon,
-    CalendarIcon, ArrowLeftIcon, CheckIcon,
+    ArrowLeftIcon, CheckIcon, ChevronDownIcon,
+    MapPinIcon, CalendarIcon, WrenchScrewdriverIcon, UserIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    order: { type: Object, required: true },
+    order:  { type: Object, required: true },
+    stages: { type: Array,  default: () => [] },
 });
 
-const stages   = computed(() => props.order.stages ?? []);
-const allTasks = computed(() => stages.value.flatMap(s => s.tasks ?? []));
-const doneTasks = computed(() => allTasks.value.filter(t => t.completed).length);
-const overallPct = computed(() =>
-    allTasks.value.length ? Math.round((doneTasks.value / allTasks.value.length) * 100) : 0
+// Sort by stage_number
+const sortedStages = computed(() =>
+    [...props.stages].sort((a, b) => a.stage_number - b.stage_number)
 );
 
-// Task note state
-const activeTask = ref(null);
-const taskNotes  = ref({});
-
-function toggleTask(task) {
-    if (task.completed) {
-        // Already done — uncomplete immediately
-        router.patch(route('bcf.tasks.complete', task.id), { completed: false }, { preserveScroll: true });
-    } else {
-        // Show notes prompt before completing
-        activeTask.value = activeTask.value === task.id ? null : task.id;
-    }
+// A stage is locked if the previous stage is not "done"
+function isLocked(idx) {
+    if (idx === 0) return false;
+    return sortedStages.value[idx - 1].status !== 'done';
 }
 
-function confirmTaskComplete(task) {
-    router.patch(route('bcf.tasks.complete', task.id), {
-        completed: true,
-        notes: taskNotes.value[task.id] ?? null,
-    }, {
+// Progress — % of stages marked done
+const overallPct = computed(() => {
+    if (!sortedStages.value.length) return 0;
+    const done = sortedStages.value.filter(s => s.status === 'done').length;
+    return Math.round((done / sortedStages.value.length) * 100);
+});
+
+// Task helpers
+function doneTaskCount(stage) {
+    return (stage.tasks ?? []).filter(t => t.completed).length;
+}
+function allTasksDone(stage) {
+    const tasks = stage.tasks ?? [];
+    return tasks.length > 0 && tasks.every(t => t.completed);
+}
+
+// Expanded stages set
+const expandedStages = ref(new Set());
+function toggleStageExpand(id) {
+    const s = new Set(expandedStages.value);
+    s.has(id) ? s.delete(id) : s.add(id);
+    expandedStages.value = s;
+}
+
+// Stage actions
+const updatingStage = ref(null);
+
+function markStageDone(stage) {
+    updatingStage.value = stage.id;
+    router.patch(route('bcf.stages.update', stage.id), { status: 'done' }, {
         preserveScroll: true,
-        onSuccess: () => { activeTask.value = null; },
+        onFinish: () => { updatingStage.value = null; },
     });
 }
 
-function updateStage(id, status) {
-    router.patch(route('bcf.stages.update', id), { status }, { preserveScroll: true });
+function undoStage(stage) {
+    updatingStage.value = stage.id;
+    router.patch(route('bcf.stages.update', stage.id), { status: 'pending' }, {
+        preserveScroll: true,
+        onFinish: () => { updatingStage.value = null; },
+    });
+}
+
+// Task toggle
+function toggleTask(task) {
+    router.patch(route('bcf.tasks.complete', task.id), {
+        completed: !task.completed,
+    }, { preserveScroll: true });
+}
+
+// Styling
+function stageRowClass(stage, idx) {
+    if (stage.status === 'done')   return 'border-emerald-200 bg-emerald-50/40';
+    if (isLocked(idx))             return 'border-gray-100 bg-gray-50/50 opacity-60';
+    return 'border-blue-200 bg-blue-50/30';
 }
 
 function formatDate(d) {
-    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+    if (!d) return '';
+    return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
 }
 
-const stageDot = s => ({
-    pending:     'bg-gray-300',
-    in_progress: 'bg-amber-400',
-    done:        'bg-emerald-500',
-}[s] ?? 'bg-gray-300');
-
-const statusBadge = s => ({
-    pending:     'bg-gray-100 text-gray-500',
-    in_progress: 'bg-amber-100 text-amber-700',
-    done:        'bg-emerald-100 text-emerald-700',
-}[s] ?? 'bg-gray-100 text-gray-500');
+function formatShortDate(d) {
+    if (!d) return '';
+    return new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+}
 </script>
 
 <style scoped>

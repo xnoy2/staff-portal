@@ -168,6 +168,20 @@
             <p v-if="form.errors.notes" class="mt-1 text-xs text-red-600">{{ form.errors.notes }}</p>
         </div>
 
+        <!-- BCF Integration -->
+        <div v-if="bcfWorkers.length > 0" class="bg-white rounded-xl border border-gray-200 p-6">
+            <h2 class="text-sm font-semibold text-gray-700 mb-1 flex items-center gap-2">
+                <span class="text-xs font-bold px-1.5 py-0.5 rounded bg-[#EF233C] text-white">BCF</span>
+                BCF Worker Link
+            </h2>
+            <p class="text-xs text-gray-400 mb-3">Link this staff member to their BCF worker account so they only see their assigned orders.</p>
+            <select v-model="form.bcf_worker_id" class="form-input">
+                <option :value="null">— Not linked —</option>
+                <option v-for="w in bcfWorkers" :key="w.id" :value="w.id">{{ w.name }}</option>
+            </select>
+            <p v-if="form.errors.bcf_worker_id" class="mt-1 text-xs text-red-600">{{ form.errors.bcf_worker_id }}</p>
+        </div>
+
         <!-- Submit -->
         <div class="flex items-center justify-between">
             <Link :href="route('staff.index')" class="text-sm text-gray-500 hover:text-gray-700">
@@ -197,6 +211,7 @@ const props = defineProps({
     roles:       { type: Array,  required: true },
     isCreate:    { type: Boolean, default: false },
     submitLabel: { type: String,  default: 'Save Changes' },
+    bcfWorkers:  { type: Array,   default: () => [] },
 });
 
 const avatarPreview = ref(null);
