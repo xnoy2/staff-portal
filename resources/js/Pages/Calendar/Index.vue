@@ -40,6 +40,10 @@
                     <span class="text-xs text-gray-600 font-medium">Job</span>
                 </div>
                 <div class="flex items-center gap-2 px-3.5 py-2">
+                    <span class="w-3 h-3 rounded-sm bg-violet-400 flex-shrink-0"></span>
+                    <span class="text-xs text-gray-600 font-medium">Project</span>
+                </div>
+                <div class="flex items-center gap-2 px-3.5 py-2">
                     <span class="w-3 h-3 rounded-sm bg-amber-400 flex-shrink-0"></span>
                     <span class="text-xs text-gray-600 font-medium">Leave (pending)</span>
                 </div>
@@ -69,25 +73,31 @@
                     </div>
                 </div>
 
-                <!-- Grid cells -->
-                <div class="grid grid-cols-7">
+                <!-- ── Week rows ── -->
+                <div
+                    v-for="(week, wi) in weekRows"
+                    :key="week[0].dateStr"
+                    class="relative grid grid-cols-7"
+                >
+                    <!-- 7 day cells -->
                     <div
-                        v-for="(cell, ci) in calCells"
+                        v-for="(cell, ci) in week"
                         :key="cell.dateStr"
                         :class="[
-                            'border-b border-r border-gray-100 min-h-[108px] flex flex-col p-2 relative group transition-colors duration-100',
-                            ci % 7 === 0 ? 'border-l-0' : '',
+                            'border-b border-r border-gray-100 flex flex-col p-2 relative group transition-colors duration-100',
+                            ci === 0 ? 'border-l-0' : '',
                             !cell.isCurrentMonth ? 'bg-gray-50/60' : 'bg-white',
                             cell.isToday ? '!bg-red-50/40' : '',
                             cell.hasEvents ? 'cursor-pointer hover:bg-blue-50/20' : 'hover:bg-gray-50/50',
                         ]"
+                        :style="{ minHeight: cellMinHeight(wi) + 'px' }"
                         @click="cell.hasEvents && selectDay(cell.dateStr)"
                     >
-                        <!-- Today column highlight stripe -->
+                        <!-- Today highlight stripe -->
                         <div v-if="cell.isToday" class="absolute top-0 left-0 right-0 h-0.5 bg-[#EF233C]"></div>
 
                         <!-- Day number -->
-                        <div class="flex items-center justify-between mb-1.5">
+                        <div class="flex items-center justify-between mb-1">
                             <span
                                 v-if="cell.isToday"
                                 class="w-6 h-6 flex items-center justify-center rounded-full bg-[#EF233C] text-white text-[11px] font-bold shadow-sm"
@@ -104,38 +114,73 @@
                                 {{ cell.dayNum }}
                             </span>
 
-                            <!-- Event count dot (when too many) -->
+                            <!-- Overflow count for non-project events -->
                             <span
-                                v-if="cell.events.length > MAX_VISIBLE"
+                                v-if="cell.nonProjectEvents.length > MAX_VISIBLE"
                                 class="text-[9px] text-[#EF233C] font-bold"
                             >
-                                +{{ cell.events.length - MAX_VISIBLE }}
+                                +{{ cell.nonProjectEvents.length - MAX_VISIBLE }}
                             </span>
                         </div>
 
-                        <!-- Event bars -->
+                        <!-- Bar placeholder — pushes chips below the spanning bars -->
+                        <div class="flex-shrink-0" :style="{ height: barAreaHeight(wi) + 'px' }"></div>
+
+                        <!-- Chips: jobs + leave only (projects shown as spanning bars) -->
                         <div class="flex flex-col gap-0.5 flex-1">
                             <div
-                                v-for="ev in cell.events.slice(0, MAX_VISIBLE)"
+                                v-for="ev in cell.nonProjectEvents.slice(0, MAX_VISIBLE)"
                                 :key="`${ev.kind}-${ev.title}`"
                                 :class="['flex items-center gap-1 px-1.5 py-[3px] rounded-md text-[9px] font-semibold truncate leading-none border-l-[3px]', chipClass(ev)]"
                                 :title="ev.title + (ev.project ? ' · ' + ev.project : '')"
                             >
-                                <component :is="ev.kind === 'leave' ? 'span' : 'span'" class="flex-shrink-0 opacity-70 text-[8px]">
-                                    {{ ev.kind === 'leave' ? '✈' : '●' }}
-                                </component>
+                                <span class="flex-shrink-0 opacity-70 text-[8px]">{{ ev.kind === 'leave' ? '✈' : '●' }}</span>
                                 <span class="truncate">{{ ev.title }}</span>
                             </div>
                         </div>
                     </div>
+
+                    <!-- ── Spanning project bars for this week row ── -->
+                    <div
+                        v-for="bar in weekBars[wi]"
+                        :key="bar.key"
+                        :class="[
+                            'absolute flex items-center overflow-hidden cursor-pointer z-10 transition-opacity hover:opacity-80',
+                            // Rounded ends only at actual project start / end
+                            bar.isStart && bar.isEnd ? 'rounded-full' : bar.isStart ? 'rounded-l-full' : bar.isEnd ? 'rounded-r-full' : '',
+                            // Border: top + bottom always; left only on start; right only on end
+                            'border-t border-b border-violet-300 bg-violet-100',
+                            bar.isStart ? 'border-l' : '',
+                            bar.isEnd   ? 'border-r' : '',
+                        ]"
+                        :style="barStyle(bar)"
+                        :title="`${bar.title}  ·  ${formatDate(bar.start_date)} → ${formatDate(bar.end_date)}`"
+                        @click.stop="selectDay(bar.clickDate)"
+                    >
+                        <!-- Diamond + name on the start cap -->
+                        <template v-if="bar.isStart">
+                            <span class="flex-shrink-0 pl-2 text-[10px] text-violet-500">◆</span>
+                            <span class="truncate flex-1 px-1.5 text-[9px] font-semibold text-violet-800">{{ bar.title }}</span>
+                        </template>
+                        <!-- For continuation bars (not start): show name if bar is wide enough -->
+                        <template v-else>
+                            <span class="truncate flex-1 px-2 text-[9px] font-semibold text-violet-600 opacity-70">{{ bar.title }}</span>
+                        </template>
+
+                        <!-- END label on the end cap -->
+                        <span v-if="bar.isEnd" class="flex-shrink-0 pr-2 text-[8px] font-bold text-violet-500 opacity-75">END</span>
+                    </div>
                 </div>
+                <!-- end week rows -->
+
             </div>
         </div>
 
         <!-- ── Summary strip ─────────────────────────────────────────────── -->
         <div class="mt-3 flex flex-wrap gap-4 text-xs text-gray-400 px-1">
-            <span>{{ totalEvents }} event{{ totalEvents !== 1 ? 's' : '' }} in {{ monthName }}</span>
+            <span>{{ totalNonProjectEvents }} event{{ totalNonProjectEvents !== 1 ? 's' : '' }} in {{ monthName }}</span>
             <span v-if="totalJobs > 0">· {{ totalJobs }} job{{ totalJobs !== 1 ? 's' : '' }}</span>
+            <span v-if="projectsInMonth.length > 0">· {{ projectsInMonth.length }} project{{ projectsInMonth.length !== 1 ? 's' : '' }}</span>
             <span v-if="totalLeave > 0">· {{ totalLeave }} leave day{{ totalLeave !== 1 ? 's' : '' }}</span>
         </div>
 
@@ -188,6 +233,48 @@
                             </div>
                         </template>
 
+                        <!-- Projects -->
+                        <template v-if="selectedProjects.length > 0">
+                            <div class="px-5 pt-4 pb-1.5">
+                                <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest flex items-center gap-2">
+                                    <span class="w-2 h-2 rounded-full bg-violet-400 inline-block"></span>
+                                    Projects · {{ selectedProjects.length }}
+                                </p>
+                            </div>
+                            <div v-for="proj in selectedProjects" :key="`${proj.source}-${proj.id}`" class="mx-3 mb-2 p-3 rounded-xl border border-violet-100 bg-violet-50/40 hover:bg-violet-50 transition-colors">
+                                <div class="flex items-start justify-between gap-2">
+                                    <div class="min-w-0 flex-1">
+                                        <div class="flex items-center gap-1.5 flex-wrap">
+                                            <p class="text-sm font-semibold text-gray-800 leading-snug truncate">{{ proj.title }}</p>
+                                            <span v-if="proj.source === 'bgr'" class="text-[8px] px-1.5 py-0.5 rounded-full bg-violet-200 text-violet-700 font-bold uppercase tracking-wide flex-shrink-0">BGR</span>
+                                            <span v-else-if="proj.source === 'local'" class="text-[8px] px-1.5 py-0.5 rounded-full bg-gray-100 text-gray-500 font-bold uppercase tracking-wide flex-shrink-0">Local</span>
+                                        </div>
+                                        <div class="flex flex-wrap items-center gap-x-3 gap-y-0.5 mt-1.5">
+                                            <div class="flex items-center gap-1 text-[10px] text-gray-500">
+                                                <CalendarDaysIcon class="w-3 h-3 text-violet-400 flex-shrink-0" />
+                                                <span>Start: <span class="font-medium text-gray-700">{{ formatDate(proj.start_date) }}</span></span>
+                                            </div>
+                                            <div class="flex items-center gap-1 text-[10px] text-gray-500">
+                                                <FlagIcon class="w-3 h-3 text-violet-400 flex-shrink-0" />
+                                                <span>Est. completion: <span class="font-medium text-gray-700">{{ formatDate(proj.end_date) }}</span></span>
+                                            </div>
+                                        </div>
+                                        <div v-if="proj.is_start || proj.is_end" class="mt-1.5 flex gap-1.5 flex-wrap">
+                                            <span v-if="proj.is_start" class="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full bg-violet-100 text-violet-700 font-bold">
+                                                ▶ Project Starts Today
+                                            </span>
+                                            <span v-if="proj.is_end" class="inline-flex items-center gap-1 text-[9px] px-2 py-0.5 rounded-full bg-violet-200 text-violet-800 font-bold">
+                                                ◀ Est. Completion Today
+                                            </span>
+                                        </div>
+                                    </div>
+                                    <span :class="['text-[9px] px-2 py-0.5 rounded-full font-bold flex-shrink-0 mt-0.5', projectBadge(proj.status)]">
+                                        {{ projectLabel(proj.status) }}
+                                    </span>
+                                </div>
+                            </div>
+                        </template>
+
                         <!-- Leave -->
                         <template v-if="selectedLeaves.length > 0">
                             <div class="px-5 pt-4 pb-1.5">
@@ -233,12 +320,26 @@ import { ref, computed } from 'vue';
 import { Link } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
 import isoWeek from 'dayjs/plugin/isoWeek';
+import isSameOrBefore from 'dayjs/plugin/isSameOrBefore';
+import isSameOrAfter from 'dayjs/plugin/isSameOrAfter';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon } from '@heroicons/vue/24/outline';
+import { ChevronLeftIcon, ChevronRightIcon, XMarkIcon, CalendarDaysIcon, FlagIcon } from '@heroicons/vue/24/outline';
 
 dayjs.extend(isoWeek);
+dayjs.extend(isSameOrBefore);
+dayjs.extend(isSameOrAfter);
+
+// ── Constants ─────────────────────────────────────────────────────────────────
 
 const MAX_VISIBLE = 3;
+const BAR_H       = 20; // px — height of each spanning bar
+const BAR_GAP     = 3;  // px — vertical gap between stacked bars
+// Distance from cell top to where bars start:
+// p-2 (8px) + h-6 day-num (24px) + mb-1 (4px) = 36px
+const BAR_TOP_BASE = 36;
+const BAR_PAD_X    = 2;  // px — horizontal inset from cell border per side
+
+// ── Props ─────────────────────────────────────────────────────────────────────
 
 const props = defineProps({
     month:     { type: String, required: true },
@@ -249,46 +350,171 @@ const props = defineProps({
     events:    { type: Object, default: () => ({}) },
 });
 
-// ── Grid ──────────────────────────────────────────────────────────────────────
+// ── Grid — split into per-week rows ──────────────────────────────────────────
 
-const calCells = computed(() => {
+const weekRows = computed(() => {
     const monthStart = dayjs(props.month + '-01');
     const gridStart  = monthStart.startOf('isoWeek');
     const gridEnd    = monthStart.endOf('month').endOf('isoWeek');
 
-    const cells = [];
+    const weeks = [];
     let cur = gridStart;
-    while (cur.isBefore(gridEnd) || cur.isSame(gridEnd, 'day')) {
-        const dateStr = cur.format('YYYY-MM-DD');
-        const evs     = props.events[dateStr] ?? [];
-        cells.push({
-            dateStr,
-            dayNum:         cur.date(),
-            isCurrentMonth: cur.month() === monthStart.month(),
-            isToday:        dateStr === props.todayDate,
-            isWeekend:      cur.isoWeekday() >= 6,
-            hasEvents:      evs.length > 0,
-            events:         evs,
-        });
-        cur = cur.add(1, 'day');
+
+    while (cur.isSameOrBefore(gridEnd, 'day')) {
+        const week = [];
+        for (let d = 0; d < 7; d++) {
+            const dateStr        = cur.format('YYYY-MM-DD');
+            const evs            = props.events[dateStr] ?? [];
+            const nonProjectEvs  = evs.filter(e => e.kind !== 'project');
+            week.push({
+                dateStr,
+                dayNum:           cur.date(),
+                isCurrentMonth:   cur.month() === monthStart.month(),
+                isToday:          dateStr === props.todayDate,
+                isWeekend:        cur.isoWeekday() >= 6,
+                hasEvents:        evs.length > 0,
+                events:           evs,
+                nonProjectEvents: nonProjectEvs,
+            });
+            cur = cur.add(1, 'day');
+        }
+        weeks.push(week);
     }
-    return cells;
+    return weeks;
 });
+
+// ── Unique projects visible in this month ─────────────────────────────────────
+
+const projectsInMonth = computed(() => {
+    const seen     = new Set();
+    const projects = [];
+    for (const evs of Object.values(props.events)) {
+        for (const ev of evs) {
+            if (ev.kind !== 'project') continue;
+            const key = `${ev.source ?? 'local'}-${ev.id}`;
+            if (seen.has(key)) continue;
+            seen.add(key);
+            projects.push({
+                id:         ev.id,
+                source:     ev.source ?? 'local',
+                title:      ev.title,
+                status:     ev.status,
+                start_date: ev.start_date,
+                end_date:   ev.end_date,
+            });
+        }
+    }
+    return projects;
+});
+
+// ── Spanning bars per week row ────────────────────────────────────────────────
+
+const weekBars = computed(() => {
+    return weekRows.value.map((week, wi) => {
+        const weekStart = dayjs(week[0].dateStr);
+        const weekEnd   = dayjs(week[6].dateStr);
+
+        const bars = [];
+
+        for (const project of projectsInMonth.value) {
+            if (!project.start_date || !project.end_date) continue;
+
+            const projStart = dayjs(project.start_date);
+            const projEnd   = dayjs(project.end_date);
+
+            // Skip if project doesn't overlap this week
+            if (projEnd.isBefore(weekStart, 'day') || projStart.isAfter(weekEnd, 'day')) continue;
+
+            // Column positions (1 = Mon … 7 = Sun)
+            const startCol = projStart.isBefore(weekStart, 'day') ? 1 : projStart.isoWeekday();
+            const endCol   = projEnd.isAfter(weekEnd, 'day')      ? 7 : projEnd.isoWeekday();
+
+            const isStart = !projStart.isBefore(weekStart, 'day'); // project actually starts this week
+            const isEnd   = !projEnd.isAfter(weekEnd, 'day');       // project actually ends this week
+
+            bars.push({
+                key:        `${project.source}-${project.id}-w${wi}`,
+                id:         project.id,
+                source:     project.source,
+                title:      project.title,
+                status:     project.status,
+                startCol,
+                endCol,
+                isStart,
+                isEnd,
+                start_date: project.start_date,
+                end_date:   project.end_date,
+                // Which date to open the modal on when bar is clicked
+                clickDate:  isStart ? project.start_date : week[0].dateStr,
+                row:        0, // assigned below
+            });
+        }
+
+        // Assign rows using greedy interval scheduling to prevent overlap
+        for (let i = 0; i < bars.length; i++) {
+            let row = 0;
+            while (
+                bars.slice(0, i).some(
+                    b => b.row === row &&
+                         b.startCol <= bars[i].endCol &&
+                         b.endCol   >= bars[i].startCol
+                )
+            ) row++;
+            bars[i].row = row;
+        }
+
+        return bars;
+    });
+});
+
+// ── Bar layout helpers ────────────────────────────────────────────────────────
+
+/** Total vertical space taken by bars in a given week row (used for placeholder height). */
+function barAreaHeight(wi) {
+    const bars = weekBars.value[wi] ?? [];
+    if (!bars.length) return 0;
+    const maxRow = Math.max(...bars.map(b => b.row));
+    return (maxRow + 1) * (BAR_H + BAR_GAP) + 4;
+}
+
+/** Minimum cell height = day-number area + bar area + chip area baseline */
+function cellMinHeight(wi) {
+    return BAR_TOP_BASE + barAreaHeight(wi) + 48; // 48px for at least 2 chip rows
+}
+
+/** Inline style for a spanning bar div. */
+function barStyle(bar) {
+    const colW = 100 / 7;
+    const left  = (bar.startCol - 1) * colW;
+    const width = (bar.endCol - bar.startCol + 1) * colW;
+    const top   = BAR_TOP_BASE + bar.row * (BAR_H + BAR_GAP);
+
+    return {
+        left:   `calc(${left}%  + ${BAR_PAD_X}px)`,
+        width:  `calc(${width}% - ${BAR_PAD_X * 2}px)`,
+        top:    `${top}px`,
+        height: `${BAR_H}px`,
+    };
+}
+
+// ── Stats ─────────────────────────────────────────────────────────────────────
 
 const todayMonth = computed(() => dayjs(props.todayDate).format('YYYY-MM'));
 
-const allEvents   = computed(() => Object.values(props.events).flat());
-const totalEvents = computed(() => allEvents.value.length);
-const totalJobs   = computed(() => allEvents.value.filter(e => e.kind === 'job').length);
-const totalLeave  = computed(() => allEvents.value.filter(e => e.kind === 'leave').length);
+const allEvents = computed(() => Object.values(props.events).flat());
+
+const totalNonProjectEvents = computed(() => allEvents.value.filter(e => e.kind !== 'project').length);
+const totalJobs             = computed(() => allEvents.value.filter(e => e.kind === 'job').length);
+const totalLeave            = computed(() => allEvents.value.filter(e => e.kind === 'leave').length);
 
 // ── Day selection ─────────────────────────────────────────────────────────────
 
 const selectedDay = ref(null);
 
-const selectedEvents = computed(() => selectedDay.value ? (props.events[selectedDay.value] ?? []) : []);
-const selectedJobs   = computed(() => selectedEvents.value.filter(e => e.kind === 'job'));
-const selectedLeaves = computed(() => selectedEvents.value.filter(e => e.kind === 'leave'));
+const selectedEvents   = computed(() => selectedDay.value ? (props.events[selectedDay.value] ?? []) : []);
+const selectedJobs     = computed(() => selectedEvents.value.filter(e => e.kind === 'job'));
+const selectedProjects = computed(() => selectedEvents.value.filter(e => e.kind === 'project'));
+const selectedLeaves   = computed(() => selectedEvents.value.filter(e => e.kind === 'leave'));
 
 const selectedDayLabel = computed(() => {
     if (!selectedDay.value) return {};
@@ -299,6 +525,12 @@ const selectedDayLabel = computed(() => {
 const selectedDayNum = computed(() => selectedDay.value ? dayjs(selectedDay.value).date() : '');
 
 function selectDay(dateStr) { selectedDay.value = dateStr; }
+
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
+function formatDate(dateStr) {
+    return dateStr ? dayjs(dateStr).format('D MMM YYYY') : '—';
+}
 
 // ── Styling helpers ───────────────────────────────────────────────────────────
 
@@ -330,6 +562,25 @@ function jobBadge(status) {
 function jobLabel(status) {
     const map = { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Done', cancelled: 'Cancelled' };
     return map[status] ?? status;
+}
+
+function projectBadge(status) {
+    const map = {
+        active:    'bg-violet-100 text-violet-700',
+        planning:  'bg-blue-100 text-blue-600',
+        on_hold:   'bg-amber-100 text-amber-700',
+        completed: 'bg-gray-100 text-gray-500',
+        cancelled: 'bg-red-100 text-red-500',
+    };
+    return map[status] ?? 'bg-violet-100 text-violet-700';
+}
+
+function projectLabel(status) {
+    const map = {
+        active: 'Active', planning: 'Planning', on_hold: 'On Hold',
+        completed: 'Completed', cancelled: 'Cancelled',
+    };
+    return map[status] ?? (status ? status.charAt(0).toUpperCase() + status.slice(1) : '—');
 }
 </script>
 
