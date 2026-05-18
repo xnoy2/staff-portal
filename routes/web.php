@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AttendanceController;
+use App\Http\Controllers\BcfController;
 use App\Http\Controllers\BgrController;
 use App\Http\Controllers\TrainingController;
 use App\Http\Controllers\AuditController;
@@ -134,6 +135,14 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/payroll/approve-all',             [PayrollRunController::class, 'approveAll'])->name('payroll.approve-all');
     Route::post('/payroll/cutoff',                  [PayrollRunController::class, 'updateCutoff'])->name('payroll.cutoff');
     Route::delete('/payroll/{run}',                 [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
+
+    // BCF Orders
+    Route::prefix('bcf')->name('bcf.')->group(function () {
+        Route::get('/',                      [BcfController::class, 'index'])->name('index');
+        Route::get('/orders/{id}',           [BcfController::class, 'show'])->name('show');
+        Route::patch('/stages/{id}',         [BcfController::class, 'updateStage'])->name('stages.update');
+        Route::patch('/tasks/{id}',          [BcfController::class, 'completeTask'])->name('tasks.complete');
+    });
 
     // BGR Client Projects
     Route::prefix('client-projects')->name('bgr.')->group(function () {

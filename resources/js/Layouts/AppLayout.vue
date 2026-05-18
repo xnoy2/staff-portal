@@ -84,8 +84,8 @@
                                     BGR
                                 </Link>
                                 <Link
-                                    href="/projects"
-                                    :class="['flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors', route().current('projects.*') ? 'bg-[#EF233C] text-white font-medium' : 'text-[#8D99AE] hover:bg-white/10 hover:text-white']"
+                                    href="/bcf"
+                                    :class="['flex items-center gap-2 px-2 py-1.5 rounded-lg text-xs transition-colors', route().current('bcf.*') ? 'bg-[#EF233C] text-white font-medium' : 'text-[#8D99AE] hover:bg-white/10 hover:text-white']"
                                 >
                                     BCF
                                 </Link>
@@ -259,7 +259,7 @@ const { isAdmin, isManager, isHR, isSiteHead } = usePermission();
 
 // Client Projects tree
 const clientProjectsActive = computed(() => {
-    try { return !!route().current('bgr.*') || !!route().current('projects.*'); } catch { return false; }
+    try { return !!route().current('bgr.*') || !!route().current('bcf.*'); } catch { return false; }
 });
 const clientProjectsOpen = ref(false);
 // Auto-open tree when on a child route

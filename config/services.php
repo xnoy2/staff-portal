@@ -44,4 +44,9 @@ return [
         'base_url' => env('BGR_API_URL', 'https://portal.bespokegardenroomsballycastle.co.uk'),
     ],
 
+    'bcf' => [
+        'base_url' => env('BCF_API_URL', 'https://zafhtfftioqdpjwvwtra.supabase.co/functions/v1/worker-api'),
+        'api_key'  => env('BCF_API_KEY', 'bcf_d5674ecb733a7364e059d31eb650f00651bb5a085e6bf8531744bac930535b12'),
+    ],
+
 ];
