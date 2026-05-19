@@ -245,13 +245,13 @@
                                 </div>
                             </div>
 
-                            <!-- Status actions (managers) -->
-                            <div v-if="isPrivileged" class="flex gap-2">
+                            <!-- Status actions -->
+                            <div v-if="isPrivileged || isAssigned(job)" class="flex gap-2">
                                 <template v-if="job.status === 'scheduled'">
                                     <button @click="setStatus(job, 'in_progress')" :disabled="statusLoading === job.id" class="status-action text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                         {{ statusLoading === job.id ? '…' : '▶ Start Job' }}
                                     </button>
-                                    <button @click="setStatus(job, 'cancelled')" :disabled="statusLoading === job.id" class="status-action text-gray-500 bg-gray-50 hover:bg-gray-100 border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">
+                                    <button v-if="isPrivileged" @click="setStatus(job, 'cancelled')" :disabled="statusLoading === job.id" class="status-action text-gray-500 bg-gray-50 hover:bg-gray-100 border-gray-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                         ✕ Cancel
                                     </button>
                                 </template>
@@ -260,12 +260,12 @@
                                         {{ statusLoading === job.id ? '…' : '✓ Mark Complete' }}
                                     </button>
                                 </template>
-                                <template v-else-if="job.status === 'cancelled'">
+                                <template v-else-if="job.status === 'cancelled' && isPrivileged">
                                     <button @click="setStatus(job, 'scheduled')" :disabled="statusLoading === job.id" class="status-action text-blue-600 bg-blue-50 hover:bg-blue-100 border-blue-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                         ↩ Restore
                                     </button>
                                 </template>
-                                <template v-else-if="job.status === 'completed'">
+                                <template v-else-if="job.status === 'completed' && isPrivileged">
                                     <button @click="setStatus(job, 'in_progress')" :disabled="statusLoading === job.id" class="status-action text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-200 disabled:opacity-50 disabled:cursor-not-allowed">
                                         ↩ Re-open
                                     </button>
@@ -735,10 +735,16 @@ const summaryStats = computed(() => [
     },
 ]);
 
+const authUserId = computed(() => page.props.auth?.user?.id ?? null);
+
 const canDelete = computed(() => {
     const roles = page.props.auth?.user?.roles ?? [];
     return roles.some(r => ['admin', 'manager'].includes(r));
 });
+
+function isAssigned(job) {
+    return authUserId.value && job.staff.some(s => s.id === authUserId.value);
+}
 
 // ── Modal ─────────────────────────────────────────────────────────────
 

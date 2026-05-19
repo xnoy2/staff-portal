@@ -35,6 +35,16 @@ class JobPolicy
         return false;
     }
 
+    // Assigned staff may start or complete their own job; privileged users may do anything.
+    public function updateStatus(User $user, Job $job): bool
+    {
+        if ($user->hasAnyRole(['admin', 'manager'])) return true;
+        if ($user->hasRole('site_head')) {
+            return $job->project_id && $user->projects()->where('projects.id', $job->project_id)->exists();
+        }
+        return $job->staff()->where('users.id', $user->id)->exists();
+    }
+
     public function delete(User $user, Job $job): bool
     {
         return $user->hasAnyRole(['admin', 'manager']);

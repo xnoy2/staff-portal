@@ -185,11 +185,19 @@ class JobController extends Controller
 
     public function updateStatus(Request $request, Job $job): RedirectResponse
     {
-        $this->authorize('update', $job);
+        $this->authorize('updateStatus', $job);
 
         $request->validate([
             'status' => ['required', 'in:scheduled,in_progress,completed,cancelled'],
         ]);
+
+        // Non-privileged assigned staff may only start or complete — not cancel/restore
+        $user = $request->user();
+        if (! $user->hasAnyRole(['admin', 'manager', 'site_head'])) {
+            if (! in_array($request->status, ['in_progress', 'completed'])) {
+                abort(403, 'You can only start or complete a job.');
+            }
+        }
 
         $job->update(['status' => $request->status]);
 
