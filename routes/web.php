@@ -140,6 +140,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('bcf')->name('bcf.')->group(function () {
         Route::get('/',                      [BcfController::class, 'index'])->name('index');
         Route::get('/orders/{id}',           [BcfController::class, 'show'])->name('show');
+        Route::get('/orders/{id}/stages',    [BcfController::class, 'stagesForOrder'])->name('order.stages');
         Route::patch('/stages/{id}',         [BcfController::class, 'updateStage'])->name('stages.update');
         Route::patch('/tasks/{id}',          [BcfController::class, 'completeTask'])->name('tasks.complete');
     });

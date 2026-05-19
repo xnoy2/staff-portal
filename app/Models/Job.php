@@ -18,6 +18,7 @@ class Job extends Model
         'project_id', 'van_id', 'created_by',
         'title', 'description', 'date',
         'start_time', 'end_time', 'status', 'notes',
+        'bcf_order_id', 'bcf_stage_id', 'bcf_order_number', 'bcf_stage_label',
     ];
 
     protected $casts = [

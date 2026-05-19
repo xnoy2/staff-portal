@@ -10,6 +10,7 @@ use App\Models\TimeEntry;
 use App\Models\User;
 use App\Models\Van;
 use App\Notifications\JobAssigned;
+use App\Services\BcfApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -74,6 +75,7 @@ class JobController extends Controller
             'staffList'    => $isPrivileged
                 ? User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'avatar'])
                 : [],
+            'bcfOrders'    => $isPrivileged ? $this->getBcfOrderList() : [],
         ]);
     }
 
@@ -83,16 +85,20 @@ class JobController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'project_id'  => ['nullable', 'exists:projects,id'],
-            'van_id'      => ['nullable', 'exists:vans,id'],
-            'title'       => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'date'        => ['required', 'date'],
-            'start_time'  => ['nullable', 'date_format:H:i'],
-            'end_time'    => ['nullable', 'date_format:H:i'],
-            'notes'       => ['nullable', 'string', 'max:2000'],
-            'staff_ids'   => ['nullable', 'array'],
-            'staff_ids.*' => ['exists:users,id'],
+            'project_id'      => ['nullable', 'exists:projects,id'],
+            'van_id'          => ['nullable', 'exists:vans,id'],
+            'title'           => ['required', 'string', 'max:255'],
+            'description'     => ['nullable', 'string', 'max:1000'],
+            'date'            => ['required', 'date'],
+            'start_time'      => ['nullable', 'date_format:H:i'],
+            'end_time'        => ['nullable', 'date_format:H:i'],
+            'notes'           => ['nullable', 'string', 'max:2000'],
+            'staff_ids'       => ['nullable', 'array'],
+            'staff_ids.*'     => ['exists:users,id'],
+            'bcf_order_id'    => ['nullable', 'string'],
+            'bcf_stage_id'    => ['nullable', 'string'],
+            'bcf_order_number'=> ['nullable', 'string'],
+            'bcf_stage_label' => ['nullable', 'string'],
         ]);
 
         // Site heads can only create jobs for their own projects
@@ -124,16 +130,20 @@ class JobController extends Controller
         $user = $request->user();
 
         $data = $request->validate([
-            'project_id'  => ['nullable', 'exists:projects,id'],
-            'van_id'      => ['nullable', 'exists:vans,id'],
-            'title'       => ['required', 'string', 'max:255'],
-            'description' => ['nullable', 'string', 'max:1000'],
-            'date'        => ['required', 'date'],
-            'start_time'  => ['nullable', 'date_format:H:i'],
-            'end_time'    => ['nullable', 'date_format:H:i'],
-            'notes'       => ['nullable', 'string', 'max:2000'],
-            'staff_ids'   => ['nullable', 'array'],
-            'staff_ids.*' => ['exists:users,id'],
+            'project_id'      => ['nullable', 'exists:projects,id'],
+            'van_id'          => ['nullable', 'exists:vans,id'],
+            'title'           => ['required', 'string', 'max:255'],
+            'description'     => ['nullable', 'string', 'max:1000'],
+            'date'            => ['required', 'date'],
+            'start_time'      => ['nullable', 'date_format:H:i'],
+            'end_time'        => ['nullable', 'date_format:H:i'],
+            'notes'           => ['nullable', 'string', 'max:2000'],
+            'staff_ids'       => ['nullable', 'array'],
+            'staff_ids.*'     => ['exists:users,id'],
+            'bcf_order_id'    => ['nullable', 'string'],
+            'bcf_stage_id'    => ['nullable', 'string'],
+            'bcf_order_number'=> ['nullable', 'string'],
+            'bcf_stage_label' => ['nullable', 'string'],
         ]);
 
         // Site heads can only edit jobs belonging to their projects
@@ -177,6 +187,15 @@ class JobController extends Controller
                 'completed_by' => $completed ? $request->user()->id : null,
                 'completed_at' => $completed ? now() : null,
             ]);
+        }
+
+        // Auto-mark linked BCF stage as done when job is completed
+        if ($request->status === 'completed' && $job->bcf_stage_id) {
+            try {
+                (new BcfApiService())->updateStage($job->bcf_stage_id, 'done');
+            } catch (\Throwable) {
+                // Non-fatal — job status still saved
+            }
         }
 
         return back()->with('success', 'Status updated.');
@@ -265,17 +284,38 @@ class JobController extends Controller
         ]);
     }
 
+    private function getBcfOrderList(): array
+    {
+        try {
+            $raw = (new BcfApiService())->getOrders();
+            return collect($raw['orders'] ?? [])
+                ->map(fn ($o) => [
+                    'id'           => $o['id'],
+                    'order_number' => $o['order_number'],
+                    'client_name'  => $o['client']['name'] ?? null,
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
     private function format(Job $job, $entries): array
     {
         return [
-            'id'          => $job->id,
-            'title'       => $job->title,
-            'description' => $job->description,
-            'date'        => $job->date->toDateString(),
-            'start_time'  => $job->start_time,
-            'end_time'    => $job->end_time,
-            'status'      => $job->status,
-            'notes'       => $job->notes,
+            'id'               => $job->id,
+            'title'            => $job->title,
+            'description'      => $job->description,
+            'date'             => $job->date->toDateString(),
+            'start_time'       => $job->start_time,
+            'end_time'         => $job->end_time,
+            'status'           => $job->status,
+            'notes'            => $job->notes,
+            'bcf_order_id'     => $job->bcf_order_id,
+            'bcf_stage_id'     => $job->bcf_stage_id,
+            'bcf_order_number' => $job->bcf_order_number,
+            'bcf_stage_label'  => $job->bcf_stage_label,
             'project'     => $job->project ? [
                 'id'       => $job->project->id,
                 'name'     => $job->project->name,

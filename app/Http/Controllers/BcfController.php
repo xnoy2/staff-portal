@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Job;
 use App\Services\BcfApiService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -17,7 +19,6 @@ class BcfController extends Controller
         $raw     = $service->getOrders();
         $all     = $raw['orders'] ?? [];
 
-        // Admins and managers see all orders; other staff see only their assigned ones
         $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'hr']);
 
         if ($isPrivileged || ! $user->bcf_worker_id) {
@@ -45,11 +46,57 @@ class BcfController extends Controller
             return redirect()->route('bcf.index')->with('error', 'Order not found.');
         }
 
+        $stages = $raw['stages'] ?? [];
+
+        // Attach linked jobs from our DB to each stage
+        $stageIds = array_column($stages, 'id');
+        $linkedJobs = Job::whereIn('bcf_stage_id', $stageIds)
+            ->with('staff:id,name,avatar')
+            ->orderBy('date')
+            ->get()
+            ->groupBy('bcf_stage_id');
+
+        $stages = array_map(function ($stage) use ($linkedJobs) {
+            $stage['linked_jobs'] = $linkedJobs->get($stage['id'], collect())
+                ->map(fn ($j) => [
+                    'id'         => $j->id,
+                    'title'      => $j->title,
+                    'date'       => $j->date->toDateString(),
+                    'status'     => $j->status,
+                    'start_time' => $j->start_time,
+                    'staff'      => $j->staff->map(fn ($u) => [
+                        'id'         => $u->id,
+                        'name'       => $u->name,
+                        'avatar_url' => $u->avatar_url,
+                    ]),
+                ])
+                ->values()
+                ->all();
+            return $stage;
+        }, $stages);
+
         return Inertia::render('Bcf/Order', [
             'order'  => $raw['order'],
-            'stages' => $raw['stages'] ?? [],
+            'stages' => $stages,
         ]);
     }
+
+    // ── Proxy: stages for a given order (used by job form dropdown) ───────────
+
+    public function stagesForOrder(string $id): JsonResponse
+    {
+        $raw    = (new BcfApiService())->getOrder($id);
+        $stages = $raw['stages'] ?? [];
+
+        return response()->json(
+            collect($stages)
+                ->sortBy('stage_number')
+                ->values()
+                ->map(fn ($s) => ['id' => $s['id'], 'label' => $s['label']])
+        );
+    }
+
+    // ── Stage status ──────────────────────────────────────────────────────────
 
     public function updateStage(Request $request, string $id): RedirectResponse
     {
@@ -61,6 +108,8 @@ class BcfController extends Controller
 
         return back()->with('success', 'Stage updated.');
     }
+
+    // ── Task completion ───────────────────────────────────────────────────────
 
     public function completeTask(Request $request, string $id): RedirectResponse
     {

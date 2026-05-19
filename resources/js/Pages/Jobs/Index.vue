@@ -146,12 +146,18 @@
                                         <span v-if="job.project?.business" :class="businessBadge(job.project.business)">
                                             {{ job.project.business.toUpperCase() }}
                                         </span>
+                                        <span v-if="job.bcf_order_number" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#EF233C] text-white">BCF</span>
                                         <h3 class="text-sm font-bold text-gray-900 leading-snug">{{ job.title }}</h3>
                                     </div>
                                     <p v-if="job.project" class="text-xs text-gray-500 truncate">
                                         {{ job.project.name }}<span v-if="job.project.customer" class="text-gray-400"> · {{ job.project.customer }}</span>
                                     </p>
-                                    <p v-if="!job.project && job.description" class="text-xs text-gray-400 line-clamp-1">{{ job.description }}</p>
+                                    <p v-if="job.bcf_order_number" class="text-xs text-gray-400 truncate flex items-center gap-1">
+                                        <span class="font-mono">{{ job.bcf_order_number }}</span>
+                                        <span v-if="job.bcf_stage_label" class="text-gray-300">·</span>
+                                        <span v-if="job.bcf_stage_label">{{ job.bcf_stage_label }}</span>
+                                    </p>
+                                    <p v-if="!job.project && !job.bcf_order_number && job.description" class="text-xs text-gray-400 line-clamp-1">{{ job.description }}</p>
                                 </div>
                                 <span :class="statusBadgeClass(job.status)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap flex-shrink-0">
                                     <span :class="['w-1.5 h-1.5 rounded-full', statusDotClass(job.status)]" />
@@ -366,6 +372,40 @@
                                 <textarea v-model="form.notes" rows="2" class="form-input resize-none text-sm" placeholder="Managers only…" />
                             </div>
                         </div>
+
+                        <!-- BCF Link -->
+                        <div v-if="bcfOrders.length > 0" class="rounded-xl border border-dashed border-gray-200 p-3 space-y-2">
+                            <p class="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#EF233C] text-white">BCF</span>
+                                Link to BCF Order <span class="font-normal text-gray-400">(optional)</span>
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                    <label class="form-label">Order</label>
+                                    <select v-model="form.bcf_order_id" @change="onBcfOrderChange" class="form-input text-sm">
+                                        <option value="">— None —</option>
+                                        <option v-for="o in bcfOrders" :key="o.id" :value="o.id">
+                                            {{ o.order_number }}{{ o.client_name ? ` — ${o.client_name}` : '' }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">Stage</label>
+                                    <select
+                                        v-model="form.bcf_stage_id"
+                                        @change="onBcfStageChange"
+                                        :disabled="!form.bcf_order_id || loadingStages"
+                                        class="form-input text-sm disabled:opacity-50"
+                                    >
+                                        <option value="">{{ loadingStages ? 'Loading…' : '— Select stage —' }}</option>
+                                        <option v-for="s in bcfStages" :key="s.id" :value="s.id">{{ s.label }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p v-if="form.bcf_stage_id" class="text-[10px] text-emerald-600 flex items-center gap-1">
+                                ✓ Completing this job will automatically mark the BCF stage as done
+                            </p>
+                        </div>
                     </form>
 
                     <!-- Footer -->
@@ -426,6 +466,7 @@ const props = defineProps({
     projects:     { type: Array,   default: () => [] },
     vans:         { type: Array,   default: () => [] },
     staffList:    { type: Array,   default: () => [] },
+    bcfOrders:    { type: Array,   default: () => [] },
 });
 
 const page = usePage();
@@ -518,7 +559,38 @@ const modal = ref({ show: false, isEdit: false, jobId: null });
 const form = useForm({
     project_id: '', van_id: '', title: '', description: '',
     date: props.date, start_time: '', end_time: '', notes: '', staff_ids: [],
+    bcf_order_id: '', bcf_stage_id: '', bcf_order_number: '', bcf_stage_label: '',
 });
+
+// BCF stage lazy-load
+const bcfStages     = ref([]);
+const loadingStages = ref(false);
+
+async function onBcfOrderChange() {
+    form.bcf_stage_id    = '';
+    form.bcf_stage_label = '';
+    bcfStages.value      = [];
+    if (!form.bcf_order_id) {
+        form.bcf_order_number = '';
+        return;
+    }
+    const order = props.bcfOrders.find(o => o.id === form.bcf_order_id);
+    form.bcf_order_number = order?.order_number ?? '';
+    loadingStages.value = true;
+    try {
+        const res = await fetch(route('bcf.order.stages', form.bcf_order_id), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        bcfStages.value = await res.json();
+    } finally {
+        loadingStages.value = false;
+    }
+}
+
+function onBcfStageChange() {
+    const stage = bcfStages.value.find(s => s.id === form.bcf_stage_id);
+    form.bcf_stage_label = stage?.label ?? '';
+}
 
 function openCreate() {
     form.reset();
@@ -527,15 +599,21 @@ function openCreate() {
 }
 
 function openEdit(job) {
-    form.project_id  = job.project?.id  ?? '';
-    form.van_id      = job.van?.id      ?? '';
-    form.title       = job.title;
-    form.description = job.description  ?? '';
-    form.date        = job.date;
-    form.start_time  = job.start_time   ?? '';
-    form.end_time    = job.end_time     ?? '';
-    form.notes       = job.notes        ?? '';
-    form.staff_ids   = job.staff.map(s => s.id);
+    form.project_id       = job.project?.id  ?? '';
+    form.van_id           = job.van?.id      ?? '';
+    form.title            = job.title;
+    form.description      = job.description  ?? '';
+    form.date             = job.date;
+    form.start_time       = job.start_time   ?? '';
+    form.end_time         = job.end_time     ?? '';
+    form.notes            = job.notes        ?? '';
+    form.staff_ids        = job.staff.map(s => s.id);
+    form.bcf_order_id     = job.bcf_order_id    ?? '';
+    form.bcf_stage_id     = job.bcf_stage_id    ?? '';
+    form.bcf_order_number = job.bcf_order_number ?? '';
+    form.bcf_stage_label  = job.bcf_stage_label  ?? '';
+    // Pre-load stages if order is set
+    if (job.bcf_order_id) onBcfOrderChange();
     form.clearErrors();
     modal.value = { show: true, isEdit: true, jobId: job.id };
 }

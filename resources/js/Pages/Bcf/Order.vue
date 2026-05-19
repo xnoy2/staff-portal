@@ -149,6 +149,26 @@
                                     </div>
                                 </div>
 
+                                <!-- Linked jobs -->
+                                <div v-if="(stage.linked_jobs ?? []).length > 0" class="border-t border-gray-100 px-4 py-2.5 flex flex-wrap gap-2">
+                                    <Link
+                                        v-for="job in stage.linked_jobs"
+                                        :key="job.id"
+                                        :href="route('jobs.index', { date: job.date })"
+                                        class="inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-full border transition-colors"
+                                        :class="job.status === 'completed'
+                                            ? 'bg-emerald-50 border-emerald-200 text-emerald-700'
+                                            : job.status === 'in_progress'
+                                                ? 'bg-amber-50 border-amber-200 text-amber-700'
+                                                : 'bg-gray-50 border-gray-200 text-gray-600'"
+                                    >
+                                        <CalendarIcon class="w-3 h-3 flex-shrink-0" />
+                                        <span class="font-medium">{{ job.title }}</span>
+                                        <span class="text-[10px] opacity-70">{{ formatShortDate(job.date + 'T00:00:00') }}</span>
+                                        <span class="capitalize text-[10px] font-semibold">{{ job.status.replace('_', ' ') }}</span>
+                                    </Link>
+                                </div>
+
                                 <!-- Tasks (expanded) -->
                                 <Transition name="slide">
                                     <div
