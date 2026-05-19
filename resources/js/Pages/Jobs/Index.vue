@@ -379,155 +379,189 @@
                             </div>
                         </div>
 
-                        <!-- BCF Link -->
-                        <div v-if="bcfOrders.length > 0" class="rounded-xl border border-dashed border-gray-200 p-3 space-y-2">
-                            <p class="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#EF233C] text-white">BCF</span>
-                                Link to BCF Order <span class="font-normal text-gray-400">(optional)</span>
-                            </p>
+                        <!-- Client Links row -->
+                        <div class="space-y-2">
 
-                            <!-- Order search + scrollable list -->
-                            <div>
-                                <label class="form-label">Order</label>
-                                <!-- Selected indicator -->
-                                <div v-if="form.bcf_order_id" class="flex items-center gap-2 mb-1.5">
-                                    <span class="flex-1 text-xs font-medium text-[#EF233C] bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5 truncate">
-                                        {{ bcfOrders.find(o => o.id === form.bcf_order_id)?.order_number }}
-                                        <span v-if="bcfOrders.find(o => o.id === form.bcf_order_id)?.client_name" class="text-gray-400 font-normal">
-                                            — {{ bcfOrders.find(o => o.id === form.bcf_order_id)?.client_name }}
-                                        </span>
+                            <!-- ── BCF ── -->
+                            <div v-if="bcfOrders.length > 0">
+
+                                <!-- Collapsed chip (linked) -->
+                                <div v-if="form.bcf_order_id && !bcfExpanded"
+                                    class="flex items-center gap-2 bg-red-50 border border-red-200 rounded-xl px-3 py-2">
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#EF233C] text-white flex-shrink-0">BCF</span>
+                                    <span class="flex-1 text-xs font-medium text-gray-700 truncate">
+                                        {{ form.bcf_order_number }}
+                                        <span v-if="form.bcf_stage_label" class="text-gray-400"> · {{ form.bcf_stage_label }}</span>
                                     </span>
-                                    <button type="button" @click="clearBcfOrder" class="text-xs text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">✕ Clear</button>
+                                    <button type="button" @click="bcfExpanded = true"
+                                        class="text-xs text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0">Edit</button>
+                                    <button type="button" @click="clearBcfOrder"
+                                        class="text-xs text-gray-400 hover:text-[#EF233C] transition-colors flex-shrink-0">✕</button>
                                 </div>
-                                <!-- Search input -->
-                                <input
-                                    v-model="bcfOrderSearch"
-                                    type="text"
-                                    placeholder="Search by order number or client…"
-                                    class="form-input text-sm mb-1"
-                                />
-                                <!-- Scrollable list -->
-                                <div class="border border-gray-200 rounded-xl divide-y divide-gray-100 max-h-36 overflow-y-auto">
-                                    <button
-                                        v-for="o in filteredBcfOrders"
-                                        :key="o.id"
-                                        type="button"
-                                        @click="selectBcfOrder(o)"
-                                        :class="[
-                                            'w-full text-left flex items-center gap-2 px-3 py-2 transition-colors',
-                                            o.id === form.bcf_order_id
-                                                ? 'bg-red-50 font-semibold'
-                                                : 'hover:bg-gray-50',
-                                        ]"
-                                    >
-                                        <span class="w-2 h-2 rounded-full flex-shrink-0"
-                                            :class="o.id === form.bcf_order_id ? 'bg-[#EF233C]' : 'bg-gray-200'" />
-                                        <span :class="['text-sm', o.id === form.bcf_order_id ? 'text-[#EF233C]' : 'text-gray-700']">
-                                            {{ o.order_number }}
-                                        </span>
-                                        <span v-if="o.client_name" class="text-xs text-gray-400 truncate">— {{ o.client_name }}</span>
-                                    </button>
-                                    <div v-if="filteredBcfOrders.length === 0" class="px-3 py-3 text-xs text-gray-400 text-center italic">
-                                        No orders match "{{ bcfOrderSearch }}"
+
+                                <!-- Collapsed trigger (nothing linked) -->
+                                <button v-if="!form.bcf_order_id && !bcfExpanded"
+                                    type="button" @click="bcfExpanded = true"
+                                    class="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors">
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 text-gray-500">BCF</span>
+                                    + Link to BCF Order
+                                </button>
+
+                                <!-- Expanded panel -->
+                                <div v-if="bcfExpanded" class="rounded-xl border border-gray-200 overflow-hidden">
+                                    <!-- Header -->
+                                    <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-100">
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#EF233C] text-white">BCF</span>
+                                        <span class="text-xs font-semibold text-gray-600 flex-1">Link to BCF Order</span>
+                                        <button type="button" @click="bcfExpanded = false"
+                                            class="text-xs text-gray-400 hover:text-gray-600 transition-colors">✕ Close</button>
+                                    </div>
+
+                                    <div class="p-3 space-y-3">
+                                        <!-- Order selected state -->
+                                        <div v-if="form.bcf_order_id" class="flex items-center gap-2 bg-red-50 border border-red-100 rounded-lg px-2.5 py-2">
+                                            <svg class="w-3.5 h-3.5 text-[#EF233C] flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                            <span class="flex-1 text-xs font-semibold text-[#EF233C] truncate">{{ form.bcf_order_number }}</span>
+                                            <span v-if="bcfOrders.find(o=>o.id===form.bcf_order_id)?.client_name" class="text-xs text-gray-400 truncate">
+                                                {{ bcfOrders.find(o=>o.id===form.bcf_order_id)?.client_name }}
+                                            </span>
+                                            <button type="button" @click="clearBcfOrder"
+                                                class="text-[10px] text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">Change</button>
+                                        </div>
+
+                                        <!-- Search + list (shown when no order selected) -->
+                                        <div v-else class="space-y-1.5">
+                                            <input v-model="bcfOrderSearch" type="text"
+                                                placeholder="Search order number or client…"
+                                                class="form-input text-sm"
+                                                autofocus />
+                                            <div class="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-40 overflow-y-auto">
+                                                <button v-for="o in filteredBcfOrders" :key="o.id" type="button"
+                                                    @click="selectBcfOrder(o)"
+                                                    class="w-full text-left flex items-center gap-2 px-3 py-2 hover:bg-gray-50 transition-colors">
+                                                    <span class="text-xs font-semibold text-gray-700 flex-shrink-0">{{ o.order_number }}</span>
+                                                    <span v-if="o.client_name" class="text-xs text-gray-400 truncate">— {{ o.client_name }}</span>
+                                                </button>
+                                                <div v-if="filteredBcfOrders.length === 0"
+                                                    class="px-3 py-3 text-xs text-gray-400 text-center italic">
+                                                    No orders match "{{ bcfOrderSearch }}"
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Stage (only after order picked) -->
+                                        <div v-if="form.bcf_order_id" class="space-y-1.5">
+                                            <label class="form-label">Stage</label>
+                                            <select v-model="form.bcf_stage_id" @change="onBcfStageChange"
+                                                :disabled="loadingStages"
+                                                class="form-input text-sm disabled:opacity-50">
+                                                <option value="">{{ loadingStages ? 'Loading…' : '— Select stage —' }}</option>
+                                                <option v-for="s in bcfStages" :key="s.id" :value="s.id"
+                                                    :disabled="s.status === 'done'">
+                                                    {{ s.label }}{{ s.status === 'done' ? ' ✓ Completed' : '' }}
+                                                </option>
+                                            </select>
+                                            <p v-if="form.bcf_stage_id" class="text-[10px] text-emerald-600">
+                                                ✓ Completing this job will automatically mark the BCF stage as done
+                                            </p>
+                                        </div>
+
+                                        <button v-if="form.bcf_order_id" type="button" @click="bcfExpanded = false"
+                                            class="w-full text-xs font-semibold text-white bg-[#EF233C] hover:bg-[#D90429] py-1.5 rounded-lg transition-colors">
+                                            Done
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Stage dropdown -->
-                            <div>
-                                <label class="form-label">Stage</label>
-                                <select
-                                    v-model="form.bcf_stage_id"
-                                    @change="onBcfStageChange"
-                                    :disabled="!form.bcf_order_id || loadingStages"
-                                    class="form-input text-sm disabled:opacity-50"
-                                >
-                                    <option value="">{{ loadingStages ? 'Loading…' : '— Select stage —' }}</option>
-                                    <option
-                                        v-for="s in bcfStages"
-                                        :key="s.id"
-                                        :value="s.id"
-                                        :disabled="s.status === 'done'"
-                                    >{{ s.label }}{{ s.status === 'done' ? ' ✓ Completed' : '' }}</option>
-                                </select>
-                            </div>
+                            <!-- ── BGR ── -->
+                            <div v-if="bgrProjects.length > 0">
 
-                            <p v-if="form.bcf_stage_id" class="text-[10px] text-emerald-600 flex items-center gap-1">
-                                ✓ Completing this job will automatically mark the BCF stage as done
-                            </p>
-                        </div>
-
-                        <!-- BGR Link -->
-                        <div v-if="bgrProjects.length > 0" class="rounded-xl border border-dashed border-blue-100 p-3 space-y-2">
-                            <p class="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
-                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white">BGR</span>
-                                Link to BGR Project <span class="font-normal text-gray-400">(optional)</span>
-                            </p>
-
-                            <!-- Project search + scrollable list -->
-                            <div>
-                                <label class="form-label">Project</label>
-                                <!-- Selected indicator -->
-                                <div v-if="form.bgr_project_id" class="flex items-center gap-2 mb-1.5">
-                                    <span class="flex-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5 truncate">
-                                        {{ bgrProjects.find(p => String(p.id) === form.bgr_project_id)?.name }}
+                                <!-- Collapsed chip (linked) -->
+                                <div v-if="form.bgr_project_id && !bgrExpanded"
+                                    class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-xl px-3 py-2">
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white flex-shrink-0">BGR</span>
+                                    <span class="flex-1 text-xs font-medium text-gray-700 truncate">
+                                        {{ form.bgr_project_name }}
+                                        <span v-if="form.bgr_stage_label" class="text-gray-400"> · {{ form.bgr_stage_label }}</span>
                                     </span>
-                                    <button type="button" @click="form.bgr_project_id=''; form.bgr_project_name=''; form.bgr_stage_id=''; form.bgr_stage_label=''; bgrStages=[]"
-                                        class="text-xs text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">✕ Clear</button>
+                                    <button type="button" @click="bgrExpanded = true"
+                                        class="text-xs text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0">Edit</button>
+                                    <button type="button" @click="clearBgrLink"
+                                        class="text-xs text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0">✕</button>
                                 </div>
-                                <!-- Search input -->
-                                <input
-                                    v-model="bgrProjectSearch"
-                                    type="text"
-                                    placeholder="Search projects…"
-                                    class="form-input text-sm mb-1"
-                                />
-                                <!-- Scrollable list -->
-                                <div class="border border-gray-200 rounded-xl divide-y divide-gray-100 max-h-36 overflow-y-auto">
-                                    <button
-                                        v-for="p in filteredBgrProjects"
-                                        :key="p.id"
-                                        type="button"
-                                        @click="selectBgrProject(p)"
-                                        :class="[
-                                            'w-full text-left flex items-center gap-2 px-3 py-2 text-sm transition-colors',
-                                            String(p.id) === form.bgr_project_id
-                                                ? 'bg-blue-50 text-blue-700 font-semibold'
-                                                : 'text-gray-700 hover:bg-gray-50',
-                                        ]"
-                                    >
-                                        <span class="w-2 h-2 rounded-full flex-shrink-0"
-                                            :class="String(p.id) === form.bgr_project_id ? 'bg-blue-500' : 'bg-gray-200'" />
-                                        {{ p.name }}
-                                    </button>
-                                    <div v-if="filteredBgrProjects.length === 0" class="px-3 py-3 text-xs text-gray-400 text-center italic">
-                                        No projects match "{{ bgrProjectSearch }}"
+
+                                <!-- Collapsed trigger (nothing linked) -->
+                                <button v-if="!form.bgr_project_id && !bgrExpanded"
+                                    type="button" @click="bgrExpanded = true"
+                                    class="w-full flex items-center gap-2 px-3 py-2 rounded-xl border border-dashed border-gray-200 text-xs text-gray-400 hover:text-gray-600 hover:border-gray-300 transition-colors">
+                                    <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-gray-200 text-gray-500">BGR</span>
+                                    + Link to BGR Project
+                                </button>
+
+                                <!-- Expanded panel -->
+                                <div v-if="bgrExpanded" class="rounded-xl border border-gray-200 overflow-hidden">
+                                    <!-- Header -->
+                                    <div class="flex items-center gap-2 px-3 py-2 bg-gray-50 border-b border-gray-100">
+                                        <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white">BGR</span>
+                                        <span class="text-xs font-semibold text-gray-600 flex-1">Link to BGR Project</span>
+                                        <button type="button" @click="bgrExpanded = false"
+                                            class="text-xs text-gray-400 hover:text-gray-600 transition-colors">✕ Close</button>
+                                    </div>
+
+                                    <div class="p-3 space-y-3">
+                                        <!-- Project selected state -->
+                                        <div v-if="form.bgr_project_id" class="flex items-center gap-2 bg-blue-50 border border-blue-100 rounded-lg px-2.5 py-2">
+                                            <svg class="w-3.5 h-3.5 text-blue-600 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20"><path fill-rule="evenodd" d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z" clip-rule="evenodd"/></svg>
+                                            <span class="flex-1 text-xs font-semibold text-blue-700 truncate">{{ form.bgr_project_name }}</span>
+                                            <button type="button" @click="clearBgrLink"
+                                                class="text-[10px] text-gray-400 hover:text-blue-600 transition-colors flex-shrink-0">Change</button>
+                                        </div>
+
+                                        <!-- Search + list (shown when no project selected) -->
+                                        <div v-else class="space-y-1.5">
+                                            <input v-model="bgrProjectSearch" type="text"
+                                                placeholder="Search project name…"
+                                                class="form-input text-sm"
+                                                autofocus />
+                                            <div class="border border-gray-200 rounded-lg divide-y divide-gray-100 max-h-40 overflow-y-auto">
+                                                <button v-for="p in filteredBgrProjects" :key="p.id" type="button"
+                                                    @click="selectBgrProject(p)"
+                                                    class="w-full text-left px-3 py-2 text-xs text-gray-700 hover:bg-gray-50 transition-colors truncate">
+                                                    {{ p.name }}
+                                                </button>
+                                                <div v-if="filteredBgrProjects.length === 0"
+                                                    class="px-3 py-3 text-xs text-gray-400 text-center italic">
+                                                    No projects match "{{ bgrProjectSearch }}"
+                                                </div>
+                                            </div>
+                                        </div>
+
+                                        <!-- Stage (only after project picked) -->
+                                        <div v-if="form.bgr_project_id" class="space-y-1.5">
+                                            <label class="form-label">Stage</label>
+                                            <select v-model="form.bgr_stage_id" @change="onBgrStageChange"
+                                                :disabled="loadingBgrStages"
+                                                class="form-input text-sm disabled:opacity-50">
+                                                <option value="">{{ loadingBgrStages ? 'Loading…' : '— Select stage —' }}</option>
+                                                <option v-for="s in bgrStages" :key="s.id" :value="String(s.id)"
+                                                    :disabled="s.status === 'completed'">
+                                                    {{ s.name }}{{ s.status === 'completed' ? ' ✓ Completed' : '' }}
+                                                </option>
+                                            </select>
+                                            <p v-if="form.bgr_stage_id" class="text-[10px] text-blue-600">
+                                                ✓ This job will appear under the linked stage in the BGR project view
+                                            </p>
+                                        </div>
+
+                                        <button v-if="form.bgr_project_id" type="button" @click="bgrExpanded = false"
+                                            class="w-full text-xs font-semibold text-white bg-blue-600 hover:bg-blue-700 py-1.5 rounded-lg transition-colors">
+                                            Done
+                                        </button>
                                     </div>
                                 </div>
                             </div>
 
-                            <!-- Stage dropdown -->
-                            <div>
-                                <label class="form-label">Stage</label>
-                                <select
-                                    v-model="form.bgr_stage_id"
-                                    @change="onBgrStageChange"
-                                    :disabled="!form.bgr_project_id || loadingBgrStages"
-                                    class="form-input text-sm disabled:opacity-50"
-                                >
-                                    <option value="">{{ loadingBgrStages ? 'Loading…' : '— Select stage —' }}</option>
-                                    <option
-                                        v-for="s in bgrStages"
-                                        :key="s.id"
-                                        :value="String(s.id)"
-                                        :disabled="s.status === 'completed'"
-                                    >{{ s.name }}{{ s.status === 'completed' ? ' ✓ Completed' : '' }}</option>
-                                </select>
-                            </div>
-
-                            <p v-if="form.bgr_stage_id" class="text-[10px] text-blue-600 flex items-center gap-1">
-                                ✓ This job will appear under the linked stage in the BGR project view
-                            </p>
                         </div>
                     </form>
 
@@ -748,6 +782,10 @@ function onBcfStageChange() {
     form.bcf_stage_label = stage?.label ?? '';
 }
 
+// BCF / BGR expand state
+const bcfExpanded = ref(false);
+const bgrExpanded = ref(false);
+
 // BGR stage lazy-load
 const bgrStages        = ref([]);
 const loadingBgrStages = ref(false);
@@ -760,13 +798,22 @@ const filteredBgrProjects = computed(() => {
 });
 
 function selectBgrProject(p) {
-    form.bgr_project_id   = String(p.id);
-    form.bgr_project_name = p.name;
-    form.bgr_stage_id     = '';
-    form.bgr_stage_label  = '';
-    bgrStages.value       = [];
+    form.bgr_project_id    = String(p.id);
+    form.bgr_project_name  = p.name;
+    form.bgr_stage_id      = '';
+    form.bgr_stage_label   = '';
+    bgrStages.value        = [];
     bgrProjectSearch.value = '';
     onBgrProjectChange();
+}
+
+function clearBgrLink() {
+    form.bgr_project_id    = '';
+    form.bgr_project_name  = '';
+    form.bgr_stage_id      = '';
+    form.bgr_stage_label   = '';
+    bgrStages.value        = [];
+    bgrProjectSearch.value = '';
 }
 
 async function onBgrProjectChange() {
@@ -797,11 +844,13 @@ function onBgrStageChange() {
 
 function openCreate() {
     form.reset();
-    form.date = props.date;
+    form.date              = props.date;
     bcfOrderSearch.value   = '';
     bgrProjectSearch.value = '';
     bcfStages.value        = [];
     bgrStages.value        = [];
+    bcfExpanded.value      = false;
+    bgrExpanded.value      = false;
     modal.value = { show: true, isEdit: false, jobId: null };
 }
 
@@ -825,7 +874,9 @@ function openEdit(job) {
     form.bgr_stage_label  = job.bgr_stage_label  ?? '';
     bcfOrderSearch.value   = '';
     bgrProjectSearch.value = '';
-    // Pre-load stages if order/project is set
+    bcfExpanded.value      = false;
+    bgrExpanded.value      = false;
+    // Pre-load stages if already linked
     if (job.bcf_order_id) onBcfOrderChange();
     if (job.bgr_project_id) onBgrProjectChange();
     form.clearErrors();
