@@ -385,34 +385,73 @@
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#EF233C] text-white">BCF</span>
                                 Link to BCF Order <span class="font-normal text-gray-400">(optional)</span>
                             </p>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <div>
-                                    <label class="form-label">Order</label>
-                                    <select v-model="form.bcf_order_id" @change="onBcfOrderChange" class="form-input text-sm">
-                                        <option value="">— None —</option>
-                                        <option v-for="o in bcfOrders" :key="o.id" :value="o.id">
-                                            {{ o.order_number }}{{ o.client_name ? ` — ${o.client_name}` : '' }}
-                                        </option>
-                                    </select>
+
+                            <!-- Order search + scrollable list -->
+                            <div>
+                                <label class="form-label">Order</label>
+                                <!-- Selected indicator -->
+                                <div v-if="form.bcf_order_id" class="flex items-center gap-2 mb-1.5">
+                                    <span class="flex-1 text-xs font-medium text-[#EF233C] bg-red-50 border border-red-200 rounded-lg px-2.5 py-1.5 truncate">
+                                        {{ bcfOrders.find(o => o.id === form.bcf_order_id)?.order_number }}
+                                        <span v-if="bcfOrders.find(o => o.id === form.bcf_order_id)?.client_name" class="text-gray-400 font-normal">
+                                            — {{ bcfOrders.find(o => o.id === form.bcf_order_id)?.client_name }}
+                                        </span>
+                                    </span>
+                                    <button type="button" @click="clearBcfOrder" class="text-xs text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">✕ Clear</button>
                                 </div>
-                                <div>
-                                    <label class="form-label">Stage</label>
-                                    <select
-                                        v-model="form.bcf_stage_id"
-                                        @change="onBcfStageChange"
-                                        :disabled="!form.bcf_order_id || loadingStages"
-                                        class="form-input text-sm disabled:opacity-50"
+                                <!-- Search input -->
+                                <input
+                                    v-model="bcfOrderSearch"
+                                    type="text"
+                                    placeholder="Search by order number or client…"
+                                    class="form-input text-sm mb-1"
+                                />
+                                <!-- Scrollable list -->
+                                <div class="border border-gray-200 rounded-xl divide-y divide-gray-100 max-h-36 overflow-y-auto">
+                                    <button
+                                        v-for="o in filteredBcfOrders"
+                                        :key="o.id"
+                                        type="button"
+                                        @click="selectBcfOrder(o)"
+                                        :class="[
+                                            'w-full text-left flex items-center gap-2 px-3 py-2 transition-colors',
+                                            o.id === form.bcf_order_id
+                                                ? 'bg-red-50 font-semibold'
+                                                : 'hover:bg-gray-50',
+                                        ]"
                                     >
-                                        <option value="">{{ loadingStages ? 'Loading…' : '— Select stage —' }}</option>
-                                        <option
-                                            v-for="s in bcfStages"
-                                            :key="s.id"
-                                            :value="s.id"
-                                            :disabled="s.status === 'done'"
-                                        >{{ s.label }}{{ s.status === 'done' ? ' ✓ Completed' : '' }}</option>
-                                    </select>
+                                        <span class="w-2 h-2 rounded-full flex-shrink-0"
+                                            :class="o.id === form.bcf_order_id ? 'bg-[#EF233C]' : 'bg-gray-200'" />
+                                        <span :class="['text-sm', o.id === form.bcf_order_id ? 'text-[#EF233C]' : 'text-gray-700']">
+                                            {{ o.order_number }}
+                                        </span>
+                                        <span v-if="o.client_name" class="text-xs text-gray-400 truncate">— {{ o.client_name }}</span>
+                                    </button>
+                                    <div v-if="filteredBcfOrders.length === 0" class="px-3 py-3 text-xs text-gray-400 text-center italic">
+                                        No orders match "{{ bcfOrderSearch }}"
+                                    </div>
                                 </div>
                             </div>
+
+                            <!-- Stage dropdown -->
+                            <div>
+                                <label class="form-label">Stage</label>
+                                <select
+                                    v-model="form.bcf_stage_id"
+                                    @change="onBcfStageChange"
+                                    :disabled="!form.bcf_order_id || loadingStages"
+                                    class="form-input text-sm disabled:opacity-50"
+                                >
+                                    <option value="">{{ loadingStages ? 'Loading…' : '— Select stage —' }}</option>
+                                    <option
+                                        v-for="s in bcfStages"
+                                        :key="s.id"
+                                        :value="s.id"
+                                        :disabled="s.status === 'done'"
+                                    >{{ s.label }}{{ s.status === 'done' ? ' ✓ Completed' : '' }}</option>
+                                </select>
+                            </div>
+
                             <p v-if="form.bcf_stage_id" class="text-[10px] text-emerald-600 flex items-center gap-1">
                                 ✓ Completing this job will automatically mark the BCF stage as done
                             </p>
@@ -648,20 +687,41 @@ const form = useForm({
     bgr_project_id: '', bgr_stage_id: '', bgr_project_name: '', bgr_stage_label: '',
 });
 
-// BCF stage lazy-load
+// BCF order search + lazy-load stages
 const bcfStages     = ref([]);
 const loadingStages = ref(false);
+const bcfOrderSearch = ref('');
 
-async function onBcfOrderChange() {
-    form.bcf_stage_id    = '';
-    form.bcf_stage_label = '';
-    bcfStages.value      = [];
-    if (!form.bcf_order_id) {
-        form.bcf_order_number = '';
-        return;
-    }
-    const order = props.bcfOrders.find(o => o.id === form.bcf_order_id);
-    form.bcf_order_number = order?.order_number ?? '';
+const filteredBcfOrders = computed(() => {
+    const q = bcfOrderSearch.value.trim().toLowerCase();
+    if (!q) return props.bcfOrders;
+    return props.bcfOrders.filter(o =>
+        o.order_number?.toLowerCase().includes(q) ||
+        o.client_name?.toLowerCase().includes(q)
+    );
+});
+
+function selectBcfOrder(o) {
+    form.bcf_order_id     = o.id;
+    form.bcf_order_number = o.order_number;
+    form.bcf_stage_id     = '';
+    form.bcf_stage_label  = '';
+    bcfStages.value       = [];
+    bcfOrderSearch.value  = '';
+    loadStages();
+}
+
+function clearBcfOrder() {
+    form.bcf_order_id     = '';
+    form.bcf_order_number = '';
+    form.bcf_stage_id     = '';
+    form.bcf_stage_label  = '';
+    bcfStages.value       = [];
+    bcfOrderSearch.value  = '';
+}
+
+async function loadStages() {
+    if (!form.bcf_order_id) return;
     loadingStages.value = true;
     try {
         const res = await fetch(route('bcf.order.stages', form.bcf_order_id), {
@@ -671,6 +731,16 @@ async function onBcfOrderChange() {
     } finally {
         loadingStages.value = false;
     }
+}
+
+async function onBcfOrderChange() {
+    form.bcf_stage_id    = '';
+    form.bcf_stage_label = '';
+    bcfStages.value      = [];
+    if (!form.bcf_order_id) { form.bcf_order_number = ''; return; }
+    const order = props.bcfOrders.find(o => o.id === form.bcf_order_id);
+    form.bcf_order_number = order?.order_number ?? '';
+    await loadStages();
 }
 
 function onBcfStageChange() {
@@ -728,8 +798,10 @@ function onBgrStageChange() {
 function openCreate() {
     form.reset();
     form.date = props.date;
+    bcfOrderSearch.value   = '';
     bgrProjectSearch.value = '';
-    bgrStages.value = [];
+    bcfStages.value        = [];
+    bgrStages.value        = [];
     modal.value = { show: true, isEdit: false, jobId: null };
 }
 
@@ -751,6 +823,7 @@ function openEdit(job) {
     form.bgr_stage_id     = job.bgr_stage_id     ? String(job.bgr_stage_id)   : '';
     form.bgr_project_name = job.bgr_project_name ?? '';
     form.bgr_stage_label  = job.bgr_stage_label  ?? '';
+    bcfOrderSearch.value   = '';
     bgrProjectSearch.value = '';
     // Pre-load stages if order/project is set
     if (job.bcf_order_id) onBcfOrderChange();
