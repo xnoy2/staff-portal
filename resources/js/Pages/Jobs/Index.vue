@@ -162,6 +162,8 @@
                                         <span class="font-medium text-blue-600">{{ job.bgr_project_name }}</span>
                                         <span v-if="job.bgr_stage_label" class="text-gray-300">·</span>
                                         <span v-if="job.bgr_stage_label">{{ job.bgr_stage_label }}</span>
+                                        <span v-if="job.bgr_substage_label" class="text-gray-300">›</span>
+                                        <span v-if="job.bgr_substage_label">{{ job.bgr_substage_label }}</span>
                                     </p>
                                     <p v-if="!job.project && !job.bcf_order_number && !job.bgr_project_name && job.description" class="text-xs text-gray-400 line-clamp-1">{{ job.description }}</p>
                                 </div>
@@ -484,6 +486,7 @@
                                     <span class="flex-1 text-xs font-medium text-gray-700 truncate">
                                         {{ form.bgr_project_name }}
                                         <span v-if="form.bgr_stage_label" class="text-gray-400"> · {{ form.bgr_stage_label }}</span>
+                                        <span v-if="form.bgr_substage_label" class="text-gray-400"> › {{ form.bgr_substage_label }}</span>
                                     </span>
                                     <button type="button" @click="bgrExpanded = true"
                                         class="text-xs text-gray-400 hover:text-gray-700 transition-colors flex-shrink-0">Edit</button>
@@ -537,18 +540,45 @@
                                             </div>
                                         </div>
 
-                                        <!-- Stage (only after project picked) -->
+                                        <!-- Stage + substage picker (only after project picked) -->
                                         <div v-if="form.bgr_project_id" class="space-y-1.5">
-                                            <label class="form-label">Stage</label>
-                                            <select v-model="form.bgr_stage_id" @change="onBgrStageChange"
-                                                :disabled="loadingBgrStages"
-                                                class="form-input text-sm disabled:opacity-50">
-                                                <option value="">{{ loadingBgrStages ? 'Loading…' : '— Select stage —' }}</option>
-                                                <option v-for="s in bgrStages" :key="s.id" :value="String(s.id)"
-                                                    :disabled="s.status === 'completed'">
-                                                    {{ s.name }}{{ s.status === 'completed' ? ' ✓ Completed' : '' }}
-                                                </option>
-                                            </select>
+                                            <label class="form-label">Stage / Task</label>
+                                            <div v-if="loadingBgrStages" class="text-xs text-gray-400 py-2 text-center">Loading…</div>
+                                            <div v-else class="border border-gray-200 rounded-lg max-h-48 overflow-y-auto">
+                                                <template v-for="s in bgrStages" :key="s.id">
+                                                    <!-- Stage row -->
+                                                    <button type="button"
+                                                        @click="!( s.status === 'completed') && selectBgrStage(s)"
+                                                        :disabled="s.status === 'completed'"
+                                                        :class="[
+                                                            'w-full text-left flex items-center gap-2 px-3 py-2 transition-colors',
+                                                            form.bgr_stage_id === String(s.id) && !form.bgr_substage_id
+                                                                ? 'bg-blue-50 text-blue-700'
+                                                                : 'hover:bg-gray-50 text-gray-700',
+                                                            s.status === 'completed' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+                                                        ]">
+                                                        <span class="text-xs font-semibold flex-1 truncate">
+                                                            {{ s.name }}{{ s.status === 'completed' ? ' ✓' : '' }}
+                                                        </span>
+                                                        <span v-if="s.substages?.length" class="text-[10px] text-gray-400 flex-shrink-0">{{ s.substages.length }} tasks</span>
+                                                    </button>
+                                                    <!-- Substage rows -->
+                                                    <button v-for="sub in (s.substages ?? [])" :key="`sub-${sub.id}`" type="button"
+                                                        @click="!(sub.status === 'completed') && selectBgrSubstage(s, sub)"
+                                                        :disabled="sub.status === 'completed'"
+                                                        :class="[
+                                                            'w-full text-left flex items-center gap-1.5 pl-7 pr-3 py-1.5 border-t border-gray-100 transition-colors',
+                                                            form.bgr_substage_id === String(sub.id)
+                                                                ? 'bg-blue-50 text-blue-600'
+                                                                : 'hover:bg-gray-50 text-gray-500',
+                                                            sub.status === 'completed' ? 'opacity-40 cursor-not-allowed' : 'cursor-pointer',
+                                                        ]">
+                                                        <span class="w-1 h-1 rounded-full bg-current flex-shrink-0 opacity-50" />
+                                                        <span class="text-[11px] truncate flex-1">{{ sub.name }}{{ sub.status === 'completed' ? ' ✓' : '' }}</span>
+                                                    </button>
+                                                </template>
+                                                <div v-if="bgrStages.length === 0" class="px-3 py-3 text-xs text-gray-400 text-center italic">No stages found</div>
+                                            </div>
                                             <p v-if="form.bgr_stage_id" class="text-[10px] text-blue-600">
                                                 ✓ This job will appear under the linked stage in the BGR project view
                                             </p>
@@ -719,6 +749,7 @@ const form = useForm({
     date: props.date, start_time: '', end_time: '', notes: '', staff_ids: [],
     bcf_order_id: '', bcf_stage_id: '', bcf_order_number: '', bcf_stage_label: '',
     bgr_project_id: '', bgr_stage_id: '', bgr_project_name: '', bgr_stage_label: '',
+    bgr_substage_id: '', bgr_substage_label: '',
 });
 
 // BCF order search + lazy-load stages
@@ -798,12 +829,14 @@ const filteredBgrProjects = computed(() => {
 });
 
 function selectBgrProject(p) {
-    form.bgr_project_id    = String(p.id);
-    form.bgr_project_name  = p.name;
-    form.bgr_stage_id      = '';
-    form.bgr_stage_label   = '';
-    bgrStages.value        = [];
-    bgrProjectSearch.value = '';
+    form.bgr_project_id     = String(p.id);
+    form.bgr_project_name   = p.name;
+    form.bgr_stage_id       = '';
+    form.bgr_stage_label    = '';
+    form.bgr_substage_id    = '';
+    form.bgr_substage_label = '';
+    bgrStages.value         = [];
+    bgrProjectSearch.value  = '';
     onBgrProjectChange();
 }
 
@@ -812,14 +845,18 @@ function clearBgrLink() {
     form.bgr_project_name  = '';
     form.bgr_stage_id      = '';
     form.bgr_stage_label   = '';
+    form.bgr_substage_id   = '';
+    form.bgr_substage_label= '';
     bgrStages.value        = [];
     bgrProjectSearch.value = '';
 }
 
 async function onBgrProjectChange() {
-    form.bgr_stage_id    = '';
-    form.bgr_stage_label = '';
-    bgrStages.value      = [];
+    form.bgr_stage_id     = '';
+    form.bgr_stage_label  = '';
+    form.bgr_substage_id  = '';
+    form.bgr_substage_label = '';
+    bgrStages.value       = [];
     if (!form.bgr_project_id) {
         form.bgr_project_name = '';
         return;
@@ -837,9 +874,18 @@ async function onBgrProjectChange() {
     }
 }
 
-function onBgrStageChange() {
-    const stage = bgrStages.value.find(s => String(s.id) === String(form.bgr_stage_id));
-    form.bgr_stage_label = stage?.name ?? '';
+function selectBgrStage(stage) {
+    form.bgr_stage_id      = String(stage.id);
+    form.bgr_stage_label   = stage.name;
+    form.bgr_substage_id   = '';
+    form.bgr_substage_label= '';
+}
+
+function selectBgrSubstage(stage, sub) {
+    form.bgr_stage_id      = String(stage.id);
+    form.bgr_stage_label   = stage.name;
+    form.bgr_substage_id   = String(sub.id);
+    form.bgr_substage_label= sub.name;
 }
 
 function openCreate() {
@@ -868,10 +914,12 @@ function openEdit(job) {
     form.bcf_stage_id     = job.bcf_stage_id    ?? '';
     form.bcf_order_number = job.bcf_order_number ?? '';
     form.bcf_stage_label  = job.bcf_stage_label  ?? '';
-    form.bgr_project_id   = job.bgr_project_id   ? String(job.bgr_project_id) : '';
-    form.bgr_stage_id     = job.bgr_stage_id     ? String(job.bgr_stage_id)   : '';
-    form.bgr_project_name = job.bgr_project_name ?? '';
-    form.bgr_stage_label  = job.bgr_stage_label  ?? '';
+    form.bgr_project_id    = job.bgr_project_id    ? String(job.bgr_project_id) : '';
+    form.bgr_stage_id      = job.bgr_stage_id      ? String(job.bgr_stage_id)   : '';
+    form.bgr_project_name  = job.bgr_project_name  ?? '';
+    form.bgr_stage_label   = job.bgr_stage_label   ?? '';
+    form.bgr_substage_id   = job.bgr_substage_id   ? String(job.bgr_substage_id) : '';
+    form.bgr_substage_label= job.bgr_substage_label ?? '';
     bcfOrderSearch.value   = '';
     bgrProjectSearch.value = '';
     bcfExpanded.value      = false;

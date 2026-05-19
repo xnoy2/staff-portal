@@ -169,7 +169,16 @@ class BgrController extends Controller
         $stages   = $response['data']['stages'] ?? [];
 
         return response()->json(
-            collect($stages)->map(fn ($s) => ['id' => $s['id'], 'name' => $s['name'], 'status' => $s['status'] ?? 'pending'])->values()
+            collect($stages)->map(fn ($s) => [
+                'id'        => $s['id'],
+                'name'      => $s['name'],
+                'status'    => $s['status'] ?? 'pending',
+                'substages' => collect($s['substages'] ?? [])->map(fn ($sub) => [
+                    'id'     => $sub['id'],
+                    'name'   => $sub['name'],
+                    'status' => $sub['status'] ?? 'pending',
+                ])->values()->all(),
+            ])->values()
         );
     }
 

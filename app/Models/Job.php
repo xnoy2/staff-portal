@@ -20,6 +20,7 @@ class Job extends Model
         'start_time', 'end_time', 'status', 'notes',
         'bcf_order_id', 'bcf_stage_id', 'bcf_order_number', 'bcf_stage_label',
         'bgr_project_id', 'bgr_stage_id', 'bgr_project_name', 'bgr_stage_label',
+        'bgr_substage_id', 'bgr_substage_label',
     ];
 
     protected $casts = [
