@@ -400,11 +400,18 @@ const props = defineProps({
 
 function parseDate(s) { return new Date(s + 'T00:00:00'); }
 
-const todayStr = new Date().toISOString().slice(0, 10);
+function localDateStr(d) {
+    const y  = d.getFullYear();
+    const m  = String(d.getMonth() + 1).padStart(2, '0');
+    const dd = String(d.getDate()).padStart(2, '0');
+    return `${y}-${m}-${dd}`;
+}
+
+const todayStr = localDateStr(new Date());
 
 const isCurrentWeek = computed(() => {
     const mon = getMonday(new Date());
-    return props.weekStart === mon.toISOString().slice(0, 10);
+    return props.weekStart === localDateStr(mon);
 });
 
 function getMonday(d) {
@@ -423,7 +430,7 @@ function addDays(d, n) {
 function navigate(weeks) {
     const current = parseDate(props.weekStart);
     const next    = addDays(current, weeks * 7);
-    router.get(route('overtime.index'), { week: next.toISOString().slice(0, 10) }, { preserveState: false });
+    router.get(route('overtime.index'), { week: localDateStr(next) }, { preserveState: false });
 }
 
 function goToCurrentWeek() {
@@ -449,7 +456,7 @@ const weekDays = computed(() => {
     const start = parseDate(props.weekStart);
     return DAY_NAMES.map((name, i) => {
         const d    = addDays(start, i);
-        const dateStr = d.toISOString().slice(0, 10);
+        const dateStr = localDateStr(d);
         return {
             date:      dateStr,
             dayName:   name,
