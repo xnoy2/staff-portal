@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Job;
 use App\Services\BgrApiService;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\Response as HttpResponse;
@@ -118,11 +120,57 @@ class BgrController extends Controller
 
         $updatesResponse = $service->getUpdates($id);
 
+        // Attach linked jobs from our DB to each stage
+        $project  = $response['data'];
+        $stageIds = collect($project['stages'] ?? [])
+            ->pluck('id')
+            ->map(fn ($i) => (string) $i)
+            ->toArray();
+
+        $linkedJobs = Job::whereIn('bgr_stage_id', $stageIds)
+            ->with('staff:id,name,avatar')
+            ->orderBy('date')
+            ->get()
+            ->groupBy('bgr_stage_id');
+
+        $project['stages'] = array_map(function ($stage) use ($linkedJobs) {
+            $stage['linked_jobs'] = $linkedJobs->get((string) $stage['id'], collect())
+                ->map(fn ($j) => [
+                    'id'         => $j->id,
+                    'title'      => $j->title,
+                    'date'       => $j->date->toDateString(),
+                    'status'     => $j->status,
+                    'start_time' => $j->start_time,
+                    'staff'      => $j->staff->map(fn ($u) => [
+                        'id'   => $u->id,
+                        'name' => $u->name,
+                    ]),
+                ])
+                ->values()
+                ->all();
+            return $stage;
+        }, $project['stages'] ?? []);
+
         return Inertia::render('Bgr/Project', [
-            'project' => $response['data'],
-            'updates' => $updatesResponse['data'] ?? [],
+            'project'     => $project,
+            'updates'     => $updatesResponse['data'] ?? [],
             'updatesMeta' => $updatesResponse['meta'] ?? null,
         ]);
+    }
+
+    // ── Stages proxy (used by job form dropdown) ──────────────────────────────
+
+    public function stagesForProject(int $id): JsonResponse
+    {
+        $user = auth()->user();
+        $this->requireConnected($user);
+
+        $response = (new BgrApiService($user->bgr_token))->getProject($id);
+        $stages   = $response['data']['stages'] ?? [];
+
+        return response()->json(
+            collect($stages)->map(fn ($s) => ['id' => $s['id'], 'name' => $s['name']])->values()
+        );
     }
 
     // ── Task toggle ───────────────────────────────────────────────────────────

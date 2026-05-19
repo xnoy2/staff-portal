@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Van;
 use App\Notifications\JobAssigned;
 use App\Services\BcfApiService;
+use App\Services\BgrApiService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -76,6 +77,7 @@ class JobController extends Controller
                 ? User::where('is_active', true)->orderBy('name')->get(['id', 'name', 'avatar'])
                 : [],
             'bcfOrders'    => $isPrivileged ? $this->getBcfOrderList() : [],
+            'bgrProjects'  => $isPrivileged ? $this->getBgrProjectList($user) : [],
         ]);
     }
 
@@ -99,6 +101,10 @@ class JobController extends Controller
             'bcf_stage_id'    => ['nullable', 'string'],
             'bcf_order_number'=> ['nullable', 'string'],
             'bcf_stage_label' => ['nullable', 'string'],
+            'bgr_project_id'  => ['nullable', 'string'],
+            'bgr_stage_id'    => ['nullable', 'string'],
+            'bgr_project_name'=> ['nullable', 'string'],
+            'bgr_stage_label' => ['nullable', 'string'],
         ]);
 
         // Site heads can only create jobs for their own projects
@@ -144,6 +150,10 @@ class JobController extends Controller
             'bcf_stage_id'    => ['nullable', 'string'],
             'bcf_order_number'=> ['nullable', 'string'],
             'bcf_stage_label' => ['nullable', 'string'],
+            'bgr_project_id'  => ['nullable', 'string'],
+            'bgr_stage_id'    => ['nullable', 'string'],
+            'bgr_project_name'=> ['nullable', 'string'],
+            'bgr_stage_label' => ['nullable', 'string'],
         ]);
 
         // Site heads can only edit jobs belonging to their projects
@@ -301,6 +311,23 @@ class JobController extends Controller
         }
     }
 
+    private function getBgrProjectList(User $user): array
+    {
+        if (! $user->bgr_token) return [];
+        try {
+            $raw = (new BgrApiService($user->bgr_token))->getProjects([]);
+            return collect($raw['data'] ?? [])
+                ->map(fn ($p) => [
+                    'id'   => $p['id'],
+                    'name' => $p['name'],
+                ])
+                ->values()
+                ->all();
+        } catch (\Throwable) {
+            return [];
+        }
+    }
+
     private function format(Job $job, $entries): array
     {
         return [
@@ -316,6 +343,10 @@ class JobController extends Controller
             'bcf_stage_id'     => $job->bcf_stage_id,
             'bcf_order_number' => $job->bcf_order_number,
             'bcf_stage_label'  => $job->bcf_stage_label,
+            'bgr_project_id'   => $job->bgr_project_id,
+            'bgr_stage_id'     => $job->bgr_stage_id,
+            'bgr_project_name' => $job->bgr_project_name,
+            'bgr_stage_label'  => $job->bgr_stage_label,
             'project'     => $job->project ? [
                 'id'       => $job->project->id,
                 'name'     => $job->project->name,

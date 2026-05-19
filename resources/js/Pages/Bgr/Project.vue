@@ -72,6 +72,24 @@
 
                         <!-- Task list -->
                         <div v-if="expandedStages.includes(stage.id)" class="divide-y divide-gray-50 border-t border-gray-100">
+
+                            <!-- Linked jobs -->
+                            <div v-if="stage.linked_jobs && stage.linked_jobs.length > 0" class="px-4 py-2.5 bg-blue-50/50">
+                                <p class="text-[10px] font-semibold text-blue-500 uppercase tracking-wide mb-1.5">Linked Jobs</p>
+                                <div class="flex flex-wrap gap-1.5">
+                                    <span
+                                        v-for="job in stage.linked_jobs"
+                                        :key="job.id"
+                                        :class="['inline-flex items-center gap-1 text-[11px] font-medium px-2 py-0.5 rounded-full', jobStatusPill(job.status)]"
+                                        :title="job.staff.map(s => s.name).join(', ')"
+                                    >
+                                        <span :class="['w-1.5 h-1.5 rounded-full flex-shrink-0', jobStatusDot(job.status)]" />
+                                        {{ job.title }}
+                                        <span class="text-current/60 font-normal">{{ formatDate(job.date) }}</span>
+                                    </span>
+                                </div>
+                            </div>
+
                             <div v-if="stage.substages.length === 0" class="px-4 py-3 text-xs text-gray-400 italic">
                                 No tasks in this stage.
                             </div>
@@ -485,6 +503,24 @@ function openPhoto(originalUrl) {
 function formatDate(dateStr) {
     if (!dateStr) return '';
     return new Date(dateStr).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+}
+
+function jobStatusPill(status) {
+    return {
+        scheduled:   'bg-blue-100 text-blue-700',
+        in_progress: 'bg-amber-100 text-amber-700',
+        completed:   'bg-green-100 text-green-700',
+        cancelled:   'bg-gray-100 text-gray-500',
+    }[status] ?? 'bg-gray-100 text-gray-500';
+}
+
+function jobStatusDot(status) {
+    return {
+        scheduled:   'bg-blue-500',
+        in_progress: 'bg-amber-500',
+        completed:   'bg-green-500',
+        cancelled:   'bg-gray-400',
+    }[status] ?? 'bg-gray-400';
 }
 </script>
 

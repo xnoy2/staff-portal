@@ -152,6 +152,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/debug-session',                                                       [BgrController::class, 'debugSession'])->name('debug-session');
         Route::post('/connect',                                                             [BgrController::class, 'connect'])->name('connect');
         Route::delete('/disconnect',                                                        [BgrController::class, 'disconnect'])->name('disconnect');
+        Route::get('/{id}/stages',                                                          [BgrController::class, 'stagesForProject'])->name('project.stages');
         Route::get('/{id}',                                                                 [BgrController::class, 'show'])->name('show');
         Route::post('/{projectId}/tasks/{stageId}/{substageId}/toggle',                    [BgrController::class, 'toggleTask'])->name('tasks.toggle');
         Route::post('/{projectId}/tasks/{stageId}/{substageId}/note',                      [BgrController::class, 'updateTaskNote'])->name('tasks.note');

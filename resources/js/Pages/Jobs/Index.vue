@@ -147,6 +147,7 @@
                                             {{ job.project.business.toUpperCase() }}
                                         </span>
                                         <span v-if="job.bcf_order_number" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-[#EF233C] text-white">BCF</span>
+                                        <span v-if="job.bgr_project_name" class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white">BGR</span>
                                         <h3 class="text-sm font-bold text-gray-900 leading-snug">{{ job.title }}</h3>
                                     </div>
                                     <p v-if="job.project" class="text-xs text-gray-500 truncate">
@@ -157,7 +158,12 @@
                                         <span v-if="job.bcf_stage_label" class="text-gray-300">·</span>
                                         <span v-if="job.bcf_stage_label">{{ job.bcf_stage_label }}</span>
                                     </p>
-                                    <p v-if="!job.project && !job.bcf_order_number && job.description" class="text-xs text-gray-400 line-clamp-1">{{ job.description }}</p>
+                                    <p v-if="job.bgr_project_name" class="text-xs text-gray-400 truncate flex items-center gap-1">
+                                        <span class="font-medium text-blue-600">{{ job.bgr_project_name }}</span>
+                                        <span v-if="job.bgr_stage_label" class="text-gray-300">·</span>
+                                        <span v-if="job.bgr_stage_label">{{ job.bgr_stage_label }}</span>
+                                    </p>
+                                    <p v-if="!job.project && !job.bcf_order_number && !job.bgr_project_name && job.description" class="text-xs text-gray-400 line-clamp-1">{{ job.description }}</p>
                                 </div>
                                 <span :class="statusBadgeClass(job.status)" class="inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-[11px] font-semibold whitespace-nowrap flex-shrink-0">
                                     <span :class="['w-1.5 h-1.5 rounded-full', statusDotClass(job.status)]" />
@@ -406,6 +412,40 @@
                                 ✓ Completing this job will automatically mark the BCF stage as done
                             </p>
                         </div>
+
+                        <!-- BGR Link -->
+                        <div v-if="bgrProjects.length > 0" class="rounded-xl border border-dashed border-blue-100 p-3 space-y-2">
+                            <p class="text-xs font-semibold text-gray-500 flex items-center gap-1.5">
+                                <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white">BGR</span>
+                                Link to BGR Project <span class="font-normal text-gray-400">(optional)</span>
+                            </p>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                                <div>
+                                    <label class="form-label">Project</label>
+                                    <select v-model="form.bgr_project_id" @change="onBgrProjectChange" class="form-input text-sm">
+                                        <option value="">— None —</option>
+                                        <option v-for="p in bgrProjects" :key="p.id" :value="String(p.id)">
+                                            {{ p.name }}
+                                        </option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="form-label">Stage</label>
+                                    <select
+                                        v-model="form.bgr_stage_id"
+                                        @change="onBgrStageChange"
+                                        :disabled="!form.bgr_project_id || loadingBgrStages"
+                                        class="form-input text-sm disabled:opacity-50"
+                                    >
+                                        <option value="">{{ loadingBgrStages ? 'Loading…' : '— Select stage —' }}</option>
+                                        <option v-for="s in bgrStages" :key="s.id" :value="String(s.id)">{{ s.name }}</option>
+                                    </select>
+                                </div>
+                            </div>
+                            <p v-if="form.bgr_stage_id" class="text-[10px] text-blue-600 flex items-center gap-1">
+                                ✓ This job will appear under the linked stage in the BGR project view
+                            </p>
+                        </div>
                     </form>
 
                     <!-- Footer -->
@@ -467,6 +507,7 @@ const props = defineProps({
     vans:         { type: Array,   default: () => [] },
     staffList:    { type: Array,   default: () => [] },
     bcfOrders:    { type: Array,   default: () => [] },
+    bgrProjects:  { type: Array,   default: () => [] },
 });
 
 const page = usePage();
@@ -560,6 +601,7 @@ const form = useForm({
     project_id: '', van_id: '', title: '', description: '',
     date: props.date, start_time: '', end_time: '', notes: '', staff_ids: [],
     bcf_order_id: '', bcf_stage_id: '', bcf_order_number: '', bcf_stage_label: '',
+    bgr_project_id: '', bgr_stage_id: '', bgr_project_name: '', bgr_stage_label: '',
 });
 
 // BCF stage lazy-load
@@ -592,6 +634,36 @@ function onBcfStageChange() {
     form.bcf_stage_label = stage?.label ?? '';
 }
 
+// BGR stage lazy-load
+const bgrStages       = ref([]);
+const loadingBgrStages = ref(false);
+
+async function onBgrProjectChange() {
+    form.bgr_stage_id    = '';
+    form.bgr_stage_label = '';
+    bgrStages.value      = [];
+    if (!form.bgr_project_id) {
+        form.bgr_project_name = '';
+        return;
+    }
+    const project = props.bgrProjects.find(p => String(p.id) === String(form.bgr_project_id));
+    form.bgr_project_name = project?.name ?? '';
+    loadingBgrStages.value = true;
+    try {
+        const res = await fetch(route('bgr.project.stages', form.bgr_project_id), {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' },
+        });
+        bgrStages.value = await res.json();
+    } finally {
+        loadingBgrStages.value = false;
+    }
+}
+
+function onBgrStageChange() {
+    const stage = bgrStages.value.find(s => String(s.id) === String(form.bgr_stage_id));
+    form.bgr_stage_label = stage?.name ?? '';
+}
+
 function openCreate() {
     form.reset();
     form.date = props.date;
@@ -612,8 +684,13 @@ function openEdit(job) {
     form.bcf_stage_id     = job.bcf_stage_id    ?? '';
     form.bcf_order_number = job.bcf_order_number ?? '';
     form.bcf_stage_label  = job.bcf_stage_label  ?? '';
-    // Pre-load stages if order is set
+    form.bgr_project_id   = job.bgr_project_id   ? String(job.bgr_project_id) : '';
+    form.bgr_stage_id     = job.bgr_stage_id     ? String(job.bgr_stage_id)   : '';
+    form.bgr_project_name = job.bgr_project_name ?? '';
+    form.bgr_stage_label  = job.bgr_stage_label  ?? '';
+    // Pre-load stages if order/project is set
     if (job.bcf_order_id) onBcfOrderChange();
+    if (job.bgr_project_id) onBgrProjectChange();
     form.clearErrors();
     modal.value = { show: true, isEdit: true, jobId: job.id };
 }
