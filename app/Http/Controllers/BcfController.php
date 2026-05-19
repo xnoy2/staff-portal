@@ -92,7 +92,7 @@ class BcfController extends Controller
             collect($stages)
                 ->sortBy('stage_number')
                 ->values()
-                ->map(fn ($s) => ['id' => $s['id'], 'label' => $s['label']])
+                ->map(fn ($s) => ['id' => $s['id'], 'label' => $s['label'], 'status' => $s['status'] ?? 'pending'])
         );
     }
 

@@ -404,7 +404,12 @@
                                         class="form-input text-sm disabled:opacity-50"
                                     >
                                         <option value="">{{ loadingStages ? 'Loading…' : '— Select stage —' }}</option>
-                                        <option v-for="s in bcfStages" :key="s.id" :value="s.id">{{ s.label }}</option>
+                                        <option
+                                            v-for="s in bcfStages"
+                                            :key="s.id"
+                                            :value="s.id"
+                                            :disabled="s.status === 'done'"
+                                        >{{ s.label }}{{ s.status === 'done' ? ' ✓ Completed' : '' }}</option>
                                     </select>
                                 </div>
                             </div>
@@ -438,7 +443,12 @@
                                         class="form-input text-sm disabled:opacity-50"
                                     >
                                         <option value="">{{ loadingBgrStages ? 'Loading…' : '— Select stage —' }}</option>
-                                        <option v-for="s in bgrStages" :key="s.id" :value="String(s.id)">{{ s.name }}</option>
+                                        <option
+                                            v-for="s in bgrStages"
+                                            :key="s.id"
+                                            :value="String(s.id)"
+                                            :disabled="s.status === 'completed'"
+                                        >{{ s.name }}{{ s.status === 'completed' ? ' ✓ Completed' : '' }}</option>
                                     </select>
                                 </div>
                             </div>
