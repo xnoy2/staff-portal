@@ -315,12 +315,21 @@ class JobController extends Controller
     {
         if (! $user->bgr_token) return [];
         try {
-            $raw = (new BgrApiService($user->bgr_token))->getProjects([]);
-            return collect($raw['data'] ?? [])
-                ->map(fn ($p) => [
-                    'id'   => $p['id'],
-                    'name' => $p['name'],
-                ])
+            $service  = new BgrApiService($user->bgr_token);
+            $all      = [];
+            $page     = 1;
+
+            do {
+                $raw      = $service->getProjects(['page' => $page, 'per_page' => 100]);
+                $data     = $raw['data'] ?? [];
+                $all      = array_merge($all, $data);
+                $lastPage = $raw['meta']['last_page'] ?? 1;
+                $page++;
+            } while ($page <= $lastPage && $page <= 20); // safety cap
+
+            return collect($all)
+                ->map(fn ($p) => ['id' => $p['id'], 'name' => $p['name']])
+                ->sortBy('name')
                 ->values()
                 ->all();
         } catch (\Throwable) {

@@ -424,34 +424,68 @@
                                 <span class="text-[10px] font-bold px-1.5 py-0.5 rounded bg-blue-600 text-white">BGR</span>
                                 Link to BGR Project <span class="font-normal text-gray-400">(optional)</span>
                             </p>
-                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                                <div>
-                                    <label class="form-label">Project</label>
-                                    <select v-model="form.bgr_project_id" @change="onBgrProjectChange" class="form-input text-sm">
-                                        <option value="">— None —</option>
-                                        <option v-for="p in bgrProjects" :key="p.id" :value="String(p.id)">
-                                            {{ p.name }}
-                                        </option>
-                                    </select>
+
+                            <!-- Project search + scrollable list -->
+                            <div>
+                                <label class="form-label">Project</label>
+                                <!-- Selected indicator -->
+                                <div v-if="form.bgr_project_id" class="flex items-center gap-2 mb-1.5">
+                                    <span class="flex-1 text-xs font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5 truncate">
+                                        {{ bgrProjects.find(p => String(p.id) === form.bgr_project_id)?.name }}
+                                    </span>
+                                    <button type="button" @click="form.bgr_project_id=''; form.bgr_project_name=''; form.bgr_stage_id=''; form.bgr_stage_label=''; bgrStages=[]"
+                                        class="text-xs text-gray-400 hover:text-red-500 transition-colors flex-shrink-0">✕ Clear</button>
                                 </div>
-                                <div>
-                                    <label class="form-label">Stage</label>
-                                    <select
-                                        v-model="form.bgr_stage_id"
-                                        @change="onBgrStageChange"
-                                        :disabled="!form.bgr_project_id || loadingBgrStages"
-                                        class="form-input text-sm disabled:opacity-50"
+                                <!-- Search input -->
+                                <input
+                                    v-model="bgrProjectSearch"
+                                    type="text"
+                                    placeholder="Search projects…"
+                                    class="form-input text-sm mb-1"
+                                />
+                                <!-- Scrollable list -->
+                                <div class="border border-gray-200 rounded-xl divide-y divide-gray-100 max-h-36 overflow-y-auto">
+                                    <button
+                                        v-for="p in filteredBgrProjects"
+                                        :key="p.id"
+                                        type="button"
+                                        @click="selectBgrProject(p)"
+                                        :class="[
+                                            'w-full text-left flex items-center gap-2 px-3 py-2 text-sm transition-colors',
+                                            String(p.id) === form.bgr_project_id
+                                                ? 'bg-blue-50 text-blue-700 font-semibold'
+                                                : 'text-gray-700 hover:bg-gray-50',
+                                        ]"
                                     >
-                                        <option value="">{{ loadingBgrStages ? 'Loading…' : '— Select stage —' }}</option>
-                                        <option
-                                            v-for="s in bgrStages"
-                                            :key="s.id"
-                                            :value="String(s.id)"
-                                            :disabled="s.status === 'completed'"
-                                        >{{ s.name }}{{ s.status === 'completed' ? ' ✓ Completed' : '' }}</option>
-                                    </select>
+                                        <span class="w-2 h-2 rounded-full flex-shrink-0"
+                                            :class="String(p.id) === form.bgr_project_id ? 'bg-blue-500' : 'bg-gray-200'" />
+                                        {{ p.name }}
+                                    </button>
+                                    <div v-if="filteredBgrProjects.length === 0" class="px-3 py-3 text-xs text-gray-400 text-center italic">
+                                        No projects match "{{ bgrProjectSearch }}"
+                                    </div>
                                 </div>
                             </div>
+
+                            <!-- Stage dropdown -->
+                            <div>
+                                <label class="form-label">Stage</label>
+                                <select
+                                    v-model="form.bgr_stage_id"
+                                    @change="onBgrStageChange"
+                                    :disabled="!form.bgr_project_id || loadingBgrStages"
+                                    class="form-input text-sm disabled:opacity-50"
+                                >
+                                    <option value="">{{ loadingBgrStages ? 'Loading…' : '— Select stage —' }}</option>
+                                    <option
+                                        v-for="s in bgrStages"
+                                        :key="s.id"
+                                        :value="String(s.id)"
+                                        :disabled="s.status === 'completed'"
+                                    >{{ s.name }}{{ s.status === 'completed' ? ' ✓ Completed' : '' }}</option>
+                                </select>
+                            </div>
+
                             <p v-if="form.bgr_stage_id" class="text-[10px] text-blue-600 flex items-center gap-1">
                                 ✓ This job will appear under the linked stage in the BGR project view
                             </p>
@@ -500,7 +534,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref, computed, watch } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
@@ -645,8 +679,25 @@ function onBcfStageChange() {
 }
 
 // BGR stage lazy-load
-const bgrStages       = ref([]);
+const bgrStages        = ref([]);
 const loadingBgrStages = ref(false);
+const bgrProjectSearch = ref('');
+
+const filteredBgrProjects = computed(() => {
+    const q = bgrProjectSearch.value.trim().toLowerCase();
+    if (!q) return props.bgrProjects;
+    return props.bgrProjects.filter(p => p.name.toLowerCase().includes(q));
+});
+
+function selectBgrProject(p) {
+    form.bgr_project_id   = String(p.id);
+    form.bgr_project_name = p.name;
+    form.bgr_stage_id     = '';
+    form.bgr_stage_label  = '';
+    bgrStages.value       = [];
+    bgrProjectSearch.value = '';
+    onBgrProjectChange();
+}
 
 async function onBgrProjectChange() {
     form.bgr_stage_id    = '';
@@ -677,6 +728,8 @@ function onBgrStageChange() {
 function openCreate() {
     form.reset();
     form.date = props.date;
+    bgrProjectSearch.value = '';
+    bgrStages.value = [];
     modal.value = { show: true, isEdit: false, jobId: null };
 }
 
@@ -698,6 +751,7 @@ function openEdit(job) {
     form.bgr_stage_id     = job.bgr_stage_id     ? String(job.bgr_stage_id)   : '';
     form.bgr_project_name = job.bgr_project_name ?? '';
     form.bgr_stage_label  = job.bgr_stage_label  ?? '';
+    bgrProjectSearch.value = '';
     // Pre-load stages if order/project is set
     if (job.bcf_order_id) onBcfOrderChange();
     if (job.bgr_project_id) onBgrProjectChange();
