@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\StoreUserRequest;
 use App\Http\Requests\UpdateUserRequest;
+use App\Models\Job;
 use App\Models\PayrollRun;
 use App\Models\TimeEntry;
 use App\Models\User;
@@ -132,6 +133,27 @@ class StaffController extends Controller
 
         $totalHours = TimeEntry::forUser($staff->id)->approved()->sum('total_hours');
 
+        // Jobs assigned to this staff member
+        $jobBase       = Job::whereHas('staff', fn ($q) => $q->where('users.id', $staff->id));
+        $totalJobs     = (clone $jobBase)->count();
+        $completedJobs = (clone $jobBase)->where('status', 'completed')->count();
+        $thisMonthJobs = (clone $jobBase)->whereMonth('date', now()->month)->whereYear('date', now()->year)->count();
+
+        $recentJobs = (clone $jobBase)
+            ->with('project:id,name,business')
+            ->orderBy('date', 'desc')
+            ->orderBy('start_time', 'desc')
+            ->limit(15)
+            ->get()
+            ->map(fn ($j) => [
+                'id'         => $j->id,
+                'title'      => $j->title,
+                'date'       => $j->date->toDateString(),
+                'status'     => $j->status,
+                'start_time' => $j->start_time ? substr($j->start_time, 0, 5) : null,
+                'project'    => $j->project ? ['name' => $j->project->name, 'business' => $j->project->business] : null,
+            ]);
+
         return Inertia::render('Staff/Show', [
             'staffMember'  => [
                 'id'                      => $staff->id,
@@ -169,6 +191,13 @@ class StaffController extends Controller
                     'status'      => $r->status,
                     'has_rate'    => ! is_null($r->hourly_rate),
                 ]),
+            'jobStats'      => [
+                'total'          => $totalJobs,
+                'thisMonth'      => $thisMonthJobs,
+                'completed'      => $completedJobs,
+                'completionRate' => $totalJobs > 0 ? round($completedJobs / $totalJobs * 100) : 0,
+            ],
+            'recentJobs'    => $recentJobs,
             'projects'      => $staff->projects->map(fn ($p) => [
                 'id'       => $p->id,
                 'name'     => $p->name,

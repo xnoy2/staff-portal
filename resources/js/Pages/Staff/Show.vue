@@ -140,6 +140,79 @@
                 <p class="text-sm text-gray-700 whitespace-pre-wrap">{{ staffMember.notes }}</p>
             </div>
 
+            <!-- Job activity stats -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                    <p class="text-2xl font-bold text-gray-800">{{ jobStats.total }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Total Jobs</p>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                    <p class="text-2xl font-bold text-gray-800">{{ jobStats.thisMonth }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">This Month</p>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                    <p class="text-2xl font-bold text-green-600">{{ jobStats.completed }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Completed</p>
+                </div>
+                <div class="bg-white rounded-xl border border-gray-200 p-4 text-center">
+                    <p class="text-2xl font-bold" :class="jobStats.completionRate >= 80 ? 'text-green-600' : jobStats.completionRate >= 50 ? 'text-amber-600' : 'text-gray-800'">
+                        {{ jobStats.completionRate }}%
+                    </p>
+                    <p class="text-xs text-gray-500 mt-0.5">Completion Rate</p>
+                </div>
+            </div>
+
+            <!-- Job history -->
+            <div class="bg-white rounded-xl border border-gray-200 p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold text-gray-800 flex items-center gap-2">
+                        <BriefcaseIcon class="w-4 h-4 text-[#EF233C]" /> Job History
+                        <span class="text-xs font-normal text-gray-400">({{ jobStats.total }} total)</span>
+                    </h2>
+                    <Link :href="route('jobs.index')" class="text-xs text-[#EF233C] hover:underline">Live Board</Link>
+                </div>
+                <div v-if="recentJobs.length === 0" class="text-center py-6 text-sm text-gray-400">
+                    No jobs assigned yet.
+                </div>
+                <div v-else class="space-y-1.5">
+                    <div
+                        v-for="job in recentJobs"
+                        :key="job.id"
+                        class="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:bg-gray-50 transition-colors"
+                    >
+                        <!-- Status stripe -->
+                        <div :class="['w-1 h-8 rounded-full flex-shrink-0', jobStatusStripe(job.status)]" />
+
+                        <!-- Date -->
+                        <div class="flex-shrink-0 text-center w-10">
+                            <p class="text-[10px] font-bold text-gray-400 uppercase leading-none">
+                                {{ new Date(job.date + 'T00:00:00').toLocaleDateString('en-GB', { month: 'short' }) }}
+                            </p>
+                            <p class="text-base font-black text-gray-800 leading-tight">
+                                {{ new Date(job.date + 'T00:00:00').getDate() }}
+                            </p>
+                        </div>
+
+                        <!-- Title + project -->
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-800 truncate">{{ job.title }}</p>
+                            <div class="flex items-center gap-1.5 mt-0.5">
+                                <span v-if="job.project?.business" :class="businessClass(job.project.business)">
+                                    {{ job.project.business.toUpperCase() }}
+                                </span>
+                                <span v-if="job.project" class="text-xs text-gray-400 truncate">{{ job.project.name }}</span>
+                                <span v-if="job.start_time" class="text-xs text-gray-300">· {{ job.start_time }}</span>
+                            </div>
+                        </div>
+
+                        <!-- Status badge -->
+                        <span :class="['text-xs px-2 py-0.5 rounded-full font-medium flex-shrink-0', jobStatusBadge(job.status)]">
+                            {{ jobStatusLabel(job.status) }}
+                        </span>
+                    </div>
+                </div>
+            </div>
+
             <!-- Projects -->
             <div class="bg-white rounded-xl border border-gray-200 p-5">
                 <div class="flex items-center justify-between mb-4">
@@ -255,7 +328,7 @@
 <script setup>
 import { Link, router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { PencilIcon, NoSymbolIcon, CheckCircleIcon, FolderIcon, DocumentTextIcon, ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline';
+import { PencilIcon, NoSymbolIcon, CheckCircleIcon, FolderIcon, DocumentTextIcon, ClipboardDocumentCheckIcon, BriefcaseIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     staffMember:        { type: Object, required: true },
@@ -263,6 +336,8 @@ const props = defineProps({
     totalHours:         { type: Number, default: 0 },
     projects:           { type: Array,  default: () => [] },
     recentPayrollRuns:  { type: Array,  default: () => [] },
+    jobStats:           { type: Object, default: () => ({ total: 0, thisMonth: 0, completed: 0, completionRate: 0 }) },
+    recentJobs:         { type: Array,  default: () => [] },
     canEdit:            { type: Boolean, default: false },
     hasOnboarding:      { type: Boolean, default: false },
 });
@@ -300,6 +375,23 @@ const businessClasses = {
     bgr: 'text-xs font-bold px-1.5 py-0.5 rounded bg-blue-100 text-blue-700 shrink-0',
 };
 function businessClass(b) { return businessClasses[b] ?? businessClasses.bcf; }
+
+function jobStatusBadge(s) {
+    return {
+        scheduled:   'bg-blue-50 text-blue-700 border border-blue-200',
+        in_progress: 'bg-amber-50 text-amber-700 border border-amber-200',
+        completed:   'bg-green-50 text-green-700 border border-green-200',
+        cancelled:   'bg-gray-100 text-gray-500 border border-gray-200',
+    }[s] ?? 'bg-gray-100 text-gray-500 border border-gray-200';
+}
+
+function jobStatusLabel(s) {
+    return { scheduled: 'Scheduled', in_progress: 'In Progress', completed: 'Completed', cancelled: 'Cancelled' }[s] ?? s;
+}
+
+function jobStatusStripe(s) {
+    return { scheduled: 'bg-blue-400', in_progress: 'bg-amber-400', completed: 'bg-green-500', cancelled: 'bg-gray-300' }[s] ?? 'bg-gray-200';
+}
 </script>
 
 <style scoped>
