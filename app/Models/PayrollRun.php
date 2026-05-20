@@ -15,9 +15,9 @@ class PayrollRun extends Model
     protected $fillable = [
         'user_id', 'period_from', 'period_to',
         'regular_hours', 'overtime_hours', 'total_hours',
-        'hourly_rate', 'regular_pay', 'overtime_pay', 'gross_pay',
+        'hourly_rate', 'regular_pay', 'overtime_pay', 'gross_pay', 'net_pay',
         'shifts_count', 'status', 'generated_by', 'approved_by',
-        'approved_at', 'entries_snapshot',
+        'approved_at', 'entries_snapshot', 'deductions',
     ];
 
     protected function casts(): array
@@ -34,6 +34,8 @@ class PayrollRun extends Model
             'regular_pay'      => 'float',
             'overtime_pay'     => 'float',
             'gross_pay'        => 'float',
+            'net_pay'          => 'float',
+            'deductions'       => 'array',
         ];
     }
 
@@ -99,8 +101,7 @@ class PayrollRun extends Model
 
         $snapshot = $entries->map(function ($entry) use (&$regularHours, &$overtimeHours) {
             $hours = (float) $entry->total_hours;
-            $regH  = $entry->is_overtime ? min($hours, 8) : $hours;
-            $otH   = $entry->is_overtime ? max(0, $hours - 8) : 0;
+            [$regH, $otH] = static::splitHours($hours, $entry->is_overtime, $entry->ot_type);
             $regularHours  += $regH;
             $overtimeHours += $otH;
 
@@ -114,6 +115,7 @@ class PayrollRun extends Model
                 'regular_hours'  => round($regH, 2),
                 'overtime_hours' => round($otH, 2),
                 'is_overtime'    => $entry->is_overtime,
+                'ot_type'        => $entry->ot_type,
             ];
         })->values()->toArray();
 
@@ -137,5 +139,26 @@ class PayrollRun extends Model
             'generated_by'     => $generatedBy,
             'entries_snapshot' => $snapshot,
         ]);
+    }
+
+    /**
+     * Split worked hours into [regularHours, overtimeHours].
+     *
+     * Rules:
+     *  - ot_type set (approved OT/RDOT shift) → entire shift is overtime
+     *  - is_overtime (shift exceeded 8h, no ot_type) → first 8h regular, rest OT
+     *  - otherwise → all regular
+     */
+    public static function splitHours(float $hours, bool $isOvertime, ?string $otType): array
+    {
+        if ($otType !== null) {
+            return [0.0, $hours];
+        }
+
+        if ($isOvertime) {
+            return [min($hours, 8.0), max(0.0, $hours - 8.0)];
+        }
+
+        return [$hours, 0.0];
     }
 }

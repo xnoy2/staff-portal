@@ -26,9 +26,10 @@ class PayrollRunController extends Controller
             ->when($request->filled('from'), fn ($q) => $q->where('period_from', $request->from))
             ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
             ->orderBy('period_from', 'desc')
-            ->orderByRaw("FIELD(status, 'draft', 'approved')")
-            ->get()
-            ->map(fn ($r) => [
+            ->orderByRaw("CASE WHEN status = 'draft' THEN 0 ELSE 1 END")
+            ->paginate(25)
+            ->withQueryString()
+            ->through(fn ($r) => [
                 'id'             => $r->id,
                 'period_from'    => $r->period_from->toDateString(),
                 'period_to'      => $r->period_to->toDateString(),
@@ -45,6 +46,31 @@ class PayrollRunController extends Controller
                 'shifts_count'   => $r->shifts_count,
             ]);
 
+        // Totals for the selected period — drives the summary bar and Approve All button
+        $periodTotals = null;
+        if ($request->filled('from')) {
+            $agg = PayrollRun::where('period_from', $request->from)
+                ->when($request->filled('status'), fn ($q) => $q->where('status', $request->status))
+                ->selectRaw('
+                    COUNT(*) as count,
+                    SUM(total_hours) as total_hours,
+                    SUM(gross_pay) as gross_pay,
+                    SUM(CASE WHEN status = "draft"    THEN 1 ELSE 0 END) as draft_count,
+                    SUM(CASE WHEN status = "approved" THEN 1 ELSE 0 END) as approved_count
+                ')
+                ->first();
+
+            $periodTotals = [
+                'count'          => (int) $agg->count,
+                'total_hours'    => round((float) $agg->total_hours, 2),
+                'gross_pay'      => round((float) $agg->gross_pay, 2),
+                'draft_count'    => (int) $agg->draft_count,
+                'approved_count' => (int) $agg->approved_count,
+            ];
+        }
+
+        $draftCount = $periodTotals['draft_count'] ?? 0;
+
         // Available period options (distinct period_from dates from existing runs)
         $periods = PayrollRun::selectRaw('period_from, period_to')
             ->distinct()
@@ -55,12 +81,19 @@ class PayrollRunController extends Controller
                 'to'   => $r->period_to,
             ]);
 
+        $lastAutoRun = PayrollRun::whereNull('generated_by')
+            ->latest()
+            ->value('created_at');
+
         return Inertia::render('Payroll/Index', [
-            'runs'       => $runs,
-            'periods'    => $periods,
-            'current'    => $current,
-            'cutoffDay'  => $cutoffDay,
-            'filters'    => $request->only(['from', 'status']),
+            'runs'          => $runs,
+            'periods'       => $periods,
+            'current'       => $current,
+            'cutoffDay'     => $cutoffDay,
+            'draftCount'    => $draftCount,
+            'periodTotals'  => $periodTotals,
+            'lastAutoRun'   => $lastAutoRun?->toDateTimeString(),
+            'filters'       => $request->only(['from', 'status']),
         ]);
     }
 
@@ -77,8 +110,8 @@ class PayrollRunController extends Controller
         $to   = Carbon::parse($request->to)->endOfDay();
 
         $staff = User::where('is_active', true)
-            ->get()
-            ->filter(fn ($u) => ! $u->hasRole('admin'));
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'admin'))
+            ->get();
 
         $generated = 0;
         $skipped   = 0;
@@ -175,6 +208,28 @@ class PayrollRunController extends Controller
         Cache::forget('app_settings');
 
         return back()->with('success', 'Cut-off day updated to the ' . $request->cutoff_day . 'th.');
+    }
+
+    public function updateDeductions(Request $request, PayrollRun $run): RedirectResponse
+    {
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
+        abort_if($run->status === 'approved', 403, 'Cannot edit an approved payslip.');
+
+        $data = $request->validate([
+            'deductions'                => ['nullable', 'array'],
+            'deductions.*.description'  => ['required', 'string', 'max:100'],
+            'deductions.*.amount'       => ['required', 'numeric', 'min:0'],
+        ]);
+
+        $deductions    = $data['deductions'] ?? [];
+        $totalDeducted = collect($deductions)->sum('amount');
+
+        $run->update([
+            'deductions' => $deductions,
+            'net_pay'    => round($run->gross_pay - $totalDeducted, 2),
+        ]);
+
+        return back()->with('success', 'Deductions saved.');
     }
 
     public function destroy(PayrollRun $run): RedirectResponse

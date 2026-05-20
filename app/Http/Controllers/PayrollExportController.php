@@ -2,10 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TimeEntry;
+use App\Models\PayrollRun;
 use App\Models\User;
 use Illuminate\Http\Request;
-use Illuminate\Http\Response;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PayrollExportController extends Controller
@@ -20,27 +19,24 @@ class PayrollExportController extends Controller
             'user_id' => ['nullable', 'uuid', 'exists:users,id'],
         ]);
 
-        $from = $request->date('from')->startOfDay();
-        $to   = $request->date('to')->endOfDay();
+        $from = $request->date('from');
+        $to   = $request->date('to');
 
-        $query = TimeEntry::with(['user'])
-            ->whereBetween('clock_in', [$from, $to])
+        // Export from approved PayrollRun records so numbers always match
+        // what was reviewed and signed off, not a live re-computation.
+        $runs = PayrollRun::with('user')
+            ->whereBetween('period_from', [$from->toDateString(), $to->toDateString()])
             ->where('status', 'approved')
-            ->withSum('breaks', 'duration_minutes');
-
-        if ($request->filled('user_id')) {
-            $query->where('user_id', $request->user_id);
-        }
-
-        // Group entries by user
-        $byUser = $query->get()->groupBy('user_id');
+            ->when($request->filled('user_id'), fn ($q) => $q->where('user_id', $request->user_id))
+            ->orderBy('period_from')
+            ->orderBy('user_id')
+            ->get();
 
         $filename = 'payroll_' . $from->format('Y-m-d') . '_to_' . $to->format('Y-m-d') . '.csv';
 
-        return response()->streamDownload(function () use ($byUser, $from, $to) {
+        return response()->streamDownload(function () use ($runs) {
             $out = fopen('php://output', 'w');
 
-            // Header row
             fputcsv($out, [
                 'Employee ID',
                 'Name',
@@ -54,47 +50,29 @@ class PayrollExportController extends Controller
                 'Overtime Pay (£)',
                 'Gross Pay (£)',
                 'Shifts',
+                'Approved By',
+                'Approved At',
                 'Note',
             ]);
 
-            foreach ($byUser as $userId => $entries) {
-                $user = $entries->first()->user;
-
-                $regularHours  = 0;
-                $overtimeHours = 0;
-                $shifts        = $entries->count();
-                $noRate        = is_null($user->hourly_rate);
-
-                foreach ($entries as $entry) {
-                    $hours = (float) $entry->total_hours;
-
-                    if ($entry->is_overtime) {
-                        // First 8 hours are regular; remainder is overtime
-                        $regularHours  += min($hours, 8);
-                        $overtimeHours += max(0, $hours - 8);
-                    } else {
-                        $regularHours += $hours;
-                    }
-                }
-
-                $rate         = (float) ($user->hourly_rate ?? 0);
-                $regularPay   = round($regularHours * $rate, 2);
-                $overtimePay  = round($overtimeHours * $rate * 1.5, 2);
-                $grossPay     = round($regularPay + $overtimePay, 2);
+            foreach ($runs as $run) {
+                $noRate = is_null($run->hourly_rate);
 
                 fputcsv($out, [
-                    $user->employee_id,
-                    $user->name,
-                    $from->toDateString(),
-                    $to->toDateString(),
-                    number_format($regularHours, 2),
-                    number_format($overtimeHours, 2),
-                    number_format($regularHours + $overtimeHours, 2),
-                    $noRate ? 'N/A' : number_format($rate, 2),
-                    $noRate ? 'N/A' : number_format($regularPay, 2),
-                    $noRate ? 'N/A' : number_format($overtimePay, 2),
-                    $noRate ? 'N/A' : number_format($grossPay, 2),
-                    $shifts,
+                    $run->user->employee_id,
+                    $run->user->name,
+                    $run->period_from->toDateString(),
+                    $run->period_to->toDateString(),
+                    number_format($run->regular_hours, 2),
+                    number_format($run->overtime_hours, 2),
+                    number_format($run->total_hours, 2),
+                    $noRate ? 'N/A' : number_format($run->hourly_rate, 2),
+                    $noRate ? 'N/A' : number_format($run->regular_pay, 2),
+                    $noRate ? 'N/A' : number_format($run->overtime_pay, 2),
+                    $noRate ? 'N/A' : number_format($run->gross_pay, 2),
+                    $run->shifts_count,
+                    $run->approvedBy?->name ?? '',
+                    $run->approved_at?->toDateString() ?? '',
                     $noRate ? 'No hourly rate set' : '',
                 ]);
             }

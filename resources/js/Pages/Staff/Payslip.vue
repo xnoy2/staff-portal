@@ -155,6 +155,65 @@
                     </p>
                 </div>
 
+                <!-- Deductions (locked payslips only) -->
+                <div v-if="isLocked && (deductionForm.deductions.length > 0 || (canManage && runStatus === 'draft'))" class="px-8 py-5 border-b border-gray-100">
+                    <div class="flex items-center justify-between mb-3">
+                        <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest">Deductions</p>
+                        <button
+                            v-if="canManage && runStatus === 'draft'"
+                            @click="addDeduction"
+                            class="text-xs text-[#EF233C] hover:underline font-medium"
+                        >+ Add deduction</button>
+                    </div>
+
+                    <div v-if="deductionForm.deductions.length === 0" class="text-sm text-gray-400 italic">
+                        No deductions added.
+                    </div>
+
+                    <div v-for="(d, i) in deductionForm.deductions" :key="i" class="flex items-center gap-2 mb-2">
+                        <template v-if="canManage && runStatus === 'draft'">
+                            <input
+                                v-model="d.description"
+                                placeholder="Description (e.g. Tax, Pension)"
+                                class="flex-1 text-sm border border-gray-200 rounded-lg px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#EF233C] focus:border-[#EF233C]"
+                            />
+                            <div class="flex items-center border border-gray-200 rounded-lg overflow-hidden">
+                                <span class="px-2 text-sm text-gray-400 bg-gray-50 border-r border-gray-200">£</span>
+                                <input
+                                    v-model="d.amount"
+                                    type="number" min="0" step="0.01"
+                                    placeholder="0.00"
+                                    class="w-24 text-sm px-2.5 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#EF233C]"
+                                />
+                            </div>
+                            <button @click="removeDeduction(i)" class="text-gray-300 hover:text-red-500 transition-colors px-1 text-sm">✕</button>
+                        </template>
+                        <template v-else>
+                            <span class="flex-1 text-sm text-gray-700">{{ d.description }}</span>
+                            <span class="text-sm font-semibold text-red-600">−£{{ Number(d.amount).toFixed(2) }}</span>
+                        </template>
+                    </div>
+
+                    <div v-if="canManage && runStatus === 'draft'" class="mt-3 flex justify-end">
+                        <button
+                            @click="saveDeductions"
+                            :disabled="deductionForm.processing"
+                            class="text-xs bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-50 text-white font-semibold px-4 py-1.5 rounded-lg transition-colors"
+                        >{{ deductionForm.processing ? 'Saving…' : 'Save Deductions' }}</button>
+                    </div>
+
+                    <div v-if="totalDeductions > 0 || (props.netPay !== null)" class="mt-4 pt-3 border-t-2 border-gray-200 flex items-center justify-between">
+                        <div>
+                            <p class="text-xs text-gray-400">Total deductions</p>
+                            <p class="text-sm font-semibold text-red-600">−£{{ totalDeductions.toFixed(2) }}</p>
+                        </div>
+                        <div class="text-right">
+                            <p class="text-xs text-gray-400 mb-0.5">Net Pay</p>
+                            <p class="font-black text-gray-900 text-xl">£{{ displayNetPay.toFixed(2) }}</p>
+                        </div>
+                    </div>
+                </div>
+
                 <!-- Shift details -->
                 <div class="px-8 py-5">
                     <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
@@ -162,8 +221,12 @@
                         <span class="normal-case font-normal ml-1">— {{ entries.length }} approved {{ entries.length === 1 ? 'shift' : 'shifts' }}</span>
                     </p>
 
-                    <div v-if="entries.length === 0" class="text-center py-10 text-sm text-gray-400 border border-dashed border-gray-200 rounded-xl">
-                        No approved shifts in this period.
+                    <div v-if="entries.length === 0" class="text-center py-10 border border-dashed border-gray-200 rounded-xl">
+                        <p class="text-sm text-gray-500 font-medium">No approved shifts in this period.</p>
+                        <p v-if="isLocked" class="text-xs text-gray-400 mt-1">
+                            This payslip was generated with zero hours — no attendance was approved between
+                            {{ formatDate(period.from) }} and {{ formatDate(period.to) }}.
+                        </p>
                     </div>
 
                     <div v-else class="overflow-x-auto -mx-2">
@@ -184,6 +247,7 @@
                                     <td class="py-2 px-2 text-gray-700">
                                         <span class="font-semibold">{{ e.day }}</span>
                                         <span class="text-gray-400 ml-1.5">{{ e.date }}</span>
+                                        <span v-if="e.ot_type" class="ml-1.5 text-[10px] font-bold uppercase tracking-wide px-1.5 py-0.5 rounded bg-amber-100 text-amber-700">{{ e.ot_type }}</span>
                                     </td>
                                     <td class="py-2 px-2 text-right font-mono text-gray-600">{{ e.clock_in }}</td>
                                     <td class="py-2 px-2 text-right font-mono text-gray-600">{{ e.clock_out ?? '—' }}</td>
@@ -201,9 +265,18 @@
                 </div>
 
                 <!-- Footer -->
-                <div class="px-8 py-3 bg-gray-50 border-t border-gray-100 flex items-center justify-between">
-                    <p class="text-[11px] text-gray-400 italic">Generated automatically from approved attendance records.</p>
-                    <p class="text-[11px] text-gray-400 font-mono font-semibold">{{ staffMember.employee_id }}</p>
+                <div class="px-8 py-3 bg-gray-50 border-t border-gray-100">
+                    <div v-if="approvedBy" class="flex items-center justify-between mb-2 pb-2 border-b border-gray-100">
+                        <p class="text-[11px] text-green-600 font-medium flex items-center gap-1.5">
+                            <span class="inline-block w-1.5 h-1.5 rounded-full bg-green-500"></span>
+                            Approved by <span class="font-bold">{{ approvedBy }}</span>
+                            <span v-if="approvedAt"> on {{ formatDate(approvedAt) }}</span>
+                        </p>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <p class="text-[11px] text-gray-400 italic">Generated automatically from approved attendance records.</p>
+                        <p class="text-[11px] text-gray-400 font-mono font-semibold">{{ staffMember.employee_id }}</p>
+                    </div>
                 </div>
 
             </div>
@@ -212,8 +285,8 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
-import { router, Link } from '@inertiajs/vue3';
+import { ref, computed } from 'vue';
+import { router, Link, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import { ArrowLeftIcon, PrinterIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
 
@@ -232,6 +305,12 @@ const props = defineProps({
     isLocked:      { type: Boolean, default: false },
     runId:         { type: String,  default: null },
     runStatus:     { type: String,  default: null },
+    generatedAt:   { type: String,  default: null },
+    approvedBy:    { type: String,  default: null },
+    approvedAt:    { type: String,  default: null },
+    deductions:    { type: Array,   default: () => [] },
+    netPay:        { type: Number,  default: null },
+    canManage:     { type: Boolean, default: false },
     pastRuns:      { type: Array,   default: () => [] },
     selfView:      { type: Boolean, default: false },
 });
@@ -239,9 +318,33 @@ const props = defineProps({
 const customFrom = ref(props.period.from);
 const customTo   = ref(props.period.to);
 
-const generatedAt = new Date().toLocaleDateString('en-GB', {
-    day: '2-digit', month: 'long', year: 'numeric',
+const generatedAt = props.generatedAt
+    ? new Date(props.generatedAt + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' })
+    : new Date().toLocaleDateString('en-GB', { day: '2-digit', month: 'long', year: 'numeric' });
+
+// ── Deductions ────────────────────────────────────────────────────────────────
+
+const deductionForm = useForm({
+    deductions: props.deductions.map(d => ({ description: d.description, amount: String(d.amount) })),
 });
+
+function addDeduction() {
+    deductionForm.deductions.push({ description: '', amount: '' });
+}
+
+function removeDeduction(i) {
+    deductionForm.deductions.splice(i, 1);
+}
+
+function saveDeductions() {
+    deductionForm.patch(route('payroll.deductions', props.runId), { preserveScroll: true });
+}
+
+const totalDeductions = computed(() =>
+    deductionForm.deductions.reduce((sum, d) => sum + (parseFloat(d.amount) || 0), 0)
+);
+
+const displayNetPay = computed(() => props.grossPay - totalDeductions.value);
 
 function localDateStr(d) {
     const y  = d.getFullYear();

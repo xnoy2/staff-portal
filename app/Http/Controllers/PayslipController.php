@@ -30,7 +30,8 @@ class PayslipController extends Controller
 
         // ── Locked run mode ───────────────────────────────────────────────────
         if ($request->filled('run_id')) {
-            $run = PayrollRun::where('id', $request->run_id)
+            $run = PayrollRun::with('approvedBy')
+                ->where('id', $request->run_id)
                 ->where('user_id', $staff->id)
                 ->firstOrFail();
 
@@ -52,6 +53,12 @@ class PayslipController extends Controller
                 'isLocked'     => true,
                 'runId'        => $run->id,
                 'runStatus'    => $run->status,
+                'generatedAt'  => $run->created_at->toDateString(),
+                'approvedBy'   => $run->approvedBy?->name,
+                'approvedAt'   => $run->approved_at?->toDateString(),
+                'deductions'   => $run->deductions ?? [],
+                'netPay'       => $run->net_pay,
+                'canManage'    => $viewer->hasAnyRole(['admin', 'manager', 'hr']),
                 'pastRuns'     => $pastRuns,
                 'selfView'     => $selfView,
             ]);
@@ -79,8 +86,7 @@ class PayslipController extends Controller
 
         $entryRows = $entries->map(function ($entry) use (&$regularHours, &$overtimeHours) {
             $hours = (float) $entry->total_hours;
-            $regH  = $entry->is_overtime ? min($hours, 8) : $hours;
-            $otH   = $entry->is_overtime ? max(0, $hours - 8) : 0;
+            [$regH, $otH] = PayrollRun::splitHours($hours, $entry->is_overtime, $entry->ot_type);
             $regularHours  += $regH;
             $overtimeHours += $otH;
 
@@ -94,6 +100,7 @@ class PayslipController extends Controller
                 'regular_hours'  => round($regH, 2),
                 'overtime_hours' => round($otH, 2),
                 'is_overtime'    => $entry->is_overtime,
+                'ot_type'        => $entry->ot_type,
             ];
         });
 

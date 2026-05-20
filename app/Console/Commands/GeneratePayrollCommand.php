@@ -39,8 +39,8 @@ class GeneratePayrollCommand extends Command
         $this->info("Generating payroll: {$from->toDateString()} → {$to->toDateString()}");
 
         $staff = User::where('is_active', true)
-            ->get()
-            ->filter(fn ($u) => ! $u->hasRole('admin'));
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'admin'))
+            ->get();
 
         $generated = 0;
         $skipped   = 0;

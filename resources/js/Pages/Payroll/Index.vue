@@ -6,7 +6,11 @@
             <div class="flex items-center justify-between gap-4 flex-wrap">
                 <div>
                     <h1 class="text-lg font-semibold text-gray-800">Payroll</h1>
-                    <p class="text-xs text-gray-500 mt-0.5">Auto-generates at midnight on the cut-off day</p>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        Auto-generates at midnight on the cut-off day
+                        <span v-if="lastAutoRun" class="text-gray-400"> · Last auto-run: {{ formatDateTime(lastAutoRun) }}</span>
+                        <span v-else class="text-gray-400"> · No auto-run recorded yet</span>
+                    </p>
                 </div>
                 <!-- Cut-off day editor -->
                 <form @submit.prevent="saveCutoff" class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-4 py-2.5">
@@ -72,7 +76,7 @@
                     <option value="approved">Approved</option>
                 </select>
                 <div class="ml-auto flex items-center gap-2">
-                    <span class="text-xs text-gray-400">{{ runs.length }} payslip{{ runs.length !== 1 ? 's' : '' }}</span>
+                    <span class="text-xs text-gray-400">{{ runsMeta.total ?? 0 }} payslip{{ (runsMeta.total ?? 0) !== 1 ? 's' : '' }}</span>
                     <button
                         v-if="draftCount > 0 && filterPeriod"
                         @click="approveAll"
@@ -83,8 +87,29 @@
                 </div>
             </div>
 
+            <!-- Period totals summary bar -->
+            <div v-if="periodTotals" class="bg-white rounded-xl border border-gray-200 px-5 py-3 grid grid-cols-2 sm:grid-cols-4 gap-4">
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Staff</p>
+                    <p class="text-lg font-bold text-gray-800">{{ periodTotals.count }}</p>
+                    <p class="text-xs text-gray-400">
+                        <span class="text-amber-600 font-medium">{{ periodTotals.draft_count }} draft</span>
+                        · <span class="text-green-600 font-medium">{{ periodTotals.approved_count }} approved</span>
+                    </p>
+                </div>
+                <div>
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Total Hours</p>
+                    <p class="text-lg font-bold text-gray-800 font-mono">{{ periodTotals.total_hours.toFixed(2) }}h</p>
+                </div>
+                <div class="sm:col-span-2">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-0.5">Total Gross Pay</p>
+                    <p class="text-lg font-bold text-[#EF233C]">£{{ periodTotals.gross_pay.toFixed(2) }}</p>
+                    <p class="text-xs text-gray-400">{{ filterStatus ? filterStatus + ' only' : 'all statuses' }}</p>
+                </div>
+            </div>
+
             <!-- Empty state -->
-            <div v-if="runs.length === 0" class="bg-white rounded-xl border border-dashed border-gray-300 py-16 text-center">
+            <div v-if="runItems.length === 0" class="bg-white rounded-xl border border-dashed border-gray-300 py-16 text-center">
                 <BanknotesIcon class="w-10 h-10 text-gray-300 mx-auto mb-3" />
                 <p class="text-gray-600 font-medium">No payroll runs yet</p>
                 <p class="text-sm text-gray-400 mt-1">Select a period and click Generate Payroll to create payslips for all active staff.</p>
@@ -106,7 +131,7 @@
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-gray-50">
-                            <tr v-for="run in runs" :key="run.id" class="hover:bg-gray-50 transition-colors">
+                            <tr v-for="run in runItems" :key="run.id" class="hover:bg-gray-50 transition-colors">
                                 <!-- Staff -->
                                 <td class="px-4 py-3">
                                     <div class="flex items-center gap-2">
@@ -163,6 +188,30 @@
                         </tbody>
                     </table>
                 </div>
+
+                <!-- Pagination -->
+                <div v-if="runsMeta.last_page > 1" class="flex items-center justify-between px-4 py-3 border-t border-gray-100">
+                    <p class="text-xs text-gray-400">
+                        Showing {{ runsMeta.from }}–{{ runsMeta.to }} of {{ runsMeta.total }}
+                    </p>
+                    <div class="flex items-center gap-1">
+                        <Link
+                            v-for="link in runs.links"
+                            :key="link.label"
+                            :href="link.url ?? '#'"
+                            :class="[
+                                'text-xs px-2.5 py-1 rounded-lg border transition-colors',
+                                link.active
+                                    ? 'bg-[#EF233C] text-white border-[#EF233C]'
+                                    : link.url
+                                        ? 'border-gray-200 text-gray-600 hover:bg-gray-50'
+                                        : 'border-gray-100 text-gray-300 cursor-default pointer-events-none',
+                            ]"
+                            preserve-scroll
+                            v-html="link.label"
+                        />
+                    </div>
+                </div>
             </div>
 
         </div>
@@ -189,11 +238,14 @@ import ConfirmModal from '@/Components/ConfirmModal.vue';
 import { BoltIcon, BanknotesIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    runs:       { type: Array,  default: () => [] },
-    periods:    { type: Array,  default: () => [] },
-    current:    { type: Object, required: true },
-    cutoffDay:  { type: Number, default: 25 },
-    filters:    { type: Object, default: () => ({}) },
+    runs:         { type: Object, default: () => ({ data: [], meta: {} }) },
+    periods:      { type: Array,  default: () => [] },
+    current:      { type: Object, required: true },
+    cutoffDay:    { type: Number, default: 25 },
+    draftCount:   { type: Number, default: 0 },
+    periodTotals: { type: Object, default: null },
+    lastAutoRun:  { type: String, default: null },
+    filters:      { type: Object, default: () => ({}) },
 });
 
 // ── Cut-off form ──────────────────────────────────────────────────────────────
@@ -229,7 +281,8 @@ function applyFilters() {
 
 // ── Computed ──────────────────────────────────────────────────────────────────
 
-const draftCount = computed(() => props.runs.filter(r => r.status === 'draft').length);
+const runItems = computed(() => props.runs.data ?? []);
+const runsMeta = computed(() => props.runs.meta ?? {});
 
 const nextCutoffDate = computed(() => {
     const today = new Date();
@@ -278,6 +331,12 @@ function confirmDelete() {
 function formatDate(d) {
     return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', {
         day: '2-digit', month: 'short', year: 'numeric',
+    });
+}
+
+function formatDateTime(dt) {
+    return new Date(dt).toLocaleDateString('en-GB', {
+        day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit',
     });
 }
 </script>
