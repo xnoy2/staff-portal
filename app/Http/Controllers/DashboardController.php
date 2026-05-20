@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\Job;
 use App\Models\LeaveRequest;
 use App\Models\OvertimeRequest;
+use App\Models\Project;
 use App\Models\TimeEntry;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Inertia\Inertia;
@@ -30,35 +32,90 @@ class DashboardController extends Controller
 
     private function managerData(): array
     {
-        $clockedIn        = TimeEntry::active()->count();
-        $pendingApprovals = TimeEntry::pending()->count();
+        $clockedInCount = TimeEntry::active()->count();
+        $pendingLeave   = LeaveRequest::where('status', 'pending')->count();
+        $pendingOt      = OvertimeRequest::where('status', 'pending')->count();
 
+        // Today's jobs
         $todaysJobs = Job::forDate(today()->toDateString())
             ->with(['project:id,name,business', 'van:id,registration', 'staff:id,name,avatar'])
             ->orderBy('start_time')
             ->get()
             ->map(fn ($job) => [
-                'id'         => $job->id,
-                'title'      => $job->title,
-                'status'     => $job->status,
-                'start_time' => $job->start_time,
-                'project'    => $job->project ? ['name' => $job->project->name, 'business' => $job->project->business] : null,
-                'van'        => $job->van ? $job->van->registration : null,
-                'staff_count'=> $job->staff->count(),
+                'id'          => $job->id,
+                'title'       => $job->title,
+                'status'      => $job->status,
+                'start_time'  => $job->start_time,
+                'project'     => $job->project ? ['name' => $job->project->name, 'business' => $job->project->business] : null,
+                'van'         => $job->van?->registration,
+                'staff_count' => $job->staff->count(),
             ]);
+
+        // Projects by status (real DB data)
+        $projectCounts    = Project::selectRaw('status, count(*) as total')->groupBy('status')->pluck('total', 'status');
+        $projectsByStatus = [
+            'labels' => ['Planning', 'Active', 'On Hold', 'Completed'],
+            'data'   => [
+                $projectCounts->get('planning',  0),
+                $projectCounts->get('active',    0),
+                $projectCounts->get('on_hold',   0),
+                $projectCounts->get('completed', 0),
+            ],
+        ];
+
+        // Staff currently clocked in
+        $activeEntries  = TimeEntry::active()->get(['user_id', 'clock_in'])->keyBy('user_id');
+        $clockedInStaff = User::whereIn('id', $activeEntries->keys())
+            ->orderBy('name')
+            ->get(['id', 'name', 'avatar'])
+            ->map(fn ($u) => [
+                'id'         => $u->id,
+                'name'       => $u->name,
+                'avatar_url' => $u->avatar_url,
+                'since'      => Carbon::parse($activeEntries[$u->id]->clock_in)->format('H:i'),
+            ]);
+
+        // Jobs this week grouped by day (0=Mon…6=Sun) and status
+        $weekStart   = Carbon::now()->startOfWeek(Carbon::MONDAY);
+        $weekEnd     = Carbon::now()->endOfWeek(Carbon::SUNDAY);
+        $weekJobsRaw = Job::whereBetween('date', [$weekStart->toDateString(), $weekEnd->toDateString()])
+            ->get(['date', 'status']);
+
+        $weekJobsByDay = ['scheduled' => array_fill(0, 7, 0), 'in_progress' => array_fill(0, 7, 0), 'completed' => array_fill(0, 7, 0)];
+        foreach ($weekJobsRaw as $job) {
+            $dayIndex = Carbon::parse($job->date)->dayOfWeekIso - 1;
+            if (isset($weekJobsByDay[$job->status][$dayIndex])) {
+                $weekJobsByDay[$job->status][$dayIndex]++;
+            }
+        }
+
+        // Top 8 staff by hours this week
+        $staffHoursWeek = TimeEntry::approved()
+            ->whereBetween('clock_in', [$weekStart, $weekEnd->copy()->endOfDay()])
+            ->whereNotNull('total_hours')
+            ->with('user:id,name')
+            ->get()
+            ->groupBy('user_id')
+            ->map(fn ($entries) => [
+                'name'  => $entries->first()->user?->name ?? 'Unknown',
+                'hours' => round($entries->sum('total_hours'), 1),
+            ])
+            ->sortByDesc('hours')
+            ->take(8)
+            ->values();
 
         return [
             'stats' => [
-                'todaysJobs'       => $todaysJobs->count(),
-                'clockedInStaff'   => $clockedIn,
-                'pendingApprovals' => $pendingApprovals,
-                'lowStockItems'    => 0,
+                'todaysJobs'     => $todaysJobs->count(),
+                'clockedInStaff' => $clockedInCount,
+                'pendingLeave'   => $pendingLeave,
+                'pendingOt'      => $pendingOt,
             ],
             'todaysJobs'       => $todaysJobs,
-            'projectsByStatus' => [
-                'labels' => ['Planning', 'In Progress', 'On Hold', 'Complete'],
-                'data'   => [0, 0, 0, 0],
-            ],
+            'projectsByStatus' => $projectsByStatus,
+            'clockedInStaff'   => $clockedInStaff,
+            'weekJobsByDay'    => $weekJobsByDay,
+            'staffHoursWeek'   => $staffHoursWeek,
         ];
     }
 

@@ -4,38 +4,14 @@
         <template v-if="isManager">
             <!-- Stat cards -->
             <div class="grid grid-cols-2 lg:grid-cols-4 gap-4 mb-6">
-                <StatCard
-                    label="Today's Jobs"
-                    :value="stats.todaysJobs"
-                    icon="ClipboardDocumentListIcon"
-                    color="green"
-                    href="/jobs"
-                />
-                <StatCard
-                    label="Clocked In"
-                    :value="stats.clockedInStaff"
-                    icon="UserGroupIcon"
-                    color="blue"
-                    href="/attendance"
-                />
-                <StatCard
-                    label="Pending Approvals"
-                    :value="stats.pendingApprovals"
-                    icon="ClockIcon"
-                    color="amber"
-                    href="/approvals"
-                />
-                <StatCard
-                    label="Low Stock Items"
-                    :value="stats.lowStockItems"
-                    icon="ExclamationTriangleIcon"
-                    color="red"
-                    href="/inventory"
-                />
+                <StatCard label="Today's Jobs"  :value="stats.todaysJobs"     icon="ClipboardDocumentListIcon" color="green" href="/jobs" />
+                <StatCard label="Clocked In"    :value="stats.clockedInStaff" icon="UserGroupIcon"             color="blue"  href="/attendance" />
+                <StatCard label="Pending Leave" :value="stats.pendingLeave"   icon="CalendarDaysIcon"          color="amber" href="/leave" />
+                <StatCard label="Pending OT"    :value="stats.pendingOt"      icon="ClockIcon"                 color="red"   href="/overtime" />
             </div>
 
-            <!-- Lower grid: today's jobs + project chart -->
-            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+            <!-- Row 1: Today's jobs + Staff clocked in now -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
                 <!-- Today's jobs mini-list -->
                 <div class="bg-white rounded-xl border border-gray-200 p-5">
                     <div class="flex items-center justify-between mb-4">
@@ -67,16 +43,57 @@
                     </ul>
                 </div>
 
-                <!-- Projects by status chart -->
+                <!-- Staff clocked in now -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <div class="flex items-center justify-between mb-4">
+                        <h2 class="text-sm font-semibold text-gray-800">Staff Working Now</h2>
+                        <span class="text-xs font-semibold px-2 py-0.5 rounded-full"
+                            :class="clockedInStaff.length ? 'bg-green-100 text-green-700' : 'bg-gray-100 text-gray-500'">
+                            {{ clockedInStaff.length }} active
+                        </span>
+                    </div>
+                    <div v-if="clockedInStaff.length === 0" class="text-center py-8 text-gray-400 text-sm">
+                        No staff currently clocked in.
+                    </div>
+                    <ul v-else class="space-y-2 max-h-64 overflow-y-auto">
+                        <li v-for="s in clockedInStaff" :key="s.id"
+                            class="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50">
+                            <div class="relative flex-shrink-0">
+                                <img :src="s.avatar_url" :alt="s.name" class="w-8 h-8 rounded-full object-cover" />
+                                <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-800 truncate">{{ s.name }}</p>
+                            </div>
+                            <span class="text-xs text-gray-400 flex-shrink-0">since {{ s.since }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </div>
+
+            <!-- Row 2: Jobs this week + Projects by status -->
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4 mb-4">
+                <!-- Jobs this week grouped bar -->
+                <div class="bg-white rounded-xl border border-gray-200 p-5">
+                    <h2 class="text-sm font-semibold text-gray-800 mb-4">Jobs This Week</h2>
+                    <Chart type="bar" :data="weekJobsChartData" :options="weekJobsChartOptions" class="h-52" />
+                </div>
+
+                <!-- Projects by status -->
                 <div class="bg-white rounded-xl border border-gray-200 p-5">
                     <h2 class="text-sm font-semibold text-gray-800 mb-4">Projects by Status</h2>
-                    <Chart
-                        type="bar"
-                        :data="projectChartData"
-                        :options="chartOptions"
-                        class="h-48"
-                    />
+                    <Chart type="bar" :data="projectChartData" :options="chartOptions" class="h-52" />
                 </div>
+            </div>
+
+            <!-- Row 3: Staff hours this week (full width horizontal bar) -->
+            <div v-if="staffHoursWeek.length > 0" class="bg-white rounded-xl border border-gray-200 p-5">
+                <div class="flex items-center justify-between mb-4">
+                    <h2 class="text-sm font-semibold text-gray-800">Staff Hours This Week</h2>
+                    <Link href="/attendance" class="text-xs text-[#EF233C] hover:underline">View attendance</Link>
+                </div>
+                <Chart type="bar" :data="staffHoursChartData" :options="staffHoursChartOptions"
+                    :style="{ height: Math.max(160, staffHoursWeek.length * 36) + 'px' }" />
             </div>
         </template>
 
@@ -334,9 +351,12 @@ import { ClockIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     isManager:        { type: Boolean, default: false },
-    stats:            { type: Object, default: () => ({ todaysJobs: 0, clockedInStaff: 0, pendingApprovals: 0, lowStockItems: 0 }) },
+    stats:            { type: Object, default: () => ({ todaysJobs: 0, clockedInStaff: 0, pendingLeave: 0, pendingOt: 0 }) },
     todaysJobs:       { type: Array,  default: () => [] },
     projectsByStatus: { type: Object, default: () => ({ labels: [], data: [] }) },
+    clockedInStaff:   { type: Array,  default: () => [] },
+    weekJobsByDay:    { type: Object, default: () => ({ scheduled: [], in_progress: [], completed: [] }) },
+    staffHoursWeek:   { type: Array,  default: () => [] },
     activeEntry:      { type: Object, default: null },
     weeklyHours:      { type: Array,  default: () => [0, 0, 0, 0, 0, 0, 0] },
     recentEntries:    { type: Array,  default: () => [] },
@@ -494,7 +514,7 @@ const projectChartData = computed(() => ({
     datasets: [{
         label: 'Projects',
         data: props.projectsByStatus.data,
-        backgroundColor: ['#EF233C', '#EF233C', '#f59e0b', '#D90429'],
+        backgroundColor: ['#6366f1', '#22c55e', '#f59e0b', '#9ca3af'],
         borderRadius: 6,
     }],
 }));
@@ -504,6 +524,42 @@ const chartOptions = {
     maintainAspectRatio: false,
     plugins: { legend: { display: false } },
     scales: { y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } },
+};
+
+// Manager: jobs this week grouped bar
+const weekJobsChartData = computed(() => ({
+    labels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+    datasets: [
+        { label: 'Scheduled',    data: props.weekJobsByDay.scheduled   ?? [], backgroundColor: '#93c5fd', borderRadius: 4 },
+        { label: 'In Progress',  data: props.weekJobsByDay.in_progress ?? [], backgroundColor: '#fbbf24', borderRadius: 4 },
+        { label: 'Completed',    data: props.weekJobsByDay.completed   ?? [], backgroundColor: '#4ade80', borderRadius: 4 },
+    ],
+}));
+
+const weekJobsChartOptions = {
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { position: 'bottom', labels: { boxWidth: 10, font: { size: 11 } } } },
+    scales: { x: { stacked: false }, y: { beginAtZero: true, ticks: { stepSize: 1, precision: 0 } } },
+};
+
+// Manager: staff hours this week (horizontal bar)
+const staffHoursChartData = computed(() => ({
+    labels: props.staffHoursWeek.map(s => s.name),
+    datasets: [{
+        label: 'Hours',
+        data: props.staffHoursWeek.map(s => s.hours),
+        backgroundColor: '#EF233C',
+        borderRadius: 4,
+    }],
+}));
+
+const staffHoursChartOptions = {
+    indexAxis: 'y',
+    responsive: true,
+    maintainAspectRatio: false,
+    plugins: { legend: { display: false } },
+    scales: { x: { beginAtZero: true, ticks: { stepSize: 4 } } },
 };
 
 // Staff: weekly chart
