@@ -55,17 +55,46 @@
                     <div v-if="clockedInStaff.length === 0" class="text-center py-8 text-gray-400 text-sm">
                         No staff currently clocked in.
                     </div>
-                    <ul v-else class="space-y-2 max-h-64 overflow-y-auto">
-                        <li v-for="s in clockedInStaff" :key="s.id"
-                            class="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50">
-                            <div class="relative flex-shrink-0">
-                                <img :src="s.avatar_url" :alt="s.name" class="w-8 h-8 rounded-full object-cover" />
-                                <span class="absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full bg-green-500 border-2 border-white" />
-                            </div>
-                            <div class="flex-1 min-w-0">
-                                <p class="text-sm font-medium text-gray-800 truncate">{{ s.name }}</p>
-                            </div>
-                            <span class="text-xs text-gray-400 flex-shrink-0">since {{ s.since }}</span>
+                    <ul v-else class="space-y-2 max-h-72 overflow-y-auto">
+                        <li v-for="s in clockedInStaff" :key="s.id">
+                            <Link
+                                :href="route('staff.show', s.id)"
+                                class="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                            >
+                                <!-- Avatar + state dot -->
+                                <div class="relative flex-shrink-0">
+                                    <img :src="s.avatar_url" :alt="s.name" class="w-9 h-9 rounded-full object-cover" />
+                                    <span :class="[
+                                        'absolute -bottom-0.5 -right-0.5 w-2.5 h-2.5 rounded-full border-2 border-white',
+                                        s.clock_state === 'working'  ? 'bg-green-500' :
+                                        s.clock_state === 'on_lunch' ? 'bg-blue-500'  : 'bg-amber-400',
+                                    ]" />
+                                </div>
+
+                                <!-- Name + role -->
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-1.5 flex-wrap">
+                                        <p class="text-sm font-medium text-gray-800 truncate">{{ s.name }}</p>
+                                        <span v-if="s.ot_type" class="text-[10px] font-bold uppercase px-1 py-0.5 rounded bg-amber-100 text-amber-700">{{ s.ot_type }}</span>
+                                    </div>
+                                    <div class="flex items-center gap-2 mt-0.5">
+                                        <span class="text-[11px] capitalize text-gray-400">{{ s.role.replace('_', ' ') }}</span>
+                                        <span :class="[
+                                            'text-[10px] font-semibold px-1.5 py-0.5 rounded-full',
+                                            s.clock_state === 'working'  ? 'bg-green-100 text-green-700' :
+                                            s.clock_state === 'on_lunch' ? 'bg-blue-100 text-blue-700'   : 'bg-amber-100 text-amber-700',
+                                        ]">
+                                            {{ s.clock_state === 'working' ? 'Working' : s.clock_state === 'on_lunch' ? 'Lunch' : 'Break' }}
+                                        </span>
+                                    </div>
+                                </div>
+
+                                <!-- Duration -->
+                                <div class="text-right flex-shrink-0">
+                                    <p class="text-xs font-mono font-semibold text-gray-700">{{ liveDuration(s.clock_in) }}</p>
+                                    <p class="text-[11px] text-gray-400">since {{ s.since }}</p>
+                                </div>
+                            </Link>
                         </li>
                     </ul>
                 </div>
@@ -426,6 +455,14 @@ function fmtDuration(s) {
     const h = Math.floor(s / 3600);
     const m = Math.floor((s % 3600) / 60);
     return `${h}h ${m}m`;
+}
+
+function liveDuration(clockInIso) {
+    if (!clockInIso) return '—';
+    const secs = Math.max(0, Math.floor((now.value.getTime() - new Date(clockInIso).getTime()) / 1000));
+    const h = Math.floor(secs / 3600);
+    const m = Math.floor((secs % 3600) / 60);
+    return `${h}h ${String(m).padStart(2, '0')}m`;
 }
 
 // State-based presentation

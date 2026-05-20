@@ -64,16 +64,24 @@ class DashboardController extends Controller
         ];
 
         // Staff currently clocked in
-        $activeEntries  = TimeEntry::active()->get(['user_id', 'clock_in'])->keyBy('user_id');
-        $clockedInStaff = User::whereIn('id', $activeEntries->keys())
+        $activeEntries  = TimeEntry::active()->get(['user_id', 'clock_in', 'clock_state', 'ot_type'])->keyBy('user_id');
+        $clockedInStaff = User::with('roles')
+            ->whereIn('id', $activeEntries->keys())
             ->orderBy('name')
             ->get(['id', 'name', 'avatar'])
-            ->map(fn ($u) => [
-                'id'         => $u->id,
-                'name'       => $u->name,
-                'avatar_url' => $u->avatar_url,
-                'since'      => Carbon::parse($activeEntries[$u->id]->clock_in)->format('H:i'),
-            ]);
+            ->map(function ($u) use ($activeEntries) {
+                $entry = $activeEntries[$u->id];
+                return [
+                    'id'          => $u->id,
+                    'name'        => $u->name,
+                    'avatar_url'  => $u->avatar_url,
+                    'since'       => Carbon::parse($entry->clock_in)->format('H:i'),
+                    'clock_in'    => Carbon::parse($entry->clock_in)->toIso8601String(),
+                    'clock_state' => $entry->clock_state ?? 'working',
+                    'ot_type'     => $entry->ot_type,
+                    'role'        => $u->getRoleNames()->first() ?? 'staff',
+                ];
+            });
 
         // Jobs this week grouped by day (0=Mon…6=Sun) and status
         $weekStart   = Carbon::now()->startOfWeek(Carbon::MONDAY);
