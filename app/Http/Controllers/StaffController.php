@@ -335,13 +335,21 @@ class StaffController extends Controller
     public function forcePasswordReset(Request $request, User $staff): RedirectResponse
     {
         $this->authorize('update', $staff);
-        $staff->update(['must_change_password' => true]);
+
+        $temporaryPassword = Str::password(12);
+
+        $staff->update([
+            'password'             => Hash::make($temporaryPassword),
+            'must_change_password' => true,
+        ]);
 
         activity()
             ->performedOn($staff)
             ->causedBy($request->user())
             ->log('user_forced_password_reset');
 
-        return back()->with('success', "{$staff->name} will be prompted to change their password on next login.");
+        return back()
+            ->with('success', "{$staff->name}'s password has been reset.")
+            ->with('temp_password', $temporaryPassword);
     }
 }
