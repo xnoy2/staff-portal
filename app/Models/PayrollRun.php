@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Models\LeaveRequest;
 use App\Models\TimeEntry;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -18,6 +19,7 @@ class PayrollRun extends Model
         'hourly_rate', 'regular_pay', 'overtime_pay', 'gross_pay', 'net_pay',
         'shifts_count', 'status', 'generated_by', 'approved_by',
         'approved_at', 'entries_snapshot', 'deductions',
+        'leave_days', 'leave_snapshot',
     ];
 
     protected function casts(): array
@@ -27,6 +29,8 @@ class PayrollRun extends Model
             'period_to'        => 'date',
             'approved_at'      => 'datetime',
             'entries_snapshot' => 'array',
+            'leave_snapshot'   => 'array',
+            'leave_days'       => 'float',
             'regular_hours'    => 'float',
             'overtime_hours'   => 'float',
             'total_hours'      => 'float',
@@ -119,6 +123,23 @@ class PayrollRun extends Model
             ];
         })->values()->toArray();
 
+        // ── Leave records overlapping this period ─────────────────────────────
+        $leaveRecords = LeaveRequest::where('user_id', $staff->id)
+            ->where('status', 'approved')
+            ->where('start_date', '<=', $to->toDateString())
+            ->where('end_date', '>=', $from->toDateString())
+            ->get();
+
+        $leaveSnapshot = $leaveRecords->map(fn ($l) => [
+            'type'       => $l->type,
+            'start_date' => $l->start_date->toDateString(),
+            'end_date'   => $l->end_date->toDateString(),
+            'days'       => (float) $l->days,
+        ])->values()->toArray();
+
+        $leaveDays = (float) $leaveRecords->sum('days');
+
+        // ── Pay calculation ───────────────────────────────────────────────────
         $rate        = (float) ($staff->hourly_rate ?? 0);
         $regularPay  = round($regularHours * $rate, 2);
         $overtimePay = round($overtimeHours * $rate * 1.5, 2);
@@ -138,6 +159,8 @@ class PayrollRun extends Model
             'status'           => 'draft',
             'generated_by'     => $generatedBy,
             'entries_snapshot' => $snapshot,
+            'leave_days'       => $leaveDays,
+            'leave_snapshot'   => $leaveSnapshot,
         ]);
     }
 

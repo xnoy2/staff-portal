@@ -139,6 +139,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/payroll/cutoff',                  [PayrollRunController::class, 'updateCutoff'])->name('payroll.cutoff');
     Route::patch('/payroll/{run}/deductions',       [PayrollRunController::class, 'updateDeductions'])->name('payroll.deductions');
     Route::delete('/payroll/{run}',                 [PayrollRunController::class, 'destroy'])->name('payroll.destroy');
+    Route::post('/payroll/check',                   [PayrollRunController::class, 'checkPeriod'])->name('payroll.check');
     Route::post('/payroll/send',                    [PayrollRunController::class, 'sendPayroll'])->name('payroll.send');
 
     // BCF Orders

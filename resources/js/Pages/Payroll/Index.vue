@@ -43,22 +43,24 @@
                         </p>
                     </div>
 
-                    <!-- Generate form -->
-                    <form @submit.prevent="submitGenerate" class="flex flex-wrap items-center gap-2">
+                    <!-- Generate form (2-step: check → confirm → generate) -->
+                    <div class="flex flex-wrap items-center gap-2">
                         <div class="flex items-center gap-1.5">
                             <input v-model="genForm.from" type="date" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#EF233C] focus:border-[#EF233C]" />
                             <span class="text-xs text-gray-400">–</span>
                             <input v-model="genForm.to" type="date" class="text-xs border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-1 focus:ring-[#EF233C] focus:border-[#EF233C]" />
                         </div>
                         <button
-                            type="submit"
-                            :disabled="genForm.processing || !genForm.from || !genForm.to"
+                            type="button"
+                            @click="checkAndGenerate"
+                            :disabled="checkLoading || !genForm.from || !genForm.to"
                             class="bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-50 text-white text-sm font-semibold px-4 py-1.5 rounded-lg transition-colors flex items-center gap-1.5 whitespace-nowrap"
                         >
-                            <BoltIcon class="w-3.5 h-3.5" />
-                            {{ genForm.processing ? 'Generating…' : 'Generate Payroll' }}
+                            <ClipboardDocumentCheckIcon v-if="!checkLoading" class="w-3.5 h-3.5" />
+                            <span v-if="checkLoading" class="w-3.5 h-3.5 border-2 border-white/40 border-t-white rounded-full animate-spin"></span>
+                            {{ checkLoading ? 'Checking…' : 'Check & Generate' }}
                         </button>
-                    </form>
+                    </div>
                 </div>
             </div>
 
@@ -144,6 +146,7 @@
                                 <th class="text-left text-xs font-medium text-gray-500 px-4 py-3">Period</th>
                                 <th class="text-right text-xs font-medium text-gray-500 px-4 py-3">Shifts</th>
                                 <th class="text-right text-xs font-medium text-gray-500 px-4 py-3">Hours</th>
+                                <th class="text-right text-xs font-medium text-gray-500 px-4 py-3">Leave</th>
                                 <th class="text-right text-xs font-medium text-gray-500 px-4 py-3">Gross Pay</th>
                                 <th class="text-center text-xs font-medium text-gray-500 px-4 py-3">Status</th>
                                 <th class="text-right text-xs font-medium text-gray-500 px-4 py-3">Actions</th>
@@ -169,6 +172,13 @@
                                 <td class="px-4 py-3 text-right text-gray-600">{{ run.shifts_count }}</td>
                                 <!-- Hours -->
                                 <td class="px-4 py-3 text-right font-mono text-gray-700">{{ run.total_hours.toFixed(2) }}h</td>
+                                <!-- Leave -->
+                                <td class="px-4 py-3 text-right">
+                                    <span v-if="run.leave_days > 0" class="text-xs font-medium text-blue-600 bg-blue-50 px-1.5 py-0.5 rounded">
+                                        {{ run.leave_days }}d
+                                    </span>
+                                    <span v-else class="text-gray-300 text-xs">—</span>
+                                </td>
                                 <!-- Gross Pay -->
                                 <td class="px-4 py-3 text-right font-semibold">
                                     <span v-if="run.has_rate" class="text-gray-800">£{{ run.gross_pay.toFixed(2) }}</span>
@@ -246,6 +256,131 @@
             @cancel="deleteTargetId = null"
         />
 
+        <!-- ── Completeness Check Modal ── -->
+        <Transition name="fade">
+            <div
+                v-if="showCheckModal"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style="background:rgba(0,0,0,0.5);"
+                @click.self="showCheckModal = false"
+            >
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+
+                    <!-- Header -->
+                    <div class="flex items-center gap-3 p-5 border-b border-gray-100">
+                        <div class="w-10 h-10 bg-[#2B2D42] rounded-xl flex items-center justify-center flex-shrink-0">
+                            <ClipboardDocumentCheckIcon class="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-gray-900">Period Completeness Check</h3>
+                            <p class="text-xs text-gray-500">{{ formatDate(genForm.from) }} – {{ formatDate(genForm.to) }}</p>
+                        </div>
+                        <button @click="showCheckModal = false" class="ml-auto text-gray-400 hover:text-gray-600">
+                            <XMarkIcon class="w-5 h-5" />
+                        </button>
+                    </div>
+
+                    <!-- Summary pills -->
+                    <div class="flex gap-2 p-4 flex-wrap border-b border-gray-100">
+                        <span class="flex items-center gap-1.5 bg-green-50 text-green-700 border border-green-200 text-xs font-semibold px-3 py-1.5 rounded-full">
+                            <span class="w-2 h-2 bg-green-500 rounded-full"></span>
+                            {{ checkResult.ready }} Ready
+                        </span>
+                        <span class="flex items-center gap-1.5 bg-amber-50 text-amber-700 border border-amber-200 text-xs font-semibold px-3 py-1.5 rounded-full">
+                            <span class="w-2 h-2 bg-amber-400 rounded-full"></span>
+                            {{ checkResult.pending_only }} Pending Entries
+                        </span>
+                        <span class="flex items-center gap-1.5 bg-red-50 text-red-700 border border-red-200 text-xs font-semibold px-3 py-1.5 rounded-full">
+                            <span class="w-2 h-2 bg-red-500 rounded-full"></span>
+                            {{ checkResult.no_entries }} No Entries
+                        </span>
+                        <span v-if="checkResult.exists > 0" class="flex items-center gap-1.5 bg-gray-100 text-gray-600 border border-gray-200 text-xs font-semibold px-3 py-1.5 rounded-full">
+                            <span class="w-2 h-2 bg-gray-400 rounded-full"></span>
+                            {{ checkResult.exists }} Already Generated
+                        </span>
+                    </div>
+
+                    <!-- Warnings -->
+                    <div v-if="checkResult.pending_only > 0 || checkResult.no_entries > 0" class="px-4 pt-3 space-y-2">
+                        <div v-if="checkResult.pending_only > 0" class="flex gap-2 bg-amber-50 border border-amber-200 rounded-xl p-3">
+                            <ExclamationTriangleIcon class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                            <p class="text-xs text-amber-800 leading-relaxed">
+                                <strong>{{ checkResult.pending_only }} staff</strong> have pending attendance entries that haven't been approved yet.
+                                These hours will <strong>not</strong> be included in their payslip. Approve their attendance first for accurate payroll.
+                            </p>
+                        </div>
+                        <div v-if="checkResult.no_entries > 0" class="flex gap-2 bg-red-50 border border-red-200 rounded-xl p-3">
+                            <ExclamationTriangleIcon class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                            <p class="text-xs text-red-800 leading-relaxed">
+                                <strong>{{ checkResult.no_entries }} staff</strong> have no approved entries for this period. They will receive a
+                                <strong>£0 payslip</strong>. Verify they were on leave or not working this period.
+                            </p>
+                        </div>
+                    </div>
+
+                    <!-- Staff table -->
+                    <div class="overflow-y-auto flex-1 px-4 py-3">
+                        <table class="w-full text-xs">
+                            <thead>
+                                <tr class="border-b border-gray-100">
+                                    <th class="text-left font-semibold text-gray-500 pb-2">Staff</th>
+                                    <th class="text-center font-semibold text-gray-500 pb-2">Status</th>
+                                    <th class="text-right font-semibold text-gray-500 pb-2">Approved</th>
+                                    <th class="text-right font-semibold text-gray-500 pb-2">Pending</th>
+                                    <th class="text-right font-semibold text-gray-500 pb-2">Leave</th>
+                                </tr>
+                            </thead>
+                            <tbody class="divide-y divide-gray-50">
+                                <tr v-for="s in checkResult.staff" :key="s.employee_id" class="py-1">
+                                    <td class="py-2">
+                                        <div class="flex items-center gap-2">
+                                            <img :src="s.avatar_url" :alt="s.name" class="w-6 h-6 rounded-full object-cover" />
+                                            <div>
+                                                <p class="font-medium text-gray-800">{{ s.name }}</p>
+                                                <p class="text-gray-400 font-mono">{{ s.employee_id }}</p>
+                                            </div>
+                                        </div>
+                                    </td>
+                                    <td class="py-2 text-center">
+                                        <span v-if="s.status === 'ready'"        class="bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-semibold">✓ Ready</span>
+                                        <span v-else-if="s.status === 'pending_only'" class="bg-amber-100 text-amber-700 px-2 py-0.5 rounded-full font-semibold">⚠ Pending</span>
+                                        <span v-else-if="s.status === 'no_entries'"   class="bg-red-100 text-red-700 px-2 py-0.5 rounded-full font-semibold">✕ No Entries</span>
+                                        <span v-else-if="s.status === 'exists'"       class="bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full font-semibold">↺ Exists</span>
+                                    </td>
+                                    <td class="py-2 text-right font-mono text-green-700">{{ s.approved > 0 ? s.approved + ' shifts' : '—' }}</td>
+                                    <td class="py-2 text-right font-mono" :class="s.pending > 0 ? 'text-amber-600 font-semibold' : 'text-gray-300'">{{ s.pending > 0 ? s.pending + ' shifts' : '—' }}</td>
+                                    <td class="py-2 text-right" :class="s.leave_days > 0 ? 'text-blue-600 font-semibold' : 'text-gray-300'">{{ s.leave_days > 0 ? s.leave_days + 'd' : '—' }}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex gap-2 p-4 border-t border-gray-100">
+                        <button @click="showCheckModal = false" class="flex-1 py-2.5 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors">
+                            Cancel
+                        </button>
+                        <button
+                            v-if="checkResult.exists === checkResult.staff?.length"
+                            disabled
+                            class="flex-1 py-2.5 rounded-xl bg-gray-100 text-gray-400 text-sm font-semibold cursor-not-allowed"
+                        >
+                            All Already Generated
+                        </button>
+                        <button
+                            v-else
+                            @click="proceedGenerate"
+                            :disabled="genForm.processing"
+                            class="flex-1 py-2.5 rounded-xl bg-[#EF233C] hover:bg-[#D90429] disabled:opacity-50 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                        >
+                            <BoltIcon class="w-4 h-4" />
+                            {{ genForm.processing ? 'Generating…' : (checkResult.pending_only > 0 || checkResult.no_entries > 0) ? 'Generate Anyway' : 'Generate Payroll' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
         <!-- Send to Payroll modal -->
         <Transition name="fade">
             <div
@@ -319,7 +454,7 @@ import { ref, computed, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
-import { BoltIcon, BanknotesIcon, PaperAirplaneIcon, EnvelopeIcon } from '@heroicons/vue/24/outline';
+import { BoltIcon, BanknotesIcon, PaperAirplaneIcon, EnvelopeIcon, ClipboardDocumentCheckIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     runs:              { type: Object, default: () => ({ data: [], meta: {} }) },
@@ -348,8 +483,38 @@ function saveCutoff() {
 
 const genForm = useForm({ from: props.current.from, to: props.current.to });
 
-function submitGenerate() {
-    genForm.post(route('payroll.store'));
+// ── Completeness check (step 1) ───────────────────────────────────────────────
+
+const checkLoading    = ref(false);
+const showCheckModal  = ref(false);
+const checkResult     = ref({ staff: [], ready: 0, pending_only: 0, no_entries: 0, exists: 0 });
+
+async function checkAndGenerate() {
+    if (!genForm.from || !genForm.to) return;
+    checkLoading.value = true;
+    try {
+        const res = await fetch(route('payroll.check'), {
+            method:  'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content ?? '',
+                'Accept':       'application/json',
+            },
+            body: JSON.stringify({ from: genForm.from, to: genForm.to }),
+        });
+        checkResult.value = await res.json();
+        showCheckModal.value = true;
+    } finally {
+        checkLoading.value = false;
+    }
+}
+
+// ── Generate (step 2 — called from inside check modal) ────────────────────────
+
+function proceedGenerate() {
+    genForm.post(route('payroll.store'), {
+        onSuccess: () => { showCheckModal.value = false; },
+    });
 }
 
 // ── Filters ───────────────────────────────────────────────────────────────────

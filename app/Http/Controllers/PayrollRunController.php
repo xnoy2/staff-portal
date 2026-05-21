@@ -3,10 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Mail\PayrollSummaryMail;
+use App\Models\LeaveRequest;
 use App\Models\PayrollRun;
 use App\Models\Setting;
+use App\Models\TimeEntry;
 use App\Models\User;
 use App\Notifications\PayslipApproved;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -46,6 +49,7 @@ class PayrollRunController extends Controller
                 'approved_by'    => $r->approvedBy?->name,
                 'approved_at'    => $r->approved_at?->toDateString(),
                 'shifts_count'   => $r->shifts_count,
+                'leave_days'     => (float) ($r->leave_days ?? 0),
             ]);
 
         // Totals for the selected period — drives the summary bar and Approve All button
@@ -243,6 +247,75 @@ class PayrollRunController extends Controller
         $run->delete();
 
         return back()->with('success', 'Draft payslip deleted.');
+    }
+
+    public function checkPeriod(Request $request): JsonResponse
+    {
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
+
+        $request->validate([
+            'from' => ['required', 'date'],
+            'to'   => ['required', 'date', 'after_or_equal:from'],
+        ]);
+
+        $from = Carbon::parse($request->from)->startOfDay();
+        $to   = Carbon::parse($request->to)->endOfDay();
+
+        $staff = User::where('is_active', true)
+            ->whereDoesntHave('roles', fn ($q) => $q->where('name', 'admin'))
+            ->orderBy('name')
+            ->get();
+
+        $rows = $staff->map(function ($user) use ($from, $to) {
+            $approved = TimeEntry::forUser($user->id)
+                ->whereBetween('clock_in', [$from, $to])
+                ->where('status', 'approved')
+                ->count();
+
+            $pending = TimeEntry::forUser($user->id)
+                ->whereBetween('clock_in', [$from, $to])
+                ->where('status', 'pending')
+                ->count();
+
+            $leaveDays = (float) LeaveRequest::where('user_id', $user->id)
+                ->where('status', 'approved')
+                ->where('start_date', '<=', $to->toDateString())
+                ->where('end_date', '>=', $from->toDateString())
+                ->sum('days');
+
+            $hasRun = PayrollRun::where('user_id', $user->id)
+                ->where('period_from', $from->toDateString())
+                ->where('period_to', $to->toDateString())
+                ->exists();
+
+            if ($hasRun) {
+                $status = 'exists';
+            } elseif ($approved > 0) {
+                $status = 'ready';
+            } elseif ($pending > 0) {
+                $status = 'pending_only';
+            } else {
+                $status = 'no_entries';
+            }
+
+            return [
+                'name'        => $user->name,
+                'employee_id' => $user->employee_id ?? '—',
+                'avatar_url'  => $user->avatar_url,
+                'approved'    => $approved,
+                'pending'     => $pending,
+                'leave_days'  => $leaveDays,
+                'status'      => $status,
+            ];
+        });
+
+        return response()->json([
+            'staff'        => $rows->values(),
+            'ready'        => $rows->where('status', 'ready')->count(),
+            'pending_only' => $rows->where('status', 'pending_only')->count(),
+            'no_entries'   => $rows->where('status', 'no_entries')->count(),
+            'exists'       => $rows->where('status', 'exists')->count(),
+        ]);
     }
 
     public function sendPayroll(Request $request): RedirectResponse
