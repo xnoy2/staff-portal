@@ -86,28 +86,6 @@ const cover = () => `
     </div>
   </div>
 
-  <!-- Doc control box -->
-  <div style="margin:0 60px 60px; border:1px solid rgba(255,255,255,0.1); border-radius:12px; overflow:hidden;">
-    <table style="width:100%; border-collapse:collapse;">
-      <thead>
-        <tr style="background:rgba(255,255,255,0.05);">
-          <th style="padding:10px 16px;text-align:left;color:${GREY};font-size:8pt;letter-spacing:1px;text-transform:uppercase;font-weight:700;">Prepared By</th>
-          <th style="padding:10px 16px;text-align:left;color:${GREY};font-size:8pt;letter-spacing:1px;text-transform:uppercase;font-weight:700;">Reviewed By</th>
-          <th style="padding:10px 16px;text-align:left;color:${GREY};font-size:8pt;letter-spacing:1px;text-transform:uppercase;font-weight:700;">Approved By</th>
-          <th style="padding:10px 16px;text-align:left;color:${GREY};font-size:8pt;letter-spacing:1px;text-transform:uppercase;font-weight:700;">Classification</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr>
-          <td style="padding:12px 16px;color:white;font-size:9pt;">System Administrator</td>
-          <td style="padding:12px 16px;color:white;font-size:9pt;">Operations Manager</td>
-          <td style="padding:12px 16px;color:white;font-size:9pt;">Director</td>
-          <td style="padding:12px 16px;"><span style="background:${AMBER}20;color:${AMBER};border:1px solid ${AMBER}40;border-radius:20px;padding:3px 10px;font-size:8pt;font-weight:700;">INTERNAL</span></td>
-        </tr>
-      </tbody>
-    </table>
-  </div>
-
   <!-- Bottom bar -->
   <div style="height:4px; background:linear-gradient(to right,${RED},${PURPLE}); width:100%;"></div>
 </div>`;
