@@ -369,7 +369,7 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
 import { Link, usePage, router } from '@inertiajs/vue3';
 import { usePermission } from '@/Composables/usePermission';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -398,11 +398,28 @@ const page = usePage();
 const { isManager } = usePermission();
 const user = computed(() => page.props.auth.user);
 
+// Reactive clocked-in staff list — starts with SSR data, updated via Reverb
+const clockedInStaff = ref([...props.clockedInStaff]);
+watch(() => props.clockedInStaff, (val) => { clockedInStaff.value = [...val]; });
+
 // Live clock
 const now = ref(new Date());
 let clockInterval = null;
-onMounted(() => { clockInterval = setInterval(() => { now.value = new Date(); }, 1000); });
-onUnmounted(() => clearInterval(clockInterval));
+onMounted(() => {
+    clockInterval = setInterval(() => { now.value = new Date(); }, 1000);
+
+    // Subscribe to real-time attendance updates
+    if (window.Echo && isManager.value) {
+        window.Echo.private('admin.attendance')
+            .listen('.attendance.updated', (data) => {
+                clockedInStaff.value = data.clockedInStaff ?? [];
+            });
+    }
+});
+onUnmounted(() => {
+    clearInterval(clockInterval);
+    window.Echo?.leave('admin.attendance');
+});
 
 const formattedClock = computed(() =>
     now.value.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })

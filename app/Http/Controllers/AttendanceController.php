@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Events\AttendanceUpdated;
 use App\Models\TimeEntry;
 use App\Models\TimeEntryBreak;
 use App\Models\User;
@@ -91,6 +92,8 @@ class AttendanceController extends Controller
             default => 'Clocked in',
         };
 
+        broadcast(new AttendanceUpdated());
+
         return back()->with('success', $label . ' at ' . $entry->clock_in->format('H:i'));
     }
 
@@ -112,6 +115,8 @@ class AttendanceController extends Controller
         $entry->clock_state = 'working'; // reset; no longer active
         $entry->calculateHours();
         $entry->save();
+
+        broadcast(new AttendanceUpdated());
 
         return back()->with('success', 'Clocked out. Duration: ' . $entry->duration_label);
     }
@@ -140,6 +145,8 @@ class AttendanceController extends Controller
             'started_at'    => now(),
         ]);
 
+        broadcast(new AttendanceUpdated());
+
         $label = $type === 'lunch' ? 'Lunch break started' : 'Break started';
         return back()->with('success', $label . ' at ' . now()->format('H:i'));
     }
@@ -161,6 +168,8 @@ class AttendanceController extends Controller
 
         $break->end();
         $entry->update(['clock_state' => 'working']);
+
+        broadcast(new AttendanceUpdated());
 
         $label = $break->type === 'lunch' ? 'Back from lunch' : 'Break ended';
         return back()->with('success', $label . ' · ' . $break->duration_minutes . ' min');
