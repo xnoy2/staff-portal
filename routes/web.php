@@ -26,6 +26,7 @@ use App\Http\Controllers\OvertimeController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\SubcontractorController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\HelpController;
 use App\Http\Controllers\QrScanController;
 use Illuminate\Support\Facades\Route;
 
@@ -33,6 +34,7 @@ Route::get('/', fn () => redirect()->route('dashboard'));
 
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+    Route::get('/guide', [HelpController::class, 'guide'])->name('guide');
     Route::get('/schedule',                              [ScheduleController::class, 'index'])->name('schedule');
     Route::get('/calendar',                              [CalendarController::class,  'index'])->name('calendar');
     Route::post('/schedule/staff',                       [ScheduleController::class, 'store'])->name('schedule.staff.store');

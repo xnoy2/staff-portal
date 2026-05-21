@@ -119,6 +119,11 @@
                     <NavItem :href="route('audit-log')"                       routeName="audit-log"         icon="ClipboardDocumentIcon"  label="Audit Log"  :collapsed="!sidebarOpen && !isMobile" />
 
                 </NavGroup>
+
+                <!-- Help / User Guide – always visible -->
+                <NavGroup label="Help" :collapsed="!sidebarOpen && !isMobile">
+                    <NavItem :href="route('guide')" routeName="guide" icon="QuestionMarkCircleIcon" label="User Guide" :collapsed="!sidebarOpen && !isMobile" />
+                </NavGroup>
             </nav>
 
             <!-- Sidebar footer: logout -->
