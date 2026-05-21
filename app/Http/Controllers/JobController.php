@@ -81,6 +81,95 @@ class JobController extends Controller
         ]);
     }
 
+    public function myJobs(Request $request): Response
+    {
+        $user       = $request->user();
+        $isManager  = $user->hasAnyRole(['admin', 'manager']);
+        $isSiteHead = $user->hasRole('site_head');
+        $isHR       = $user->hasRole('hr');
+
+        $query = Job::with([
+                'project:id,name,customer,business',
+                'van:id,registration',
+                'staff:id,name,avatar',
+            ]);
+
+        // Role-based scoping (mirrors existing Live Board logic)
+        if ($isSiteHead && ! $isManager) {
+            $projectIds = $user->projects()->pluck('projects.id');
+            $query->whereIn('project_id', $projectIds);
+        } elseif (! $isManager && ! $isHR) {
+            $query->whereHas('staff', fn ($q) => $q->where('users.id', $user->id));
+        }
+        // admin / manager / hr → all jobs
+
+        // Filters
+        if ($request->filled('status')) {
+            $query->where('status', $request->input('status'));
+        }
+        if ($request->filled('from')) {
+            $query->where('date', '>=', $request->input('from'));
+        }
+        if ($request->filled('to')) {
+            $query->where('date', '<=', $request->input('to'));
+        }
+
+        // Period shortcut – default to upcoming
+        $period = $request->input('period', 'upcoming');
+        if (! $request->filled('from') && ! $request->filled('to')) {
+            if ($period === 'upcoming') {
+                // Soonest first
+                $query->where('date', '>=', today()->toDateString())
+                      ->orderBy('date', 'asc')
+                      ->orderBy('start_time', 'asc');
+            } elseif ($period === 'past') {
+                // Most recent past first
+                $query->where('date', '<', today()->toDateString())
+                      ->orderBy('date', 'desc')
+                      ->orderBy('start_time', 'desc');
+            } else {
+                // all – chronological
+                $query->orderBy('date', 'desc')->orderBy('start_time', 'desc');
+            }
+        } else {
+            // Custom date range – show soonest first
+            $query->orderBy('date', 'asc')->orderBy('start_time', 'asc');
+        }
+
+        $jobs = $query->paginate(25)->withQueryString();
+
+        $formatted = $jobs->through(fn ($job) => [
+            'id'               => $job->id,
+            'title'            => $job->title,
+            'date'             => $job->date->toDateString(),
+            'start_time'       => $job->start_time,
+            'end_time'         => $job->end_time,
+            'status'           => $job->status,
+            'notes'            => $job->notes,
+            'bcf_order_number' => $job->bcf_order_number,
+            'bgr_project_name' => $job->bgr_project_name,
+            'project'          => $job->project ? [
+                'name'     => $job->project->name,
+                'business' => $job->project->business,
+                'customer' => $job->project->customer,
+            ] : null,
+            'van'   => $job->van?->registration,
+            'staff' => $job->staff->map(fn ($s) => [
+                'id'         => $s->id,
+                'name'       => $s->name,
+                'avatar_url' => $s->avatar_url,
+            ]),
+        ]);
+
+        return Inertia::render('Jobs/MyJobs', [
+            'jobs'      => $formatted,
+            'isManager' => $isManager,
+            'isSiteHead'=> $isSiteHead,
+            'isHR'      => $isHR,
+            'filters'   => $request->only(['status', 'from', 'to', 'period']),
+        ]);
+    }
+
     public function store(Request $request): RedirectResponse
     {
         $this->authorize('create', Job::class);

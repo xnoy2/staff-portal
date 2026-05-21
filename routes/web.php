@@ -70,6 +70,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Live Board / Jobs
     Route::prefix('jobs')->name('jobs.')->group(function () {
         Route::get('/',                      [JobController::class, 'index'])->name('index');
+        Route::get('/list',                  [JobController::class, 'myJobs'])->name('list');
         Route::post('/',                     [JobController::class, 'store'])->name('store');
         Route::put('/{job}',                 [JobController::class, 'update'])->name('update');
         Route::patch('/{job}/status',        [JobController::class, 'updateStatus'])->name('status');
