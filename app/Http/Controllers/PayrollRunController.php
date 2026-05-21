@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\PayrollSummaryMail;
 use App\Models\PayrollRun;
 use App\Models\Setting;
 use App\Models\User;
@@ -10,6 +11,7 @@ use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -86,14 +88,15 @@ class PayrollRunController extends Controller
             ->value('created_at');
 
         return Inertia::render('Payroll/Index', [
-            'runs'          => $runs,
-            'periods'       => $periods,
-            'current'       => $current,
-            'cutoffDay'     => $cutoffDay,
-            'draftCount'    => $draftCount,
-            'periodTotals'  => $periodTotals,
-            'lastAutoRun'   => $lastAutoRun?->toDateTimeString(),
-            'filters'       => $request->only(['from', 'status']),
+            'runs'              => $runs,
+            'periods'           => $periods,
+            'current'           => $current,
+            'cutoffDay'         => $cutoffDay,
+            'draftCount'        => $draftCount,
+            'periodTotals'      => $periodTotals,
+            'lastAutoRun'       => $lastAutoRun?->toDateTimeString(),
+            'filters'           => $request->only(['from', 'status']),
+            'payrollRecipient'  => env('PAYROLL_RECIPIENT_EMAIL', 'ofaminjumerpaul07@gmail.com'),
         ]);
     }
 
@@ -240,5 +243,37 @@ class PayrollRunController extends Controller
         $run->delete();
 
         return back()->with('success', 'Draft payslip deleted.');
+    }
+
+    public function sendPayroll(Request $request): RedirectResponse
+    {
+        abort_if(! auth()->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
+
+        $request->validate([
+            'from' => ['required', 'date'],
+            'to'   => ['required', 'date', 'after_or_equal:from'],
+        ]);
+
+        $runs = PayrollRun::with(['user', 'approvedBy'])
+            ->where('period_from', $request->from)
+            ->where('period_to', $request->to)
+            ->where('status', 'approved')
+            ->orderByRaw('(SELECT name FROM users WHERE users.id = payroll_runs.user_id)')
+            ->get();
+
+        if ($runs->isEmpty()) {
+            return back()->with('error', 'No approved payslips found for this period. Approve all payslips first.');
+        }
+
+        $recipient = env('PAYROLL_RECIPIENT_EMAIL', 'ofaminjumerpaul07@gmail.com');
+
+        Mail::to($recipient)->send(new PayrollSummaryMail(
+            runs:        $runs,
+            periodFrom:  $request->from,
+            periodTo:    $request->to,
+            sentByName:  auth()->user()->name,
+        ));
+
+        return back()->with('success', "Payroll summary for {$runs->count()} staff sent to {$recipient}.");
     }
 }

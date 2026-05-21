@@ -1,0 +1,590 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<title>BCF Staff Portal — Payroll Process Flowchart</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', Arial, sans-serif; background: #F1F5F9; }
+
+  /* ── Header ── */
+  .header {
+    background: #2B2D42;
+    color: white;
+    padding: 20px 32px;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+  }
+  .header-logo {
+    width: 40px; height: 40px;
+    background: #EF233C;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+  }
+  .header-logo-inner { width: 20px; height: 20px; background: white; border-radius: 5px; }
+  .header h1 { font-size: 15pt; font-weight: 700; }
+  .header p { font-size: 9pt; color: #8D99AE; margin-top: 2px; }
+
+  /* ── Legend ── */
+  .legend {
+    display: flex; gap: 20px; padding: 14px 32px;
+    background: white; border-bottom: 1px solid #E5E7EB;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 8.5pt; color: #374151; }
+  .legend-box {
+    width: 14px; height: 14px; border-radius: 3px;
+  }
+  .legend-diamond {
+    width: 14px; height: 14px;
+    transform: rotate(45deg);
+    border-radius: 2px;
+  }
+
+  /* ── Swimlane container ── */
+  .swimlane-wrap {
+    padding: 24px;
+    overflow-x: auto;
+  }
+  .swimlane-grid {
+    display: grid;
+    grid-template-columns: 160px 1fr 1fr 1fr 1fr;
+    min-width: 960px;
+    border: 1px solid #CBD5E1;
+    border-radius: 12px;
+    overflow: hidden;
+    background: white;
+  }
+
+  /* ── Lane headers ── */
+  .lane-header {
+    padding: 14px 10px;
+    text-align: center;
+    font-size: 9.5pt;
+    font-weight: 700;
+    color: white;
+    letter-spacing: 0.5px;
+  }
+  .lh-label   { background: #2B2D42; }
+  .lh-staff   { background: #16A34A; }
+  .lh-mgr     { background: #2563EB; }
+  .lh-system  { background: #7C3AED; }
+  .lh-admin   { background: #EF233C; }
+
+  /* ── Lane bodies ── */
+  .lane-body {
+    padding: 16px 12px;
+    border-left: 1px solid #E5E7EB;
+    min-height: 900px;
+    position: relative;
+  }
+  .lane-staff   { background: #F0FDF4; }
+  .lane-mgr     { background: #EFF6FF; }
+  .lane-system  { background: #F5F3FF; }
+  .lane-admin   { background: #FFF1F2; }
+
+  /* ── Phase labels (left column) ── */
+  .phase-col {
+    background: #F8FAFC;
+    border-right: 1px solid #E5E7EB;
+  }
+  .phase-label {
+    writing-mode: vertical-rl;
+    text-orientation: mixed;
+    transform: rotate(180deg);
+    font-size: 7.5pt;
+    font-weight: 700;
+    color: #64748B;
+    letter-spacing: 1.5px;
+    text-transform: uppercase;
+    padding: 16px 8px;
+    border-bottom: 1px solid #E5E7EB;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ── Nodes ── */
+  .node {
+    border-radius: 8px;
+    padding: 8px 10px;
+    font-size: 8pt;
+    line-height: 1.4;
+    text-align: center;
+    position: relative;
+    margin-bottom: 10px;
+  }
+  .node-process {
+    background: #2563EB;
+    color: white;
+    border-radius: 8px;
+  }
+  .node-process-green  { background: #16A34A; color: white; border-radius: 8px; }
+  .node-process-purple { background: #7C3AED; color: white; border-radius: 8px; }
+  .node-process-red    { background: #EF233C; color: white; border-radius: 8px; }
+  .node-process-dark   { background: #2B2D42; color: white; border-radius: 8px; }
+  .node-decision {
+    background: #EC4899;
+    color: white;
+    clip-path: polygon(50% 0%, 100% 50%, 50% 100%, 0% 50%);
+    padding: 18px 14px;
+    width: 100px;
+    height: 70px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 7.5pt;
+    text-align: center;
+    margin: 0 auto 10px;
+  }
+  .node-terminal {
+    background: #D97706;
+    color: white;
+    border-radius: 24px;
+    padding: 7px 14px;
+    font-size: 8pt;
+    text-align: center;
+    font-weight: 700;
+  }
+  .node-terminal-green { background: #16A34A; color: white; border-radius: 24px; padding: 7px 14px; font-size: 8pt; text-align: center; font-weight: 700; }
+
+  /* arrow helpers */
+  .arrow-down {
+    text-align: center;
+    font-size: 16pt;
+    color: #94A3B8;
+    line-height: 1;
+    margin: 2px 0;
+  }
+  .arrow-label {
+    text-align: center;
+    font-size: 7pt;
+    color: #64748B;
+    font-weight: 600;
+    margin-bottom: 2px;
+  }
+
+  /* cross-lane connector pill */
+  .connector {
+    background: #E2E8F0;
+    color: #475569;
+    border-radius: 20px;
+    padding: 4px 10px;
+    font-size: 7.5pt;
+    font-weight: 600;
+    text-align: center;
+    border: 1px dashed #94A3B8;
+    margin-bottom: 8px;
+  }
+
+  /* note box */
+  .note {
+    background: #FEF9C3;
+    border: 1px solid #FDE047;
+    border-radius: 6px;
+    padding: 6px 8px;
+    font-size: 7.5pt;
+    color: #713F12;
+    margin-top: 6px;
+  }
+  .note-blue {
+    background: #DBEAFE;
+    border: 1px solid #93C5FD;
+    color: #1E3A5F;
+  }
+  .note-red {
+    background: #FEE2E2;
+    border: 1px solid #FCA5A5;
+    color: #7F1D1D;
+  }
+  .note-green {
+    background: #DCFCE7;
+    border: 1px solid #86EFAC;
+    color: #14532D;
+  }
+
+  hr.phase-divider {
+    border: none;
+    border-top: 1px dashed #CBD5E1;
+    margin: 12px 0;
+  }
+
+  /* ── Summary table below flowchart ── */
+  .summary {
+    margin: 0 24px 32px;
+    background: white;
+    border: 1px solid #E5E7EB;
+    border-radius: 12px;
+    overflow: hidden;
+  }
+  .summary-head {
+    background: #2B2D42;
+    color: white;
+    padding: 12px 20px;
+    font-size: 10pt;
+    font-weight: 700;
+  }
+  .summary table { width: 100%; border-collapse: collapse; }
+  .summary th { padding: 10px 14px; text-align: left; font-size: 8.5pt; background: #F8FAFC; border-bottom: 1px solid #E5E7EB; color: #374151; }
+  .summary td { padding: 9px 14px; font-size: 8.5pt; color: #374151; border-bottom: 1px solid #F1F5F9; vertical-align: top; }
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 7pt;
+    font-weight: 700;
+  }
+  .badge-green  { background: #DCFCE7; color: #166534; }
+  .badge-blue   { background: #DBEAFE; color: #1E40AF; }
+  .badge-purple { background: #F3E8FF; color: #6B21A8; }
+  .badge-red    { background: #FEE2E2; color: #991B1B; }
+  .badge-amber  { background: #FEF3C7; color: #92400E; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<div class="header">
+  <div class="header-logo"><div class="header-logo-inner"></div></div>
+  <div>
+    <h1>BCF Staff Portal — Payroll Process Flowchart</h1>
+    <p>Current system flow as-built · For review before any changes · May 2026</p>
+  </div>
+</div>
+
+<!-- Legend -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-box" style="background:#2563EB;"></div> Process / Action</div>
+  <div class="legend-item"><div class="legend-box" style="background:#EC4899;transform:rotate(45deg);"></div> Decision</div>
+  <div class="legend-item"><div class="legend-box" style="background:#D97706;border-radius:12px;"></div> Start / End</div>
+  <div class="legend-item"><div class="legend-box" style="background:#E2E8F0;border:1px dashed #94A3B8;border-radius:4px;"></div> Cross-lane reference</div>
+  <div class="legend-item"><span style="width:14px;height:1px;border-top:2px dashed #94A3B8;display:block;"></span> Implicit / async flow</div>
+</div>
+
+<!-- Swimlane -->
+<div class="swimlane-wrap">
+<div class="swimlane-grid">
+
+  <!-- ── HEADERS ── -->
+  <div class="lane-header lh-label" style="background:#1E293B;">Phase</div>
+  <div class="lane-header lh-staff">👷 Staff</div>
+  <div class="lane-header lh-mgr">👔 Manager / HR</div>
+  <div class="lane-header lh-system">⚙️ System (Portal)</div>
+  <div class="lane-header lh-admin">🔐 Admin / Export</div>
+
+  <!-- ══════════════════════════════════════════════
+       PHASE 1 — ATTENDANCE
+  ═══════════════════════════════════════════════ -->
+  <div class="phase-col" style="grid-row: span 1;">
+    <div class="phase-label" style="height:100%;">Phase 1 — Attendance</div>
+  </div>
+
+  <!-- Staff col -->
+  <div class="lane-body lane-staff">
+    <div class="node-terminal" style="text-align:center;margin-bottom:10px;">Pay Period Opens</div>
+    <div class="arrow-down">↓</div>
+
+    <div class="node node-process-green"><strong>Clock In</strong><br>Dashboard or Attendance page</div>
+    <div class="node node-decision" style="font-size:7pt;">OT Request Approved?</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <div style="flex:1;">
+        <div class="arrow-label">Yes</div>
+        <div class="node node-process-green" style="font-size:7.5pt;">Select OT or RDOT<br>type at clock-in</div>
+      </div>
+      <div style="flex:1;">
+        <div class="arrow-label">No</div>
+        <div class="node node-process-green" style="font-size:7.5pt;">Regular clock-in</div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-green"><strong>Take Break</strong> (optional)<br>Standard / Lunch</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-green"><strong>End Break</strong><br>Break duration saved</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-green"><strong>Clock Out</strong></div>
+    <div class="arrow-down">↓</div>
+    <div class="connector">→ System calculates hours</div>
+
+    <hr class="phase-divider"/>
+    <div class="note note-blue">Staff may also<br>submit <strong>Leave</strong> &amp; <strong>OT requests</strong><br>at any time via the nav</div>
+  </div>
+
+  <!-- Manager/HR col -->
+  <div class="lane-body lane-mgr">
+    <div style="height:36px;"></div><!-- align with pay period opens -->
+    <div class="note note-blue" style="margin-bottom:12px;">Manager/HR can also add a <strong>Manual Entry</strong> for staff who forgot to clock in → auto-approved</div>
+
+    <hr class="phase-divider"/>
+    <div class="node node-process"><strong>Review Pending Entries</strong><br>Attendance page → filter Pending</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-decision" style="font-size:7pt;">Entry Correct?</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <div style="flex:1;">
+        <div class="arrow-label">Yes</div>
+        <div class="node node-process" style="font-size:7.5pt;"><strong>Approve</strong><br>or Bulk Approve</div>
+      </div>
+      <div style="flex:1;">
+        <div class="arrow-label">No</div>
+        <div class="node node-process" style="font-size:7.5pt;background:#EF233C;"><strong>Reject</strong><br>+ Reason required</div>
+      </div>
+    </div>
+    <div class="connector">Rejection → Staff notified</div>
+
+    <hr class="phase-divider"/>
+    <div class="note note-blue">⚠️ <strong>Only APPROVED entries</strong> are included in payroll. Pending entries are excluded.</div>
+
+    <hr class="phase-divider"/>
+    <div class="node node-process"><strong>Review &amp; Approve Leave Requests</strong></div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process"><strong>Review &amp; Approve OT Requests</strong><br>Approved OT unlocks OT clock-in for staff</div>
+  </div>
+
+  <!-- System col -->
+  <div class="lane-body lane-system">
+    <div style="height:180px;"></div><!-- align with clock out -->
+    <div class="connector">← Receives clock-out event</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-purple"><strong>Calculate Hours</strong><br>clock_out − clock_in − break_minutes</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-decision" style="font-size:7pt;">hours &gt; 8?</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <div style="flex:1;">
+        <div class="arrow-label">Yes</div>
+        <div class="node node-process-purple" style="font-size:7.5pt;">is_overtime = true</div>
+      </div>
+      <div style="flex:1;">
+        <div class="arrow-label">No</div>
+        <div class="node node-process-purple" style="font-size:7.5pt;">is_overtime = false</div>
+      </div>
+    </div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-purple"><strong>Set Status</strong><br>Staff → Pending<br>Admin/Manager → Auto-Approved</div>
+  </div>
+
+  <!-- Admin col -->
+  <div class="lane-body lane-admin" style="min-height:auto;">
+    <!-- empty for phase 1 -->
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       PHASE 2 — PAYROLL GENERATION
+  ═══════════════════════════════════════════════ -->
+  <div class="phase-col">
+    <div class="phase-label" style="height:100%;">Phase 2 — Payroll Generation</div>
+  </div>
+
+  <!-- Staff -->
+  <div class="lane-body lane-staff">
+    <!-- empty for generation phase -->
+    <div class="note">Staff wait for payslip generation. No action required.</div>
+  </div>
+
+  <!-- Manager/HR -->
+  <div class="lane-body lane-mgr">
+    <div class="node-terminal" style="margin-bottom:10px;text-align:center;">Pay Period Closes</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process"><strong>Set Cutoff Day</strong> (optional)<br>Settings → Payroll Cut-off Day<br><em>default: 25th of month</em></div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process"><strong>Generate Payroll Run</strong><br>Enter Period From &amp; To → Generate</div>
+    <div class="arrow-down">↓</div>
+    <div class="connector">→ System generates draft payslips</div>
+  </div>
+
+  <!-- System -->
+  <div class="lane-body lane-system">
+    <div class="connector">← Receives Generate trigger</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-purple"><strong>Fetch All Active Staff</strong><br>(non-admin, is_active = true)</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-decision" style="font-size:7pt;">Payslip already exists for period?</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <div style="flex:1;">
+        <div class="arrow-label">Yes</div>
+        <div class="node node-process-purple" style="font-size:7.5pt;">Skip — do not duplicate</div>
+      </div>
+      <div style="flex:1;">
+        <div class="arrow-label">No</div>
+        <div class="arrow-down">↓</div>
+      </div>
+    </div>
+
+    <div class="node node-process-purple"><strong>Fetch Approved Time Entries</strong><br>within period, status = approved</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-decision" style="font-size:7pt;">OT type set (OT / RDOT)?</div>
+    <div style="display:flex;gap:6px;margin-bottom:4px;">
+      <div style="flex:1;">
+        <div class="arrow-label">Yes</div>
+        <div class="node node-process-purple" style="font-size:7.5pt;">Regular = 0h<br>OT = all hours</div>
+      </div>
+      <div style="flex:1;">
+        <div class="arrow-label">No ↓</div>
+        <div class="node node-decision" style="font-size:7pt;width:90px;height:65px;">is_overtime?</div>
+        <div style="display:flex;gap:4px;">
+          <div style="flex:1;"><div class="arrow-label">Yes</div><div class="node node-process-purple" style="font-size:7pt;">Reg=8h<br>OT=remainder</div></div>
+          <div style="flex:1;"><div class="arrow-label">No</div><div class="node node-process-purple" style="font-size:7pt;">All Regular<br>OT = 0</div></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-purple">
+      <strong>Calculate Pay</strong><br>
+      Regular Pay = Reg hrs × Rate<br>
+      OT Pay = OT hrs × Rate × 1.5<br>
+      Gross Pay = Reg Pay + OT Pay
+    </div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-purple"><strong>Create Draft Payslip</strong><br>status = <em>draft</em><br>entries_snapshot saved</div>
+  </div>
+
+  <!-- Admin -->
+  <div class="lane-body lane-admin">
+    <!-- empty -->
+  </div>
+
+  <!-- ══════════════════════════════════════════════
+       PHASE 3 — REVIEW & APPROVAL
+  ═══════════════════════════════════════════════ -->
+  <div class="phase-col">
+    <div class="phase-label" style="height:100%;">Phase 3 — Review &amp; Approval</div>
+  </div>
+
+  <!-- Staff -->
+  <div class="lane-body lane-staff">
+    <div class="note">Staff notified when payslip is approved.</div>
+    <div class="arrow-down" style="margin-top:8px;">↓</div>
+    <div class="node node-process-green"><strong>View Approved Payslip</strong><br>My Payslip page</div>
+    <div class="note note-green" style="margin-top:8px;">Staff can see: period, shifts, regular hrs, OT hrs, gross pay, deductions, net pay</div>
+  </div>
+
+  <!-- Manager/HR -->
+  <div class="lane-body lane-mgr">
+    <div class="connector">← Draft payslips ready</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process"><strong>Open Draft Payslip</strong><br>Review: period, hours, gross pay</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process"><strong>Add Deductions</strong> (optional)<br>Description + Amount each<br>Net Pay updates automatically</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-decision" style="font-size:7pt;">Figures Correct?</div>
+    <div style="display:flex;gap:6px;margin-bottom:8px;">
+      <div style="flex:1;">
+        <div class="arrow-label">Yes</div>
+        <div class="node node-process" style="font-size:7.5pt;"><strong>Approve Payslip</strong><br>or <strong>Approve All</strong><br>for the period</div>
+      </div>
+      <div style="flex:1;">
+        <div class="arrow-label">No</div>
+        <div class="node node-process" style="font-size:7.5pt;background:#EF233C;"><strong>Delete Draft</strong><br>Regenerate with correct entries</div>
+      </div>
+    </div>
+    <div class="connector">→ System locks payslip &amp; notifies staff</div>
+    <div class="note note-red" style="margin-top:8px;">🔒 <strong>Approved payslips are permanently locked.</strong> Cannot be edited or deleted. Contact Admin for corrections.</div>
+  </div>
+
+  <!-- System -->
+  <div class="lane-body lane-system">
+    <div class="connector">← Approval received</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-purple"><strong>Lock Payslip</strong><br>status = approved<br>approved_by + approved_at saved</div>
+    <div class="arrow-down">↓</div>
+    <div class="node node-process-purple"><strong>Send Notification</strong><br>In-app notification → Staff<br>"Your payslip for [period] is ready"</div>
+  </div>
+
+  <!-- Admin -->
+  <div class="lane-body lane-admin">
+    <div class="node node-process-red"><strong>Export CSV</strong><br>Reports → Payroll Export<br>Filter by period &amp; staff</div>
+    <div class="arrow-down">↓</div>
+    <div class="note note-red">Export only includes <strong>APPROVED</strong> payslips.<br>Columns: Employee ID, Name, Period, Regular Hrs, OT Hrs, Gross Pay, Deductions, Net Pay, Approved By</div>
+    <hr class="phase-divider"/>
+    <div class="node node-process-red"><strong>Audit Log</strong><br>All approvals &amp; rejections<br>permanently recorded</div>
+  </div>
+
+</div><!-- end swimlane-grid -->
+</div><!-- end swimlane-wrap -->
+
+<!-- Summary table -->
+<div class="summary">
+  <div class="summary-head">📋 System Rules Summary</div>
+  <table>
+    <thead>
+      <tr>
+        <th>Rule</th>
+        <th>Detail</th>
+        <th>Who Controls</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td><strong>Payroll period</strong></td>
+        <td>Based on configurable cut-off day (default: 25th). Period = (cutoff+1) of prev month → cutoff of current month.</td>
+        <td><span class="badge badge-red">Admin</span> <span class="badge badge-blue">Manager</span> <span class="badge badge-purple">HR</span></td>
+      </tr>
+      <tr>
+        <td><strong>Included entries</strong></td>
+        <td>Only time entries with status = <strong>approved</strong> and clock_in within the period are included. Pending or rejected entries are excluded.</td>
+        <td><span class="badge badge-purple">System</span></td>
+      </tr>
+      <tr>
+        <td><strong>Hour split — Standard shift</strong></td>
+        <td>≤8h → all regular. &gt;8h → first 8h regular, remainder = OT (is_overtime flag set automatically).</td>
+        <td><span class="badge badge-purple">System</span></td>
+      </tr>
+      <tr>
+        <td><strong>Hour split — OT/RDOT shift</strong></td>
+        <td>If ot_type is set (approved OT request), 100% of hours count as overtime regardless of duration.</td>
+        <td><span class="badge badge-purple">System</span></td>
+      </tr>
+      <tr>
+        <td><strong>Pay calculation</strong></td>
+        <td>Gross = (Regular hrs × Rate) + (OT hrs × Rate × 1.5). Net = Gross − Deductions.</td>
+        <td><span class="badge badge-purple">System</span></td>
+      </tr>
+      <tr>
+        <td><strong>Duplicate prevention</strong></td>
+        <td>If a payslip for the same user + period already exists, it is skipped during generation. Shown in success message.</td>
+        <td><span class="badge badge-purple">System</span></td>
+      </tr>
+      <tr>
+        <td><strong>Deductions</strong></td>
+        <td>Can only be added/edited on <strong>draft</strong> payslips. Removed once approved.</td>
+        <td><span class="badge badge-blue">Manager</span> <span class="badge badge-purple">HR</span></td>
+      </tr>
+      <tr>
+        <td><strong>Approval lock</strong></td>
+        <td>Approved payslips cannot be edited or deleted via the portal. Any correction requires Admin intervention at database level.</td>
+        <td><span class="badge badge-red">Admin only</span></td>
+      </tr>
+      <tr>
+        <td><strong>Staff excluded from payroll</strong></td>
+        <td>Admin-role users are never included in payroll runs. Inactive staff (is_active = false) are also excluded.</td>
+        <td><span class="badge badge-purple">System</span></td>
+      </tr>
+      <tr>
+        <td><strong>Staff notification</strong></td>
+        <td>Staff receive an in-app notification when their payslip is approved. Notification includes period dates and gross pay.</td>
+        <td><span class="badge badge-purple">System</span></td>
+      </tr>
+      <tr>
+        <td><strong>CSV export scope</strong></td>
+        <td>Only approved payslips are exported. Draft payslips are excluded from the CSV to ensure accuracy.</td>
+        <td><span class="badge badge-red">Admin</span> <span class="badge badge-blue">Manager</span> <span class="badge badge-purple">HR</span></td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
+<!-- Comparison note -->
+<div style="margin: 0 24px 32px; background: #FEF9C3; border: 1px solid #FDE047; border-radius: 12px; padding: 16px 20px;">
+  <p style="font-size: 9pt; font-weight: 700; color: #713F12; margin-bottom: 6px;">📌 Comparison with Sample Retail Payroll Flow</p>
+  <p style="font-size: 8.5pt; color: #713F12; line-height: 1.7;">
+    The sample flowchart uses a traditional <em>batch payroll processor / vendor</em> model (HR enters data → Payroll vendor produces payments).
+    Our portal is a <strong>fully self-contained digital system</strong> — there is no external payroll vendor.
+    Key differences: (1) clock-in/out is digital and real-time, not manually entered; (2) hour calculations are automatic;
+    (3) payroll approval is done inside the portal by Manager/HR, not sent to an external processor;
+    (4) the portal does not yet handle <strong>automated bank payments</strong> — the CSV export is used for that step externally.
+  </p>
+</div>
+
+</body>
+</html>

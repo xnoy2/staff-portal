@@ -84,6 +84,25 @@
                     >
                         Approve All ({{ draftCount }})
                     </button>
+                    <!-- Send to Payroll button — only when period selected + all approved -->
+                    <button
+                        v-if="filterPeriod && periodTotals && periodTotals.approved_count > 0 && periodTotals.draft_count === 0"
+                        @click="openSendModal"
+                        class="text-xs bg-[#2B2D42] hover:bg-[#1a1c2e] text-white px-3 py-1.5 rounded-lg transition-colors font-medium flex items-center gap-1.5"
+                    >
+                        <PaperAirplaneIcon class="w-3.5 h-3.5" />
+                        Send to Payroll
+                    </button>
+                    <!-- Disabled variant: drafts still exist -->
+                    <button
+                        v-else-if="filterPeriod && periodTotals && periodTotals.approved_count > 0 && periodTotals.draft_count > 0"
+                        disabled
+                        title="Approve all drafts before sending"
+                        class="text-xs bg-gray-100 text-gray-400 border border-gray-200 px-3 py-1.5 rounded-lg font-medium flex items-center gap-1.5 cursor-not-allowed"
+                    >
+                        <PaperAirplaneIcon class="w-3.5 h-3.5" />
+                        Send to Payroll
+                    </button>
                 </div>
             </div>
 
@@ -227,6 +246,71 @@
             @cancel="deleteTargetId = null"
         />
 
+        <!-- Send to Payroll modal -->
+        <Transition name="fade">
+            <div
+                v-if="showSendModal"
+                class="fixed inset-0 z-50 flex items-center justify-center p-4"
+                style="background:rgba(0,0,0,0.45);"
+                @click.self="showSendModal = false"
+            >
+                <div class="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6">
+                    <!-- Icon -->
+                    <div class="flex items-center gap-3 mb-4">
+                        <div class="w-10 h-10 bg-[#2B2D42] rounded-xl flex items-center justify-center flex-shrink-0">
+                            <PaperAirplaneIcon class="w-5 h-5 text-white" />
+                        </div>
+                        <div>
+                            <h3 class="text-base font-bold text-gray-900">Send Payroll Summary</h3>
+                            <p class="text-xs text-gray-500">This will email all approved payslips</p>
+                        </div>
+                    </div>
+
+                    <!-- Period info -->
+                    <div class="bg-gray-50 rounded-xl p-3 mb-4 text-sm text-gray-700 space-y-1.5">
+                        <div class="flex justify-between">
+                            <span class="text-xs text-gray-500">Period</span>
+                            <span class="font-medium text-xs">{{ formatDate(sendPeriod.from) }} – {{ formatDate(sendPeriod.to) }}</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-xs text-gray-500">Payslips</span>
+                            <span class="font-semibold text-xs text-green-600">{{ periodTotals?.approved_count }} approved</span>
+                        </div>
+                        <div class="flex justify-between">
+                            <span class="text-xs text-gray-500">Total Gross</span>
+                            <span class="font-bold text-xs text-[#EF233C]">£{{ periodTotals?.gross_pay?.toFixed(2) }}</span>
+                        </div>
+                    </div>
+
+                    <!-- Recipient -->
+                    <div class="mb-5">
+                        <p class="text-xs font-semibold text-gray-500 mb-1.5">Sending to</p>
+                        <div class="flex items-center gap-2 bg-blue-50 border border-blue-200 rounded-lg px-3 py-2">
+                            <EnvelopeIcon class="w-4 h-4 text-blue-500 flex-shrink-0" />
+                            <span class="text-sm font-medium text-blue-700">{{ payrollRecipient }}</span>
+                        </div>
+                        <p class="text-[10px] text-gray-400 mt-1.5">A CSV attachment will be included in the email.</p>
+                    </div>
+
+                    <!-- Actions -->
+                    <div class="flex gap-2">
+                        <button
+                            @click="showSendModal = false"
+                            class="flex-1 py-2 rounded-xl border border-gray-200 text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                        >Cancel</button>
+                        <button
+                            @click="confirmSend"
+                            :disabled="sendForm.processing"
+                            class="flex-1 py-2 rounded-xl bg-[#2B2D42] hover:bg-[#1a1c2e] disabled:opacity-50 text-white text-sm font-semibold transition-colors flex items-center justify-center gap-2"
+                        >
+                            <PaperAirplaneIcon class="w-4 h-4" />
+                            {{ sendForm.processing ? 'Sending…' : 'Send Now' }}
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </Transition>
+
     </AppLayout>
 </template>
 
@@ -235,17 +319,18 @@ import { ref, computed, watch } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
-import { BoltIcon, BanknotesIcon } from '@heroicons/vue/24/outline';
+import { BoltIcon, BanknotesIcon, PaperAirplaneIcon, EnvelopeIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    runs:         { type: Object, default: () => ({ data: [], meta: {} }) },
-    periods:      { type: Array,  default: () => [] },
-    current:      { type: Object, required: true },
-    cutoffDay:    { type: Number, default: 25 },
-    draftCount:   { type: Number, default: 0 },
-    periodTotals: { type: Object, default: null },
-    lastAutoRun:  { type: String, default: null },
-    filters:      { type: Object, default: () => ({}) },
+    runs:              { type: Object, default: () => ({ data: [], meta: {} }) },
+    periods:           { type: Array,  default: () => [] },
+    current:           { type: Object, required: true },
+    cutoffDay:         { type: Number, default: 25 },
+    draftCount:        { type: Number, default: 0 },
+    periodTotals:      { type: Object, default: null },
+    lastAutoRun:       { type: String, default: null },
+    filters:           { type: Object, default: () => ({}) },
+    payrollRecipient:  { type: String, default: '' },
 });
 
 // ── Cut-off form ──────────────────────────────────────────────────────────────
@@ -326,6 +411,28 @@ function confirmDelete() {
     deleteTargetId.value = null;
 }
 
+// ── Send to Payroll ───────────────────────────────────────────────────────────
+
+const showSendModal = ref(false);
+const sendPeriod    = ref({ from: '', to: '' });
+const sendForm      = useForm({ from: '', to: '' });
+
+function openSendModal() {
+    const period = props.periods.find(p => p.from === filterPeriod.value);
+    if (!period) return;
+    sendPeriod.value = { from: period.from, to: period.to };
+    showSendModal.value = true;
+}
+
+function confirmSend() {
+    sendForm.from = sendPeriod.value.from;
+    sendForm.to   = sendPeriod.value.to;
+    sendForm.post(route('payroll.send'), {
+        preserveScroll: true,
+        onSuccess: () => { showSendModal.value = false; },
+    });
+}
+
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
 function formatDate(d) {
@@ -340,3 +447,8 @@ function formatDateTime(dt) {
     });
 }
 </script>
+
+<style scoped>
+.fade-enter-active, .fade-leave-active { transition: opacity 0.15s ease; }
+.fade-enter-from, .fade-leave-to { opacity: 0; }
+</style>
