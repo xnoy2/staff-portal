@@ -479,7 +479,8 @@ function liveDuration(clockInIso) {
     const secs = Math.max(0, Math.floor((now.value.getTime() - new Date(clockInIso).getTime()) / 1000));
     const h = Math.floor(secs / 3600);
     const m = Math.floor((secs % 3600) / 60);
-    return `${h}h ${String(m).padStart(2, '0')}m`;
+    const s = secs % 60;
+    return `${h}h ${String(m).padStart(2, '0')}m ${String(s).padStart(2, '0')}s`;
 }
 
 // State-based presentation
