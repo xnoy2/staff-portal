@@ -121,6 +121,30 @@ class AttendanceController extends Controller
         return back()->with('success', 'Clocked out. Duration: ' . $entry->duration_label);
     }
 
+    public function forceClockOut(Request $request, User $user): RedirectResponse
+    {
+        abort_if(! $request->user()->hasAnyRole(['admin', 'manager']), 403);
+
+        $entry = TimeEntry::active()->forUser($user->id)->first();
+
+        if (! $entry) {
+            return back()->with('error', "{$user->name} is not currently clocked in.");
+        }
+
+        // Close any open break first
+        $entry->breaks()->whereNull('ended_at')->each(fn ($b) => $b->end());
+
+        $entry->clock_out   = now();
+        $entry->clock_state = 'working';
+        $entry->notes       = 'Force clocked out by ' . $request->user()->name . ' at ' . now()->format('H:i');
+        $entry->calculateHours();
+        $entry->save();
+
+        broadcast(new AttendanceUpdated());
+
+        return back()->with('success', "{$user->name} has been clocked out successfully.");
+    }
+
     public function startBreak(Request $request): RedirectResponse
     {
         $request->validate(['type' => 'required|in:break,lunch']);

@@ -56,10 +56,11 @@
                         No staff currently clocked in.
                     </div>
                     <ul v-else class="space-y-2 max-h-72 overflow-y-auto">
-                        <li v-for="s in clockedInStaff" :key="s.id">
+                        <li v-for="s in clockedInStaff" :key="s.id" class="flex items-center gap-1.5">
+                            <!-- Row (link) -->
                             <Link
                                 :href="route('staff.show', s.id)"
-                                class="flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors"
+                                class="flex-1 flex items-center gap-3 p-2.5 rounded-lg bg-gray-50 hover:bg-gray-100 transition-colors min-w-0"
                             >
                                 <!-- Avatar + state dot -->
                                 <div class="relative flex-shrink-0">
@@ -95,6 +96,27 @@
                                     <p class="text-[11px] text-gray-400">since {{ s.since }}</p>
                                 </div>
                             </Link>
+
+                            <!-- Force clock-out: 2-step confirm -->
+                            <template v-if="forceOutTarget === s.id">
+                                <span class="text-[10px] text-red-600 font-semibold whitespace-nowrap">Sure?</span>
+                                <button
+                                    @click="confirmForceOut(s.id)"
+                                    class="text-[10px] bg-red-500 hover:bg-red-600 text-white px-2 py-1 rounded-lg font-semibold transition-colors whitespace-nowrap"
+                                >Yes</button>
+                                <button
+                                    @click="forceOutTarget = null"
+                                    class="text-[10px] text-gray-400 hover:text-gray-600 px-1"
+                                >No</button>
+                            </template>
+                            <button
+                                v-else
+                                @click="forceOutTarget = s.id"
+                                class="flex-shrink-0 p-1.5 rounded-lg text-gray-300 hover:text-red-500 hover:bg-red-50 transition-colors"
+                                title="Force clock out"
+                            >
+                                <ArrowRightOnRectangleIcon class="w-4 h-4" />
+                            </button>
                         </li>
                     </ul>
                 </div>
@@ -376,7 +398,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import Chart from 'primevue/chart';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import { PlayCircleIcon, StopCircleIcon, PauseCircleIcon } from '@heroicons/vue/24/solid';
-import { ClockIcon } from '@heroicons/vue/24/outline';
+import { ClockIcon, ArrowRightOnRectangleIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     isManager:        { type: Boolean, default: false },
@@ -561,6 +583,22 @@ function doStartBreak(type) {
 function doEndBreak() {
     breakLoading.value = true;
     router.post('/attendance/break/end', {}, { preserveScroll: true, onFinish: () => { breakLoading.value = false; } });
+}
+
+// ── Force clock-out (manager only) ───────────────────────────────────────────
+
+const forceOutTarget = ref(null);
+let forceOutTimeout  = null;
+
+watch(forceOutTarget, (val) => {
+    clearTimeout(forceOutTimeout);
+    if (val) forceOutTimeout = setTimeout(() => { forceOutTarget.value = null; }, 5000);
+});
+
+function confirmForceOut(userId) {
+    clearTimeout(forceOutTimeout);
+    forceOutTarget.value = null;
+    router.post(route('attendance.force-out', userId), {}, { preserveScroll: true });
 }
 
 // Manager: project chart
