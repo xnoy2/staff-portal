@@ -118,18 +118,37 @@
                 <div class="flex items-center justify-between mb-4">
                     <div>
                         <h2 class="text-sm font-semibold text-gray-800">Payroll Export</h2>
-                        <p class="text-xs text-gray-500 mt-0.5">Download approved shifts as a CSV with gross pay calculations.</p>
+                        <p class="text-xs text-gray-500 mt-0.5">Export approved payslips by payroll period as a CSV.</p>
                     </div>
                 </div>
-                <div class="grid grid-cols-1 sm:grid-cols-4 gap-3">
+
+                <!-- No approved periods yet -->
+                <div v-if="payrollPeriods.length === 0" class="flex items-center gap-3 bg-amber-50 border border-amber-200 rounded-xl px-4 py-3">
+                    <ExclamationTriangleIcon class="w-4 h-4 text-amber-500 flex-shrink-0" />
+                    <p class="text-xs text-amber-800">No approved payroll periods found. Generate and approve payslips on the Payroll page first.</p>
+                </div>
+
+                <div v-else class="grid grid-cols-1 sm:grid-cols-3 gap-3">
+                    <!-- Period dropdown -->
                     <div>
-                        <label class="block text-xs text-gray-500 mb-1">From</label>
-                        <input v-model="payroll.from" type="date" class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
+                        <label class="block text-xs text-gray-500 mb-1">Payroll Period</label>
+                        <select
+                            v-model="payroll.periodKey"
+                            @change="onPeriodChange"
+                            class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]"
+                        >
+                            <option value="">— Select period —</option>
+                            <option v-for="p in payrollPeriods" :key="p.from" :value="p.from">
+                                {{ p.label }}
+                            </option>
+                        </select>
+                        <!-- Selected range hint -->
+                        <p v-if="payroll.from && payroll.to" class="text-[10px] text-gray-400 mt-1 font-mono">
+                            {{ payroll.from }} → {{ payroll.to }}
+                        </p>
                     </div>
-                    <div>
-                        <label class="block text-xs text-gray-500 mb-1">To</label>
-                        <input v-model="payroll.to" type="date" class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
-                    </div>
+
+                    <!-- Staff Member -->
                     <div>
                         <label class="block text-xs text-gray-500 mb-1">Staff Member (optional)</label>
                         <select v-model="payroll.user_id" class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]">
@@ -137,6 +156,8 @@
                             <option v-for="s in staffList" :key="s.id" :value="s.id">{{ s.name }}</option>
                         </select>
                     </div>
+
+                    <!-- Export button -->
                     <div class="flex items-end">
                         <button
                             @click="downloadPayroll"
@@ -218,13 +239,14 @@
 import { reactive, computed } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ArrowDownTrayIcon } from '@heroicons/vue/24/outline';
+import { ArrowDownTrayIcon, ExclamationTriangleIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     attendanceSummary: { type: Array,  default: () => [] },
     leaveSummary:      { type: Array,  default: () => [] },
     totals:            { type: Object, required: true },
     staffList:         { type: Array,  default: () => [] },
+    payrollPeriods:    { type: Array,  default: () => [] },
     year:              { type: Number, required: true },
     month:             { type: String, default: '' },
     filters:           { type: Object, default: () => ({}) },
@@ -257,10 +279,18 @@ const periodLabel = computed(() => {
 });
 
 const payroll = reactive({
-    from:    '',
-    to:      '',
-    user_id: '',
+    periodKey: '',   // the period_from value used as dropdown key
+    from:      '',
+    to:        '',
+    user_id:   '',
 });
+
+// When a period is selected, populate from/to from the periods list
+function onPeriodChange() {
+    const period = props.payrollPeriods.find(p => p.from === payroll.periodKey);
+    payroll.from = period?.from ?? '';
+    payroll.to   = period?.to   ?? '';
+}
 
 function downloadPayroll() {
     const params = new URLSearchParams({ from: payroll.from, to: payroll.to });

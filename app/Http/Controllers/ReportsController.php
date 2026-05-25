@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\LeaveRequest;
+use App\Models\PayrollRun;
 use App\Models\TimeEntry;
 use App\Models\User;
 use Illuminate\Http\Request;
@@ -96,6 +97,18 @@ class ReportsController extends Controller
             'staff_count'    => $attendanceSummary->count(),
         ];
 
+        // ── Payroll periods (from approved runs) ─────────────────────────
+        $payrollPeriods = PayrollRun::select('period_from', 'period_to')
+            ->where('status', 'approved')
+            ->distinct()
+            ->orderBy('period_from', 'desc')
+            ->get()
+            ->map(fn ($r) => [
+                'from'  => $r->period_from->toDateString(),
+                'to'    => $r->period_to->toDateString(),
+                'label' => $r->period_from->format('d M') . ' – ' . $r->period_to->format('d M Y'),
+            ]);
+
         return Inertia::render('Reports/Index', [
             'attendanceSummary' => $attendanceSummary,
             'leaveSummary'      => $leaveSummary,
@@ -104,6 +117,7 @@ class ReportsController extends Controller
             'year'              => $year,
             'month'             => $month,
             'filters'           => $request->only(['year', 'month', 'user_id']),
+            'payrollPeriods'    => $payrollPeriods,
         ]);
     }
 }
