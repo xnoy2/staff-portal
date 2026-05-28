@@ -49,4 +49,8 @@ return [
         'api_key'  => env('BCF_API_KEY', 'bcf_d5674ecb733a7364e059d31eb650f00651bb5a085e6bf8531744bac930535b12'),
     ],
 
+    'payroll' => [
+        'recipient_email' => env('PAYROLL_RECIPIENT_EMAIL', 'ofaminjumerpaul07@gmail.com'),
+    ],
+
 ];

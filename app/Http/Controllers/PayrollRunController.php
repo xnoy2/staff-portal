@@ -83,8 +83,8 @@ class PayrollRunController extends Controller
             ->orderBy('period_from', 'desc')
             ->get()
             ->map(fn ($r) => [
-                'from' => $r->period_from,
-                'to'   => $r->period_to,
+                'from' => $r->period_from->toDateString(),
+                'to'   => $r->period_to->toDateString(),
             ]);
 
         $lastAutoRun = PayrollRun::whereNull('generated_by')
@@ -100,7 +100,7 @@ class PayrollRunController extends Controller
             'periodTotals'      => $periodTotals,
             'lastAutoRun'       => $lastAutoRun?->toDateTimeString(),
             'filters'           => $request->only(['from', 'status']),
-            'payrollRecipient'  => env('PAYROLL_RECIPIENT_EMAIL', 'ofaminjumerpaul07@gmail.com'),
+            'payrollRecipient'  => config('services.payroll.recipient_email'),
         ]);
     }
 
@@ -338,7 +338,7 @@ class PayrollRunController extends Controller
             return back()->with('error', 'No approved payslips found for this period. Approve all payslips first.');
         }
 
-        $recipient = env('PAYROLL_RECIPIENT_EMAIL', 'ofaminjumerpaul07@gmail.com');
+        $recipient = config('services.payroll.recipient_email');
 
         Mail::to($recipient)->send(new PayrollSummaryMail(
             runs:        $runs,
