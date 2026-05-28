@@ -34,10 +34,14 @@ class BgrController extends Controller
         // the BGR portal's session-based photo auth (Bearer tokens don't work there).
         $session = $this->captureBgrWebSession($request->email, $request->password);
 
-        auth()->user()->update([
+        $user = auth()->user();
+
+        $user->update([
             'bgr_token'   => $result['token'],
             'bgr_session' => $session,
         ]);
+
+        activity()->performedOn($user)->causedBy($user)->log('bgr_account_connected');
 
         $message = $session
             ? 'BGR account connected. Photos will load correctly.'
@@ -53,6 +57,7 @@ class BgrController extends Controller
         if ($user->bgr_token) {
             (new BgrApiService($user->bgr_token))->logout();
             $user->update(['bgr_token' => null, 'bgr_session' => null]);
+            activity()->performedOn($user)->causedBy($user)->log('bgr_account_disconnected');
         }
 
         return redirect()->route('bgr.index')->with('success', 'BGR account disconnected.');
@@ -84,9 +89,9 @@ class BgrController extends Controller
             } else {
                 $error = $response['message'] ?? 'Failed to load projects.';
                 if (str_contains($error, '401') || str_contains(strtolower($error), 'unauthenticated')) {
-                    $user->update(['bgr_token' => null]);
+                    $user->update(['bgr_token' => null, 'bgr_session' => null]);
                     $connected = false;
-                    $error     = null;
+                    $error     = 'Your BGR session has expired. Please reconnect your account below.';
                 }
             }
         }
@@ -293,8 +298,13 @@ class BgrController extends Controller
         $user = auth()->user();
         $this->requireConnected($user);
 
-        $url = $request->query('url');
-        abort_unless($url && str_starts_with($url, 'https://'), 403);
+        $url     = $request->query('url');
+        $bgrBase = rtrim(config('services.bgr.base_url'), '/');
+        abort_unless(
+            $url && str_starts_with($url, $bgrBase),
+            403,
+            'Invalid photo URL.'
+        );
 
         try {
             // Use web session cookie — BGR photo routes use session auth, not Bearer tokens.
