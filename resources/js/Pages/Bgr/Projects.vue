@@ -25,6 +25,15 @@
                 {{ error }}
             </div>
 
+            <!-- Photo session expired warning -->
+            <div v-if="connected && !has_session" class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                <ExclamationTriangleIcon class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div class="flex-1 text-sm text-amber-800">
+                    <span class="font-semibold">Photos unavailable.</span>
+                    Your BGR photo session has expired. Disconnect and reconnect your account to restore photo viewing.
+                </div>
+            </div>
+
             <!-- ── Not connected ── -->
             <div v-if="!connected" class="bg-white rounded-xl border border-gray-200 p-8 max-w-md mx-auto text-center space-y-5">
                 <div class="w-14 h-14 bg-[#EF233C]/10 rounded-full flex items-center justify-center mx-auto">
@@ -182,7 +191,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
 import {
     BuildingStorefrontIcon, LinkSlashIcon, MapPinIcon,
-    ChevronRightIcon, MagnifyingGlassIcon,
+    ChevronRightIcon, MagnifyingGlassIcon, ExclamationTriangleIcon,
 } from '@heroicons/vue/24/outline';
 
 const STATUS_CLASSES = {
@@ -205,11 +214,12 @@ const StatusBadge = {
 };
 
 const props = defineProps({
-    connected: { type: Boolean, default: false },
-    projects:  { type: Array,   default: () => [] },
-    meta:      { type: Object,  default: null },
-    filters:   { type: Object,  default: () => ({}) },
-    error:     { type: String,  default: null },
+    connected:   { type: Boolean, default: false },
+    has_session: { type: Boolean, default: true },
+    projects:    { type: Array,   default: () => [] },
+    meta:        { type: Object,  default: null },
+    filters:     { type: Object,  default: () => ({}) },
+    error:       { type: String,  default: null },
 });
 
 // ── Connect ───────────────────────────────────────────────────────────────────

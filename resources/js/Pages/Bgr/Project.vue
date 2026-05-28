@@ -43,6 +43,17 @@
                 </div>
             </div>
 
+            <!-- Photo session expired warning -->
+            <div v-if="!has_session" class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
+                <ExclamationTriangleIcon class="w-4 h-4 text-amber-500 flex-shrink-0 mt-0.5" />
+                <div class="text-sm text-amber-800">
+                    <span class="font-semibold">Photos unavailable.</span>
+                    Your BGR photo session has expired. Go to
+                    <Link :href="route('bgr.index')" class="underline font-medium">Client Projects</Link>
+                    and reconnect your account to restore photo viewing.
+                </div>
+            </div>
+
             <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
 
                 <!-- ── Stages + Tasks ── -->
@@ -339,6 +350,7 @@ import BaseModal from '@/Components/BaseModal.vue';
 import {
     ArrowLeftIcon, MapPinIcon, ChevronDownIcon, CheckIcon,
     PencilSquareIcon, PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon,
+    ExclamationTriangleIcon,
 } from '@heroicons/vue/24/outline';
 
 const STATUS_CLASSES = {
@@ -358,8 +370,9 @@ const StatusBadge = {
 };
 
 const props = defineProps({
-    project: { type: Object, required: true },
-    updates: { type: Array,  default: () => [] },
+    project:     { type: Object,  required: true },
+    updates:     { type: Array,   default: () => [] },
+    has_session: { type: Boolean, default: true },
 });
 
 // ── Stage accordion ───────────────────────────────────────────────────────────

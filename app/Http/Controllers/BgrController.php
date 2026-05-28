@@ -97,14 +97,15 @@ class BgrController extends Controller
         }
 
         return Inertia::render('Bgr/Projects', [
-            'connected' => $connected,
-            'projects'  => $projects,
-            'meta'      => $meta,
-            'filters'   => [
+            'connected'   => $connected,
+            'has_session' => $connected && (bool) $user->bgr_session,
+            'projects'    => $projects,
+            'meta'        => $meta,
+            'filters'     => [
                 'status' => $request->get('status', ''),
                 'search' => $request->get('search', ''),
             ],
-            'error'     => $error,
+            'error'       => $error,
         ]);
     }
 
@@ -160,6 +161,7 @@ class BgrController extends Controller
             'project'     => $project,
             'updates'     => $updatesResponse['data'] ?? [],
             'updatesMeta' => $updatesResponse['meta'] ?? null,
+            'has_session' => (bool) $user->bgr_session,
         ]);
     }
 
@@ -327,6 +329,7 @@ class BgrController extends Controller
 
             // BGR returned an HTML page — session has expired or is invalid.
             if (str_starts_with($contentType, 'text/')) {
+                $user->update(['bgr_session' => null]);
                 abort(404);
             }
 
