@@ -300,8 +300,9 @@ class BgrController extends Controller
         $user = auth()->user();
         $this->requireConnected($user);
 
-        $url     = $request->query('url');
-        $bgrBase = rtrim(config('services.bgr.base_url'), '/');
+        $url      = $request->query('url');
+        $download = (bool) $request->query('download', false);
+        $bgrBase  = rtrim(config('services.bgr.base_url'), '/');
         abort_unless(
             $url && str_starts_with($url, $bgrBase),
             403,
@@ -309,39 +310,55 @@ class BgrController extends Controller
         );
 
         try {
-            // Use web session cookie — BGR photo routes use session auth, not Bearer tokens.
-            // Fall back to Bearer if no session is stored.
-            $headers = ['Accept' => 'image/*,*/*'];
+            // Try session cookie first (BGR web routes), then Bearer token as fallback.
+            $authSets = [];
             if ($user->bgr_session) {
-                $headers['Cookie'] = $user->bgr_session;
-            } else {
-                $headers['Authorization'] = 'Bearer ' . $user->bgr_token;
+                $authSets[] = ['Cookie' => $user->bgr_session];
+            }
+            if ($user->bgr_token) {
+                $authSets[] = ['Authorization' => 'Bearer ' . $user->bgr_token];
             }
 
-            $bgrResponse = Http::withHeaders($headers)->timeout(20)->get($url);
+            $bgrResponse = null;
+            $contentType = null;
 
-            if (! $bgrResponse->successful()) {
-                abort(404);
+            foreach ($authSets as $auth) {
+                $resp = Http::withHeaders(array_merge(['Accept' => '*/*'], $auth))->timeout(20)->get($url);
+                if (! $resp->successful()) {
+                    continue;
+                }
+                $ct = trim(explode(';', $resp->header('Content-Type') ?? '')[0]) ?: 'application/octet-stream';
+                if (str_starts_with($ct, 'text/')) {
+                    continue; // HTML = auth failed / session expired
+                }
+                $bgrResponse = $resp;
+                $contentType = $ct;
+                break;
             }
 
-            $contentType = $bgrResponse->header('Content-Type') ?? 'image/jpeg';
-            $contentType = trim(explode(';', $contentType)[0]) ?: 'image/jpeg';
-
-            // BGR returned an HTML page — session has expired or is invalid.
-            if (str_starts_with($contentType, 'text/')) {
+            if (! $bgrResponse) {
                 $user->update(['bgr_session' => null]);
                 abort(404);
             }
 
-            $body = $bgrResponse->body();
+            $body    = $bgrResponse->body();
+            $isImage = str_starts_with($contentType, 'image/');
+            $isPdf   = $contentType === 'application/pdf';
 
-            return response()->stream(function () use ($body) {
-                echo $body;
-            }, 200, [
+            $responseHeaders = [
                 'Content-Type'   => $contentType,
                 'Content-Length' => strlen($body),
                 'Cache-Control'  => 'private, max-age=3600',
-            ]);
+            ];
+
+            if ($download || ! $isImage) {
+                // Force download when requested; PDFs open inline otherwise; docs download.
+                $responseHeaders['Content-Disposition'] = ($download || ! $isPdf) ? 'attachment' : 'inline';
+            }
+
+            return response()->stream(function () use ($body) {
+                echo $body;
+            }, 200, $responseHeaders);
         } catch (\Throwable) {
             abort(502);
         }

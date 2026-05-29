@@ -128,20 +128,22 @@
                                     </p>
                                     <!-- Note preview -->
                                     <p v-if="task.note" class="text-xs text-gray-400 mt-0.5 line-clamp-1">{{ task.note }}</p>
-                                    <!-- Photos -->
+                                    <!-- Photos / files -->
                                     <div v-if="task.photos && task.photos.length > 0" class="flex gap-1.5 mt-1.5 flex-wrap">
                                         <button
                                             v-for="(photo, i) in task.photos"
                                             :key="i"
-                                            @click="openPhoto(photo)"
-                                            class="w-10 h-10 rounded-md overflow-hidden border border-gray-200 bg-gray-100 hover:border-[#EF233C] transition-colors"
+                                            @click="openFile(photo)"
+                                            class="w-10 h-10 rounded-md overflow-hidden border border-gray-200 bg-gray-100 hover:border-[#EF233C] transition-colors flex items-center justify-center"
                                         >
                                             <img
+                                                v-if="!failedImages.has(proxyUrl(photo))"
                                                 :src="proxyUrl(photo)"
                                                 class="w-full h-full object-cover"
                                                 loading="lazy"
-                                                @error="$event.target.style.display='none'"
+                                                @error="markImageFailed(proxyUrl(photo))"
                                             />
+                                            <DocumentIcon v-else class="w-5 h-5 text-gray-400" />
                                         </button>
                                     </div>
                                 </div>
@@ -227,10 +229,17 @@
                             <button
                                 v-for="(photo, i) in update.photos"
                                 :key="i"
-                                @click="openPhoto(photo)"
-                                class="w-12 h-12 rounded-md overflow-hidden border border-gray-200 bg-gray-100"
+                                @click="openFile(photo)"
+                                class="w-12 h-12 rounded-md overflow-hidden border border-gray-200 bg-gray-100 flex items-center justify-center"
                             >
-                                <img :src="proxyUrl(photo)" class="w-full h-full object-cover" loading="lazy" @error="$event.target.style.display='none'" />
+                                <img
+                                    v-if="!failedImages.has(proxyUrl(photo))"
+                                    :src="proxyUrl(photo)"
+                                    class="w-full h-full object-cover"
+                                    loading="lazy"
+                                    @error="markImageFailed(proxyUrl(photo))"
+                                />
+                                <DocumentIcon v-else class="w-5 h-5 text-gray-400" />
                             </button>
                         </div>
                         <div class="flex items-center justify-between text-[10px] text-gray-400 pt-1">
@@ -326,14 +335,55 @@
             </div>
         </BaseModal>
 
-        <!-- Photo lightbox -->
+        <!-- Photo / file lightbox -->
         <Transition name="fade">
-            <div v-if="lightboxUrl" class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" @click="lightboxUrl = null">
-                <img :src="lightboxUrl" class="max-w-full max-h-full rounded-lg object-contain" referrerpolicy="no-referrer" @click.stop />
-                <a :href="lightboxUrl" target="_blank" rel="noopener" class="absolute top-4 right-16 text-white p-2 rounded-full bg-black/50 hover:bg-black/70" title="Open in BGR portal">
+            <div v-if="lightbox" class="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4" @click.self="lightbox = null">
+
+                <!-- Image view -->
+                <img
+                    v-if="!lightbox.isFile"
+                    :src="lightbox.url"
+                    class="max-w-full max-h-full rounded-lg object-contain"
+                    @error="onLightboxImgError"
+                    @click.stop
+                />
+
+                <!-- Document / non-image view -->
+                <div v-else class="bg-white rounded-2xl p-8 max-w-xs w-full text-center space-y-4" @click.stop>
+                    <div class="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto">
+                        <DocumentIcon class="w-8 h-8 text-gray-400" />
+                    </div>
+                    <p class="text-sm text-gray-500">This file cannot be previewed.<br>Open or download it below.</p>
+                    <div class="flex gap-2 justify-center">
+                        <a
+                            :href="lightbox.url"
+                            target="_blank"
+                            rel="noopener"
+                            class="flex items-center gap-1.5 text-sm font-semibold bg-[#EF233C] hover:bg-[#D90429] text-white px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <ArrowTopRightOnSquareIcon class="w-4 h-4" /> Open
+                        </a>
+                        <a
+                            :href="lightbox.url + '&download=1'"
+                            class="flex items-center gap-1.5 text-sm font-semibold bg-gray-100 hover:bg-gray-200 text-gray-700 px-4 py-2 rounded-lg transition-colors"
+                        >
+                            <ArrowDownTrayIcon class="w-4 h-4" /> Download
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Controls -->
+                <a
+                    v-if="!lightbox.isFile"
+                    :href="lightbox.url"
+                    target="_blank"
+                    rel="noopener"
+                    class="absolute top-4 right-16 text-white p-2 rounded-full bg-black/50 hover:bg-black/70"
+                    title="Open full size"
+                >
                     <ArrowTopRightOnSquareIcon class="w-5 h-5" />
                 </a>
-                <button @click="lightboxUrl = null" class="absolute top-4 right-4 text-white p-2 rounded-full bg-black/50 hover:bg-black/70">
+                <button @click="lightbox = null" class="absolute top-4 right-4 text-white p-2 rounded-full bg-black/50 hover:bg-black/70">
                     <XMarkIcon class="w-5 h-5" />
                 </button>
             </div>
@@ -350,7 +400,7 @@ import BaseModal from '@/Components/BaseModal.vue';
 import {
     ArrowLeftIcon, MapPinIcon, ChevronDownIcon, CheckIcon,
     PencilSquareIcon, PlusIcon, XMarkIcon, ArrowTopRightOnSquareIcon,
-    ExclamationTriangleIcon,
+    ExclamationTriangleIcon, DocumentIcon, ArrowDownTrayIcon,
 } from '@heroicons/vue/24/outline';
 
 const STATUS_CLASSES = {
@@ -501,14 +551,27 @@ function submitUpdate() {
 
 // ── Photo proxy + lightbox ────────────────────────────────────────────────────
 
-const lightboxUrl = ref(null);
+// URLs that failed to load as <img> (PDFs, docs, or expired session).
+const failedImages = ref(new Set());
 
 function proxyUrl(originalUrl) {
     return route('bgr.photo') + '?url=' + encodeURIComponent(originalUrl);
 }
 
-function openPhoto(originalUrl) {
-    lightboxUrl.value = proxyUrl(originalUrl);
+function markImageFailed(url) {
+    failedImages.value = new Set([...failedImages.value, url]);
+}
+
+// lightbox: { url, isFile } — isFile flips to true when <img> fails inside lightbox
+const lightbox = ref(null);
+
+function openFile(originalUrl) {
+    const url = proxyUrl(originalUrl);
+    lightbox.value = { url, isFile: failedImages.value.has(url) };
+}
+
+function onLightboxImgError() {
+    if (lightbox.value) lightbox.value = { ...lightbox.value, isFile: true };
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
