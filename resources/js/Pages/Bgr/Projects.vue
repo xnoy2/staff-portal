@@ -7,7 +7,7 @@
                 <div>
                     <h1 class="text-lg font-semibold text-gray-800">Client Projects</h1>
                     <p class="text-xs text-gray-500 mt-0.5">
-                        <template v-if="connected">{{ displayedProjects.length }} project{{ displayedProjects.length !== 1 ? 's' : '' }} assigned to you</template>
+                        <template v-if="connected">{{ projects.length }} project{{ projects.length !== 1 ? 's' : '' }} assigned to you</template>
                         <template v-else>Connect your BGR account to view your assigned projects</template>
                     </p>
                 </div>
@@ -94,8 +94,7 @@
                     @change="applyFilters"
                     class="rounded-lg border-gray-200 text-sm focus:ring-[#EF233C] focus:border-[#EF233C]"
                 >
-                    <option value="">Open projects</option>
-                    <option value="all">All statuses</option>
+                    <option value="">All statuses</option>
                     <option value="pending">Pending</option>
                     <option value="active">Active</option>
                     <option value="on_hold">On Hold</option>
@@ -105,7 +104,7 @@
             </div>
 
             <!-- ── Project grid ── -->
-            <div v-if="connected && displayedProjects.length === 0" class="bg-white rounded-xl border border-dashed border-gray-300 py-20 text-center">
+            <div v-if="connected && projects.length === 0" class="bg-white rounded-xl border border-dashed border-gray-300 py-20 text-center">
                 <BuildingStorefrontIcon class="w-12 h-12 text-gray-300 mx-auto mb-3" />
                 <p class="text-gray-600 font-medium">No projects found</p>
                 <p class="text-sm text-gray-400 mt-1">You have no assigned projects matching your filters.</p>
@@ -113,7 +112,7 @@
 
             <div v-else-if="connected" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
                 <Link
-                    v-for="project in displayedProjects"
+                    v-for="project in projects"
                     :key="project.id"
                     :href="route('bgr.show', project.id)"
                     class="bg-white rounded-xl border border-gray-200 p-5 flex flex-col gap-3 hover:shadow-md transition-shadow"
@@ -186,7 +185,7 @@
 </template>
 
 <script setup>
-import { ref, computed } from 'vue';
+import { ref } from 'vue';
 import { useForm, router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
@@ -242,16 +241,6 @@ function submitDisconnect() {
 const search       = ref(props.filters.search ?? '');
 const statusFilter = ref(props.filters.status ?? '');
 
-// Default view hides completed/cancelled (matches BGR portal behaviour).
-// Selecting 'all' shows every project including closed ones.
-const CLOSED_STATUSES = ['completed', 'cancelled'];
-const displayedProjects = computed(() => {
-    if (statusFilter.value === '') {
-        return props.projects.filter(p => !CLOSED_STATUSES.includes(p.status));
-    }
-    return props.projects;
-});
-
 let debounceTimer = null;
 
 function applyFilters() {
@@ -259,8 +248,7 @@ function applyFilters() {
     debounceTimer = setTimeout(() => {
         router.get(route('bgr.index'), {
             search: search.value || undefined,
-            // 'all' keeps no status param on the server — just shows everything client-side
-            status: (statusFilter.value && statusFilter.value !== 'all') ? statusFilter.value : undefined,
+            status: statusFilter.value || undefined,
         }, { preserveState: true, replace: true });
     }, 300);
 }
