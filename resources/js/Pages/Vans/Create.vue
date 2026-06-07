@@ -13,6 +13,7 @@
             <form @submit.prevent="submit">
                 <VanForm :form="form" submit-label="Add Van" />
             </form>
+
         </div>
     </AppLayout>
 </template>
@@ -28,9 +29,11 @@ const form = useForm({
     model:        '',
     year:         null,
     notes:        '',
+    photo:        null,
+    remove_photo: false,
 });
 
 function submit() {
-    form.post(route('vans.store'));
+    form.post(route('vans.store'), { forceFormData: true });
 }
 </script>

@@ -5,8 +5,9 @@
             <!-- Header card -->
             <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
                 <div class="flex items-start gap-5 flex-wrap">
-                    <div class="w-16 h-16 rounded-2xl bg-[#2B2D42] flex items-center justify-center flex-shrink-0">
-                        <TruckIcon class="w-8 h-8 text-white" />
+                    <div class="w-16 h-16 rounded-2xl overflow-hidden flex-shrink-0 bg-[#2B2D42] flex items-center justify-center">
+                        <img v-if="van.photo_url" :src="van.photo_url" :alt="van.registration" class="w-full h-full object-cover" />
+                        <TruckIcon v-else class="w-8 h-8 text-white" />
                     </div>
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">

@@ -7,14 +7,36 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use Illuminate\Support\Facades\Storage;
 
 class Van extends Model
 {
     use HasUuids, SoftDeletes;
 
-    protected $fillable = ['registration', 'make', 'model', 'year', 'is_active', 'notes'];
+    protected $fillable = ['registration', 'make', 'model', 'year', 'is_active', 'notes', 'photo'];
 
     protected $casts = ['is_active' => 'boolean'];
+
+    protected $appends = ['photo_url'];
+
+    public function getPhotoUrlAttribute(): ?string
+    {
+        if (! $this->photo) return null;
+
+        try {
+            $publicUrl = config('filesystems.disks.r2.url');
+            if ($publicUrl) {
+                return rtrim($publicUrl, '/') . '/' . $this->photo;
+            }
+            return Storage::disk('r2')->temporaryUrl($this->photo, now()->addWeek());
+        } catch (\Throwable) {}
+
+        if (Storage::disk('public')->exists($this->photo)) {
+            return Storage::disk('public')->url($this->photo);
+        }
+
+        return null;
+    }
 
     public function projects(): HasMany
     {

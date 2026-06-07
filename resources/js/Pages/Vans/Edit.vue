@@ -11,7 +11,7 @@
                 </Link>
             </div>
             <form @submit.prevent="submit">
-                <VanForm :form="form" submit-label="Save Changes" />
+                <VanForm :form="form" submit-label="Save Changes" :current-photo-url="van.photo_url" />
             </form>
         </div>
     </AppLayout>
@@ -32,9 +32,11 @@ const form = useForm({
     model:        props.van.model,
     year:         props.van.year ?? null,
     notes:        props.van.notes ?? '',
+    photo:        null,
+    remove_photo: false,
 });
 
 function submit() {
-    form.put(route('vans.update', props.van.id));
+    form.put(route('vans.update', props.van.id), { forceFormData: true });
 }
 </script>

@@ -1,5 +1,49 @@
 <template>
     <div class="space-y-5">
+        <!-- Photo Upload -->
+        <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+            <h2 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
+                <CameraIcon class="w-4 h-4 text-[#EF233C]" /> Van Photo
+            </h2>
+
+            <div class="flex items-start gap-5">
+                <!-- Preview -->
+                <div class="flex-shrink-0 w-28 h-28 rounded-xl overflow-hidden bg-gray-100 border border-gray-200 flex items-center justify-center">
+                    <img v-if="previewUrl" :src="previewUrl" class="w-full h-full object-cover" alt="Van photo" />
+                    <TruckIcon v-else class="w-10 h-10 text-gray-300" />
+                </div>
+
+                <!-- Controls -->
+                <div class="flex-1 space-y-2">
+                    <label
+                        for="van-photo-input"
+                        class="inline-flex items-center gap-2 cursor-pointer text-sm font-medium px-4 py-2 border border-gray-300 rounded-lg hover:bg-gray-50 transition-colors text-gray-700"
+                    >
+                        <ArrowUpTrayIcon class="w-4 h-4" />
+                        {{ previewUrl ? 'Change Photo' : 'Upload Photo' }}
+                    </label>
+                    <input
+                        id="van-photo-input"
+                        type="file"
+                        accept="image/*"
+                        class="sr-only"
+                        @change="onPhotoChange"
+                    />
+                    <p class="text-xs text-gray-400">JPEG, PNG, WEBP — max 5 MB</p>
+                    <p v-if="form.errors.photo" class="text-xs text-red-500">{{ form.errors.photo }}</p>
+
+                    <button
+                        v-if="previewUrl"
+                        type="button"
+                        @click="removePhoto"
+                        class="flex items-center gap-1.5 text-xs text-red-500 hover:text-red-700 transition-colors"
+                    >
+                        <XMarkIcon class="w-3.5 h-3.5" /> Remove photo
+                    </button>
+                </div>
+            </div>
+        </div>
+
         <!-- Basic Details -->
         <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
             <h2 class="text-sm font-semibold text-gray-700 mb-4 flex items-center gap-2">
@@ -106,13 +150,32 @@
 </template>
 
 <script setup>
+import { ref, watch } from 'vue';
 import { Link } from '@inertiajs/vue3';
-import { TruckIcon, ClipboardDocumentListIcon } from '@heroicons/vue/24/outline';
+import { TruckIcon, ClipboardDocumentListIcon, CameraIcon, ArrowUpTrayIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
-defineProps({
-    form:        { type: Object, required: true },
-    submitLabel: { type: String, default: 'Save' },
+const props = defineProps({
+    form:            { type: Object, required: true },
+    submitLabel:     { type: String, default: 'Save' },
+    currentPhotoUrl: { type: String, default: null },
 });
 
 const currentYear = new Date().getFullYear();
+
+// Preview URL — initialised from existing photo, updated on new file selection
+const previewUrl = ref(props.currentPhotoUrl ?? null);
+
+function onPhotoChange(e) {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    props.form.photo = file;
+    props.form.remove_photo = false;
+    previewUrl.value = URL.createObjectURL(file);
+}
+
+function removePhoto() {
+    props.form.photo = null;
+    props.form.remove_photo = true;
+    previewUrl.value = null;
+}
 </script>

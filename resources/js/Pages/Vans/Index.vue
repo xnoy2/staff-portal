@@ -70,8 +70,9 @@
                         >
                             <td class="px-5 py-3.5">
                                 <div class="flex items-center gap-3">
-                                    <div class="w-9 h-9 rounded-xl bg-[#2B2D42] flex items-center justify-center flex-shrink-0">
-                                        <TruckIcon class="w-4 h-4 text-white" />
+                                    <div class="w-9 h-9 rounded-xl overflow-hidden flex-shrink-0 bg-[#2B2D42] flex items-center justify-center">
+                                        <img v-if="van.photo_url" :src="van.photo_url" :alt="van.registration" class="w-full h-full object-cover" />
+                                        <TruckIcon v-else class="w-4 h-4 text-white" />
                                     </div>
                                     <span class="font-bold text-gray-800 tracking-wide">{{ van.registration }}</span>
                                 </div>

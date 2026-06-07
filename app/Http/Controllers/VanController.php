@@ -11,6 +11,7 @@ use App\Models\VanAssignment;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -64,7 +65,12 @@ class VanController extends Controller
             'model'        => ['required', 'string', 'max:100'],
             'year'         => ['nullable', 'integer', 'min:1990', 'max:' . (date('Y') + 1)],
             'notes'        => ['nullable', 'string', 'max:2000'],
+            'photo'        => ['nullable', 'image', 'max:5120'],
         ]);
+
+        if ($request->hasFile('photo')) {
+            $data['photo'] = $request->file('photo')->store('vans', $this->photoDisk());
+        }
 
         $van = Van::create([...$data, 'is_active' => true]);
 
@@ -175,7 +181,21 @@ class VanController extends Controller
             'model'        => ['required', 'string', 'max:100'],
             'year'         => ['nullable', 'integer', 'min:1990', 'max:' . (date('Y') + 1)],
             'notes'        => ['nullable', 'string', 'max:2000'],
+            'photo'        => ['nullable', 'image', 'max:5120'],
+            'remove_photo' => ['nullable', 'boolean'],
         ]);
+
+        if ($request->hasFile('photo')) {
+            if ($van->photo) {
+                Storage::disk($this->photoDisk())->delete($van->photo);
+            }
+            $data['photo'] = $request->file('photo')->store('vans', $this->photoDisk());
+        } elseif ($request->boolean('remove_photo')) {
+            if ($van->photo) {
+                Storage::disk($this->photoDisk())->delete($van->photo);
+            }
+            $data['photo'] = null;
+        }
 
         $van->update($data);
 
@@ -248,6 +268,11 @@ class VanController extends Controller
 
     // ── Helpers ───────────────────────────────────────────────────────
 
+    private function photoDisk(): string
+    {
+        return config('filesystems.disks.r2.bucket') ? 'r2' : 'public';
+    }
+
     private function summarise(Van $van): array
     {
         $ca = $van->relationLoaded('currentAssignment') ? $van->currentAssignment : null;
@@ -261,6 +286,7 @@ class VanController extends Controller
             'is_active'      => $van->is_active,
             'projects_count' => $van->projects_count ?? 0,
             'display_name'   => $van->display_name,
+            'photo_url'      => $van->photo_url,
             'current_driver' => $ca && $ca->user ? [
                 'id'         => $ca->user->id,
                 'name'       => $ca->user->name,
@@ -293,7 +319,8 @@ class VanController extends Controller
     {
         return [
             ...$this->summarise($van),
-            'notes'    => $van->notes,
+            'notes'     => $van->notes,
+            'has_photo' => (bool) $van->photo,
             'projects' => $projects ? $projects->map(fn ($p) => [
                 'id'       => $p->id,
                 'name'     => $p->name,
