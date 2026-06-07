@@ -12,8 +12,8 @@ class BcfApiService
 
     public function __construct()
     {
-        $this->base   = rtrim(config('services.bcf.base_url'), '/');
-        $this->apiKey = config('services.bcf.api_key');
+        $this->base   = rtrim(config('services.bcf.base_url', ''), '/');
+        $this->apiKey = (string) config('services.bcf.api_key', '');
     }
 
     public function getOrders(): array

@@ -22,6 +22,11 @@
                 </div>
             </div>
 
+            <!-- API error -->
+            <div v-if="error" class="bg-red-50 border border-red-200 rounded-xl px-4 py-3 text-sm text-red-700">
+                {{ error }}
+            </div>
+
             <!-- Not linked warning (non-admin without a BCF worker link) -->
             <div v-if="!isPrivileged && !linked" class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
                 <span class="text-lg flex-shrink-0">⚠️</span>
@@ -96,6 +101,7 @@ const props = defineProps({
     orders:       { type: Array,   default: () => [] },
     isPrivileged: { type: Boolean, default: false },
     linked:       { type: Boolean, default: false },
+    error:        { type: String,  default: null },
 });
 
 const search = ref('');

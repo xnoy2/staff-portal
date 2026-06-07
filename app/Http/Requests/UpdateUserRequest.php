@@ -29,6 +29,7 @@ class UpdateUserRequest extends FormRequest
             'certifications.*'        => ['string', 'max:100'],
             'notes'                   => ['nullable', 'string', 'max:2000'],
             'avatar'                  => ['nullable', 'image', 'max:2048'],
+            'bcf_worker_id'           => ['nullable', 'string', 'max:255'],
         ];
     }
 }

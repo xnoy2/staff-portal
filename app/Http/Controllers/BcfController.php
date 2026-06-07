@@ -14,33 +14,46 @@ class BcfController extends Controller
 {
     public function index(): Response
     {
-        $user    = auth()->user();
-        $service = new BcfApiService();
-        $raw     = $service->getOrders();
-        $all     = $raw['orders'] ?? [];
-
+        $user         = auth()->user();
         $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'hr']);
+        $error        = null;
+        $orders       = [];
 
-        if ($isPrivileged || ! $user->bcf_worker_id) {
-            $orders = $all;
-        } else {
-            $orders = array_values(array_filter(
-                $all,
-                fn ($o) => ($o['worker']['id'] ?? null) === $user->bcf_worker_id
-            ));
+        try {
+            $raw  = (new BcfApiService())->getOrders();
+            $all  = $raw['orders'] ?? [];
+
+            if ($isPrivileged || ! $user->bcf_worker_id) {
+                $orders = $all;
+            } else {
+                // Cast both sides to string — BCF API may return integer IDs
+                $workerId = (string) $user->bcf_worker_id;
+                $orders   = array_values(array_filter(
+                    $all,
+                    fn ($o) => (string) ($o['worker']['id'] ?? '') === $workerId
+                ));
+            }
+        } catch (\Throwable $e) {
+            \Log::error('BCF API error (index): ' . $e->getMessage());
+            $error = 'Could not reach the BCF system. Please try again shortly.';
         }
 
         return Inertia::render('Bcf/Orders', [
             'orders'       => $orders,
             'isPrivileged' => $isPrivileged,
             'linked'       => (bool) $user->bcf_worker_id,
+            'error'        => $error,
         ]);
     }
 
     public function show(string $id): Response|RedirectResponse
     {
-        $service = new BcfApiService();
-        $raw     = $service->getOrder($id);
+        try {
+            $raw = (new BcfApiService())->getOrder($id);
+        } catch (\Throwable $e) {
+            \Log::error('BCF API error (show): ' . $e->getMessage());
+            return redirect()->route('bcf.index')->with('error', 'Could not reach the BCF system. Please try again shortly.');
+        }
 
         if (empty($raw) || empty($raw['order'])) {
             return redirect()->route('bcf.index')->with('error', 'Order not found.');
@@ -85,7 +98,12 @@ class BcfController extends Controller
 
     public function stagesForOrder(string $id): JsonResponse
     {
-        $raw    = (new BcfApiService())->getOrder($id);
+        try {
+            $raw = (new BcfApiService())->getOrder($id);
+        } catch (\Throwable $e) {
+            \Log::error('BCF API error (stagesForOrder): ' . $e->getMessage());
+            return response()->json([], 502);
+        }
         $stages = $raw['stages'] ?? [];
 
         return response()->json(
