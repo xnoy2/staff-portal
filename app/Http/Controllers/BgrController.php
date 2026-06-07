@@ -325,13 +325,13 @@ class BgrController extends Controller
             foreach ($authSets as $auth) {
                 $authMethod = isset($auth['Cookie']) ? 'session-cookie' : 'bearer-token';
                 $resp = Http::withHeaders(array_merge(['Accept' => '*/*'], $auth))->timeout(20)->get($url);
-                \Log::info("BGR photo proxy [{$authMethod}]: status=" . $resp->status() . ' url=' . $url);
+                \Log::debug("BGR photo proxy [{$authMethod}]: status=" . $resp->status() . ' url=' . $url);
                 if (! $resp->successful()) {
                     continue;
                 }
                 $ct = trim(explode(';', $resp->header('Content-Type') ?? '')[0]) ?: 'application/octet-stream';
                 if (str_starts_with($ct, 'text/')) {
-                    \Log::warning("BGR photo proxy [{$authMethod}]: got text/html — auth likely failed, content-type={$ct}");
+                    \Log::debug("BGR photo proxy [{$authMethod}]: got text/html — auth likely failed, content-type={$ct}");
                     continue;
                 }
                 $bgrResponse = $resp;
@@ -468,7 +468,7 @@ class BgrController extends Controller
                 $client->get($base . '/sanctum/csrf-cookie');
                 $xsrfCookie = $jar->getCookieByName('XSRF-TOKEN');
 
-                \Log::info('BGR session [A]: sanctum csrf-cookie response, XSRF present=' . ($xsrfCookie ? 'yes' : 'no'));
+                \Log::debug('BGR session [A]: sanctum csrf-cookie response, XSRF present=' . ($xsrfCookie ? 'yes' : 'no'));
 
                 if ($xsrfCookie) {
                     $xsrfToken = urldecode($xsrfCookie->getValue());
@@ -483,16 +483,16 @@ class BgrController extends Controller
                         ],
                     ]);
 
-                    \Log::info('BGR session [A]: cookies after POST=' . json_encode(array_column($jar->toArray(), 'Name')));
+                    \Log::debug('BGR session [A]: cookies after POST=' . json_encode(array_column($jar->toArray(), 'Name')));
 
                     $session = $this->extractSessionCookie($jar);
                     if ($session) {
-                        \Log::info('BGR session [A]: SUCCESS');
+                        \Log::debug('BGR session [A]: SUCCESS');
                         return $session;
                     }
                 }
             } catch (\Throwable $e) {
-                \Log::warning('BGR session [A] failed: ' . $e->getMessage());
+                \Log::debug('BGR session [A] failed: ' . $e->getMessage());
             }
 
             // ── Approach B: Traditional Laravel form POST ─────────────────────────────
@@ -501,7 +501,7 @@ class BgrController extends Controller
             try {
                 $loginHtml = (string) $client->get($base . '/login')->getBody();
 
-                \Log::info('BGR session [B]: cookies after GET /login=' . json_encode(array_column($jar->toArray(), 'Name')));
+                \Log::debug('BGR session [B]: cookies after GET /login=' . json_encode(array_column($jar->toArray(), 'Name')));
 
                 $csrfToken = null;
 
@@ -524,7 +524,7 @@ class BgrController extends Controller
                     }
                 }
 
-                \Log::info('BGR session [B]: csrf token found=' . ($csrfToken ? 'yes (len ' . strlen($csrfToken) . ')' : 'no'));
+                \Log::debug('BGR session [B]: csrf token found=' . ($csrfToken ? 'yes (len ' . strlen($csrfToken) . ')' : 'no'));
 
                 if ($csrfToken) {
                     $client->post($base . '/login', [
@@ -532,19 +532,19 @@ class BgrController extends Controller
                         'headers'     => ['Referer' => $base . '/login', 'Origin' => $base],
                     ]);
 
-                    \Log::info('BGR session [B]: cookies after POST=' . json_encode(array_column($jar->toArray(), 'Name')));
+                    \Log::debug('BGR session [B]: cookies after POST=' . json_encode(array_column($jar->toArray(), 'Name')));
 
                     $session = $this->extractSessionCookie($jar);
                     if ($session) {
-                        \Log::info('BGR session [B]: SUCCESS');
+                        \Log::debug('BGR session [B]: SUCCESS');
                         return $session;
                     }
                 }
             } catch (\Throwable $e) {
-                \Log::warning('BGR session [B] failed: ' . $e->getMessage());
+                \Log::debug('BGR session [B] failed: ' . $e->getMessage());
             }
 
-            \Log::warning('BGR session: all approaches failed — no session cookie captured');
+            \Log::debug('BGR session: all approaches failed — no session cookie captured');
             return null;
         } catch (\Throwable $e) {
             \Log::error('BGR session capture exception: ' . $e->getMessage());

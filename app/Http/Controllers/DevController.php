@@ -23,7 +23,10 @@ class DevController extends Controller
 
     public function login(Request $request): RedirectResponse
     {
-        $password = env('DEV_PASSWORD', 'bcfdev2024');
+        $password = env('DEV_PASSWORD');
+        if (! $password) {
+            return back()->with('error', 'Dev console is not configured.');
+        }
 
         if ($request->input('password') === $password) {
             $request->session()->put('dev_authenticated', true);
