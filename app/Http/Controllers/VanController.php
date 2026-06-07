@@ -70,6 +70,8 @@ class VanController extends Controller
 
         if ($request->hasFile('photo')) {
             $data['photo'] = $request->file('photo')->store('vans', $this->photoDisk());
+        } else {
+            unset($data['photo']);
         }
 
         $van = Van::create([...$data, 'is_active' => true]);
@@ -195,7 +197,13 @@ class VanController extends Controller
                 Storage::disk($this->photoDisk())->delete($van->photo);
             }
             $data['photo'] = null;
+        } else {
+            // No file uploaded, no removal requested — keep existing photo
+            unset($data['photo']);
         }
+
+        // remove_photo is a UI flag, not a model field
+        unset($data['remove_photo']);
 
         $van->update($data);
 

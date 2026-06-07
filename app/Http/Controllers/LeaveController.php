@@ -82,9 +82,10 @@ class LeaveController extends Controller
         if ($request->type === 'annual') {
             $targetUser  = User::findOrFail($targetId);
             $year        = $start->year;
+            $entitlement = $targetUser->annual_leave_days ?? 28;
             $used        = LeaveRequest::forUser($targetId)->forYear($year)->approved()->where('type', 'annual')->sum('days');
             $pending     = LeaveRequest::forUser($targetId)->forYear($year)->pending()->where('type', 'annual')->sum('days');
-            $remaining   = $targetUser->annual_leave_days - (float) $used - (float) $pending;
+            $remaining   = $entitlement - (float) $used - (float) $pending;
 
             if ($days > $remaining) {
                 $label = $targetId !== $user->id ? "This staff member has" : "You have";
@@ -221,11 +222,14 @@ class LeaveController extends Controller
             ->where('type', 'annual')
             ->sum('days');
 
+        $used    = (float) $used;
+        $pending = (float) $pending;
+
         return [
             'entitlement' => $entitlement,
-            'used'        => (float) $used,
-            'pending'     => (float) $pending,
-            'remaining'   => max(0, $entitlement - (float) $used),
+            'used'        => $used,
+            'pending'     => $pending,
+            'remaining'   => max(0, $entitlement - $used - $pending),
             'sick_days'   => (float) $sickDays,
             'user_name'   => $targetUser?->name,
         ];
