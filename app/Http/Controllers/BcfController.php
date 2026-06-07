@@ -23,9 +23,9 @@ class BcfController extends Controller
             $raw  = (new BcfApiService())->getOrders();
             $all  = $raw['orders'] ?? [];
 
-            if ($isPrivileged || ! $user->bcf_worker_id) {
+            if ($isPrivileged) {
                 $orders = $all;
-            } else {
+            } elseif ($user->bcf_worker_id) {
                 // Cast both sides to string — BCF API may return integer IDs
                 $workerId = (string) $user->bcf_worker_id;
                 $orders   = array_values(array_filter(
@@ -33,6 +33,7 @@ class BcfController extends Controller
                     fn ($o) => (string) ($o['worker']['id'] ?? '') === $workerId
                 ));
             }
+            // Unlinked non-privileged staff: leave $orders as [] — blocked at view layer
         } catch (\Throwable $e) {
             \Log::error('BCF API error (index): ' . $e->getMessage());
             $error = 'Could not reach the BCF system. Please try again shortly.';
@@ -48,6 +49,13 @@ class BcfController extends Controller
 
     public function show(string $id): Response|RedirectResponse
     {
+        $user = auth()->user();
+
+        // Non-privileged unlinked staff cannot view individual orders
+        if (! $user->hasAnyRole(['admin', 'manager', 'hr']) && ! $user->bcf_worker_id) {
+            return redirect()->route('bcf.index');
+        }
+
         try {
             $raw = (new BcfApiService())->getOrder($id);
         } catch (\Throwable $e) {
@@ -57,6 +65,15 @@ class BcfController extends Controller
 
         if (empty($raw) || empty($raw['order'])) {
             return redirect()->route('bcf.index')->with('error', 'Order not found.');
+        }
+
+        // Non-privileged linked staff can only view their own orders
+        if (! $user->hasAnyRole(['admin', 'manager', 'hr'])) {
+            $workerId    = (string) $user->bcf_worker_id;
+            $orderWorker = (string) ($raw['order']['worker']['id'] ?? '');
+            if ($orderWorker !== $workerId) {
+                abort(403);
+            }
         }
 
         $stages = $raw['stages'] ?? [];

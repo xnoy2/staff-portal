@@ -9,9 +9,12 @@
                         <span class="text-xs font-bold px-2 py-0.5 rounded bg-[#EF233C] text-white tracking-wide">BCF</span>
                         <h1 class="text-lg font-semibold text-gray-800">Work Orders</h1>
                     </div>
-                    <p class="text-xs text-gray-500 mt-0.5">{{ filtered.length }} of {{ orders.length }} order{{ orders.length !== 1 ? 's' : '' }}</p>
+                    <p class="text-xs text-gray-500 mt-0.5">
+                        <template v-if="isPrivileged || linked">{{ filtered.length }} of {{ orders.length }} order{{ orders.length !== 1 ? 's' : '' }}</template>
+                        <template v-else>No access — account not linked</template>
+                    </p>
                 </div>
-                <div class="relative">
+                <div v-if="isPrivileged || linked" class="relative">
                     <MagnifyingGlassIcon class="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
                     <input
                         v-model="search"
@@ -27,17 +30,19 @@
                 {{ error }}
             </div>
 
-            <!-- Not linked warning (non-admin without a BCF worker link) -->
-            <div v-if="!isPrivileged && !linked" class="bg-amber-50 border border-amber-200 rounded-xl px-4 py-3 flex items-start gap-3">
-                <span class="text-lg flex-shrink-0">⚠️</span>
+            <!-- Not linked: blocked empty state -->
+            <div v-else-if="!isPrivileged && !linked" class="bg-white rounded-xl border border-gray-200 py-20 text-center max-w-sm mx-auto space-y-3">
+                <div class="w-14 h-14 bg-amber-50 rounded-full flex items-center justify-center mx-auto">
+                    <ClipboardDocumentListIcon class="w-7 h-7 text-amber-400" />
+                </div>
                 <div>
-                    <p class="text-sm font-semibold text-amber-800">Your account isn't linked to a BCF worker</p>
-                    <p class="text-xs text-amber-700 mt-0.5">Ask an admin to link your profile to your BCF worker account in Staff → Edit. Until then, you'll see all orders.</p>
+                    <p class="text-sm font-semibold text-gray-800">Account not linked</p>
+                    <p class="text-xs text-gray-500 mt-1">Your profile isn't linked to a BCF worker account yet. Ask an admin to link your account in Staff → Edit.</p>
                 </div>
             </div>
 
-            <!-- Empty -->
-            <div v-if="filtered.length === 0" class="bg-white rounded-xl border border-gray-200 py-16 text-center">
+            <!-- Empty (linked but no matching orders) -->
+            <div v-else-if="filtered.length === 0" class="bg-white rounded-xl border border-gray-200 py-16 text-center">
                 <ClipboardDocumentListIcon class="w-10 h-10 text-gray-200 mx-auto mb-3" />
                 <p class="text-sm text-gray-500">{{ search ? 'No orders match your search.' : 'No orders found.' }}</p>
             </div>
