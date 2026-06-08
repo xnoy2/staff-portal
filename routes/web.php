@@ -210,6 +210,8 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::prefix('knowledge-base')->name('kb.')->group(function () {
         Route::get('/',                                          [KnowledgeBaseController::class, 'index'])->name('index');
         Route::get('/{categorySlug}/{articleSlug}',             [KnowledgeBaseController::class, 'show'])->name('show');
+        Route::post('/upload',                                  [KnowledgeBaseController::class, 'upload'])->name('upload');
+        Route::get('/media/{path}',                             [KnowledgeBaseController::class, 'serveMedia'])->name('media')->where('path', '.*');
         // Admin / Manager
         Route::post('/categories',                              [KnowledgeBaseController::class, 'storeCategory'])->name('categories.store');
         Route::patch('/categories/{category}',                  [KnowledgeBaseController::class, 'updateCategory'])->name('categories.update');

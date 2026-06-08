@@ -4,11 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Models\KbArticle;
 use App\Models\KbCategory;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class KnowledgeBaseController extends Controller
 {
@@ -225,5 +228,163 @@ class KnowledgeBaseController extends Controller
         $article->delete();
 
         return redirect()->route('kb.index')->with('success', 'Article deleted.');
+    }
+
+    // ── Media upload & serve ─────────────────────────────────────────────────
+
+    public function upload(Request $request): JsonResponse
+    {
+        abort_unless(auth()->user()->hasAnyRole(['admin', 'manager']), 403);
+
+        $request->validate([
+            'file' => ['required', 'file', 'max:512000',
+                'mimes:jpg,jpeg,png,gif,webp,svg,mp4,mov,webm,avi,mkv,m4v'],
+        ]);
+
+        $file = $request->file('file');
+        $type = str_starts_with($file->getMimeType(), 'video/') ? 'video' : 'image';
+        $disk = $this->mediaDisk();
+        $path = $file->store("kb/{$type}s", $disk);
+
+        return response()->json([
+            'url'  => route('kb.media', $path),
+            'type' => $type,
+        ]);
+    }
+
+    public function serveMedia(Request $request, string $path): StreamedResponse|\Illuminate\Http\Response
+    {
+        $useR2 = (bool) config('filesystems.disks.r2.bucket');
+        $disk  = $useR2 ? 'r2' : 'public';
+
+        abort_unless(Storage::disk($disk)->exists($path), 404);
+
+        $ext  = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $mime = match ($ext) {
+            'jpg', 'jpeg' => 'image/jpeg',
+            'png'         => 'image/png',
+            'gif'         => 'image/gif',
+            'webp'        => 'image/webp',
+            'svg'         => 'image/svg+xml',
+            'mp4', 'm4v'  => 'video/mp4',
+            'mov'         => 'video/quicktime',
+            'webm'        => 'video/webm',
+            'avi'         => 'video/x-msvideo',
+            'mkv'         => 'video/x-matroska',
+            default       => 'application/octet-stream',
+        };
+
+        $isVideo = str_starts_with($mime, 'video/');
+
+        if ($useR2) {
+            $client = new \Aws\S3\S3Client([
+                'region'                  => 'auto',
+                'endpoint'                => config('filesystems.disks.r2.endpoint'),
+                'credentials'             => [
+                    'key'    => config('filesystems.disks.r2.key'),
+                    'secret' => config('filesystems.disks.r2.secret'),
+                ],
+                'use_path_style_endpoint' => true,
+                'version'                 => 'latest',
+            ]);
+
+            if ($isVideo) {
+                $size   = Storage::disk('r2')->size($path);
+                $start  = 0; $end = $size - 1; $status = 200;
+
+                if ($range = $request->header('Range')) {
+                    if (preg_match('/bytes=(\d+)-(\d*)/', $range, $m)) {
+                        $start  = (int) $m[1];
+                        $end    = $m[2] !== '' ? min((int) $m[2], $size - 1) : $size - 1;
+                        $status = 206;
+                    }
+                }
+                $length  = $end - $start + 1;
+                $headers = [
+                    'Content-Type'        => $mime,
+                    'Content-Length'      => $length,
+                    'Accept-Ranges'       => 'bytes',
+                    'Content-Disposition' => 'inline',
+                    'Cache-Control'       => 'private, max-age=3600',
+                ];
+                if ($status === 206) {
+                    $headers['Content-Range'] = "bytes {$start}-{$end}/{$size}";
+                }
+                $result = $client->getObject([
+                    'Bucket' => config('filesystems.disks.r2.bucket'),
+                    'Key'    => $path,
+                    'Range'  => "bytes={$start}-{$end}",
+                ]);
+                $body = $result['Body'];
+                return response()->stream(function () use ($body) {
+                    while (! $body->eof()) { echo $body->read(256 * 1024); flush(); }
+                }, $status, $headers);
+            }
+
+            // Image — stream full content
+            $result = $client->getObject([
+                'Bucket' => config('filesystems.disks.r2.bucket'),
+                'Key'    => $path,
+            ]);
+            $body = $result['Body'];
+            return response()->stream(function () use ($body) {
+                while (! $body->eof()) { echo $body->read(64 * 1024); flush(); }
+            }, 200, [
+                'Content-Type'        => $mime,
+                'Content-Disposition' => 'inline',
+                'Cache-Control'       => 'private, max-age=3600',
+            ]);
+        }
+
+        // Local public disk
+        $filePath = Storage::disk('public')->path($path);
+        abort_unless(file_exists($filePath), 404);
+
+        if ($isVideo) {
+            $size   = filesize($filePath);
+            $start  = 0; $end = $size - 1; $status = 200;
+
+            if ($range = $request->header('Range')) {
+                if (preg_match('/bytes=(\d+)-(\d*)/', $range, $m)) {
+                    $start  = (int) $m[1];
+                    $end    = $m[2] !== '' ? min((int) $m[2], $size - 1) : $size - 1;
+                    $status = 206;
+                }
+            }
+            $length  = $end - $start + 1;
+            $headers = [
+                'Content-Type'        => $mime,
+                'Content-Length'      => $length,
+                'Accept-Ranges'       => 'bytes',
+                'Content-Disposition' => 'inline',
+                'Cache-Control'       => 'private, max-age=3600',
+            ];
+            if ($status === 206) {
+                $headers['Content-Range'] = "bytes {$start}-{$end}/{$size}";
+            }
+            return response()->stream(function () use ($filePath, $start, $length) {
+                $fp        = fopen($filePath, 'rb');
+                $remaining = $length;
+                fseek($fp, $start);
+                while ($remaining > 0 && ! feof($fp)) {
+                    $chunk      = min(256 * 1024, $remaining);
+                    $remaining -= $chunk;
+                    echo fread($fp, $chunk);
+                    flush();
+                }
+                fclose($fp);
+            }, $status, $headers);
+        }
+
+        return response()->file($filePath, [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => 'inline',
+            'Cache-Control'       => 'private, max-age=3600',
+        ]);
+    }
+
+    private function mediaDisk(): string
+    {
+        return config('filesystems.disks.r2.bucket') ? 'r2' : 'public';
     }
 }

@@ -65,7 +65,7 @@
 
             <div class="toolbar-divider" />
 
-            <!-- Misc -->
+            <!-- Links & misc -->
             <div class="toolbar-group">
                 <button type="button" @click="setLink" :class="{ active: editor?.isActive('link') }" title="Link">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"/></svg>
@@ -73,6 +73,35 @@
                 <button type="button" @click="editor.chain().focus().setHorizontalRule().run()" title="Divider">
                     <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M19 13H5v-2h14z"/></svg>
                 </button>
+            </div>
+
+            <div class="toolbar-divider" />
+
+            <!-- Media upload -->
+            <div class="toolbar-group">
+                <button
+                    type="button"
+                    @click="triggerImageUpload"
+                    :disabled="uploading"
+                    title="Insert image"
+                    class="relative"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg>
+                </button>
+                <button
+                    type="button"
+                    @click="triggerVideoUpload"
+                    :disabled="uploading"
+                    title="Upload video"
+                    class="relative"
+                >
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor" class="w-4 h-4"><path d="M17 10.5V7c0-.55-.45-1-1-1H4c-.55 0-1 .45-1 1v10c0 .55.45 1 1 1h12c.55 0 1-.45 1-1v-3.5l4 4v-11l-4 4z"/></svg>
+                </button>
+                <!-- Upload progress indicator -->
+                <span v-if="uploading" class="text-xs text-gray-400 flex items-center gap-1 ml-1">
+                    <span class="w-3 h-3 border-2 border-gray-300 border-t-gray-600 rounded-full animate-spin" />
+                    Uploading…
+                </span>
             </div>
 
             <div class="toolbar-divider" />
@@ -87,19 +116,26 @@
             </div>
         </div>
 
+        <!-- Hidden file inputs -->
+        <input ref="imageInput" type="file" accept="image/*" class="hidden" @change="handleImageUpload" />
+        <input ref="videoInput" type="file" accept="video/mp4,video/mov,video/webm,video/avi,video/x-matroska" class="hidden" @change="handleVideoUpload" />
+
         <!-- Editor content -->
         <EditorContent :editor="editor" class="tiptap-content" />
     </div>
 </template>
 
 <script setup>
-import { watch, onBeforeUnmount } from 'vue';
+import { ref, watch, onBeforeUnmount } from 'vue';
 import { useEditor, EditorContent } from '@tiptap/vue-3';
+import { Node, mergeAttributes } from '@tiptap/core';
 import StarterKit from '@tiptap/starter-kit';
 import Underline from '@tiptap/extension-underline';
 import Link from '@tiptap/extension-link';
 import TextAlign from '@tiptap/extension-text-align';
 import Placeholder from '@tiptap/extension-placeholder';
+import Image from '@tiptap/extension-image';
+import axios from 'axios';
 
 const props = defineProps({
     modelValue: { type: String, default: '' },
@@ -107,6 +143,58 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:modelValue']);
+
+// ── Custom Video node ─────────────────────────────────────────────────────────
+
+const Video = Node.create({
+    name: 'kbVideo',
+    group: 'block',
+    atom: true,
+
+    addAttributes() {
+        return { src: { default: null } };
+    },
+
+    parseHTML() {
+        return [{ tag: 'video[data-kb]' }];
+    },
+
+    renderHTML({ HTMLAttributes }) {
+        return ['video', mergeAttributes(HTMLAttributes, {
+            'data-kb': '',
+            controls: '',
+            controlsList: 'nodownload noremoteplayback',
+            disablePictureInPicture: '',
+            class: 'kb-video',
+            preload: 'metadata',
+        })];
+    },
+
+    addNodeView() {
+        return ({ node }) => {
+            const video = document.createElement('video');
+            video.src = node.attrs.src;
+            video.controls = true;
+            video.setAttribute('controlsList', 'nodownload noremoteplayback');
+            video.setAttribute('disablePictureInPicture', '');
+            video.setAttribute('preload', 'metadata');
+            video.className = 'kb-video';
+            video.addEventListener('contextmenu', e => e.preventDefault());
+
+            return {
+                dom: video,
+                update(updatedNode) {
+                    if (updatedNode.attrs.src !== node.attrs.src) {
+                        video.src = updatedNode.attrs.src;
+                    }
+                    return true;
+                },
+            };
+        };
+    },
+});
+
+// ── Editor ────────────────────────────────────────────────────────────────────
 
 const editor = useEditor({
     content: props.modelValue,
@@ -116,6 +204,8 @@ const editor = useEditor({
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
         Link.configure({ openOnClick: false }),
         Placeholder.configure({ placeholder: props.placeholder }),
+        Image.configure({ inline: false, allowBase64: false }),
+        Video,
     ],
     onUpdate({ editor }) {
         emit('update:modelValue', editor.getHTML());
@@ -130,6 +220,8 @@ watch(() => props.modelValue, (val) => {
 
 onBeforeUnmount(() => editor.value?.destroy());
 
+// ── Link ──────────────────────────────────────────────────────────────────────
+
 function setLink() {
     const prev = editor.value.getAttributes('link').href;
     const url  = window.prompt('URL', prev);
@@ -139,6 +231,64 @@ function setLink() {
         return;
     }
     editor.value.chain().focus().extendMarkRange('link').setLink({ href: url }).run();
+}
+
+// ── Media upload ──────────────────────────────────────────────────────────────
+
+const imageInput = ref(null);
+const videoInput = ref(null);
+const uploading  = ref(false);
+
+function triggerImageUpload() {
+    imageInput.value?.click();
+}
+
+function triggerVideoUpload() {
+    videoInput.value?.click();
+}
+
+async function handleImageUpload(event) {
+    const file = event.target.files?.[0];
+    if (! file) return;
+    event.target.value = '';
+
+    uploading.value = true;
+    try {
+        const { url } = await uploadFile(file);
+        editor.value.chain().focus().setImage({ src: url }).run();
+    } catch (e) {
+        alert('Image upload failed. Please try again.');
+    } finally {
+        uploading.value = false;
+    }
+}
+
+async function handleVideoUpload(event) {
+    const file = event.target.files?.[0];
+    if (! file) return;
+    event.target.value = '';
+
+    uploading.value = true;
+    try {
+        const { url } = await uploadFile(file);
+        editor.value.chain().focus().insertContent({
+            type: 'kbVideo',
+            attrs: { src: url },
+        }).run();
+    } catch (e) {
+        alert('Video upload failed. Please try again.');
+    } finally {
+        uploading.value = false;
+    }
+}
+
+async function uploadFile(file) {
+    const formData = new FormData();
+    formData.append('file', file);
+    const response = await axios.post(route('kb.upload'), formData, {
+        headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return response.data;
 }
 </script>
 
@@ -215,7 +365,6 @@ function setLink() {
     outline: none;
 }
 
-/* ProseMirror content styles */
 .tiptap-content .ProseMirror {
     outline: none;
     min-height: 280px;
@@ -272,6 +421,23 @@ function setLink() {
     border: none;
     border-top: 2px solid #e5e7eb;
     margin: 1.5rem 0;
+}
+
+.tiptap-content .ProseMirror img {
+    max-width: 100%;
+    border-radius: 0.5rem;
+    display: block;
+    margin: 0.5rem auto;
+}
+
+.tiptap-content .ProseMirror .kb-video,
+.kb-content .kb-video {
+    width: 100%;
+    max-width: 100%;
+    border-radius: 0.5rem;
+    display: block;
+    background: #000;
+    margin: 0.5rem 0;
 }
 
 .tiptap-content .ProseMirror p.is-editor-empty:first-child::before {
