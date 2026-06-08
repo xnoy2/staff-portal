@@ -171,6 +171,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/',                                          [TrainingController::class, 'index'])->name('index');
         Route::get('/{module}',                                  [TrainingController::class, 'module'])->name('module');
         Route::get('/{module}/{lesson}',                         [TrainingController::class, 'watch'])->name('watch');
+        Route::get('/stream/{lesson}',                           [TrainingController::class, 'stream'])->name('stream');
         Route::post('/{lesson}/progress',                        [TrainingController::class, 'updateProgress'])->name('progress');
         // Admin / Manager
         Route::post('/modules',                                  [TrainingController::class, 'storeModule'])->name('modules.store');

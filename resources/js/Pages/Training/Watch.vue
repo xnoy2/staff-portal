@@ -28,8 +28,11 @@
                                 v-if="lesson.video_url"
                                 :src="lesson.video_url"
                                 controls
+                                controlsList="nodownload noremoteplayback"
+                                disablePictureInPicture
                                 class="w-full aspect-video"
                                 preload="metadata"
+                                @contextmenu.prevent
                             />
                             <div v-else class="flex items-center justify-center h-64 text-white/40">
                                 <div class="text-center">

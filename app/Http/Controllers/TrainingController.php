@@ -11,6 +11,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Inertia;
 use Inertia\Response;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class TrainingController extends Controller
 {
@@ -130,7 +131,7 @@ class TrainingController extends Controller
                 'id'               => $lesson->id,
                 'title'            => $lesson->title,
                 'description'      => $lesson->description,
-                'video_url'        => $lesson->video_url,
+                'video_url'        => $lesson->video_path ? route('training.stream', $lesson) : null,
                 'duration_label'   => $lesson->duration_label,
                 'duration_seconds' => $lesson->duration_seconds,
                 'is_published'     => $lesson->is_published,
@@ -140,6 +141,99 @@ class TrainingController extends Controller
             'isCompleted'  => in_array($lesson->id, $completedIds),
             'isPrivileged' => $isPrivileged,
         ]);
+    }
+
+    public function stream(Request $request, TrainingLesson $lesson): StreamedResponse
+    {
+        $user         = auth()->user();
+        $isPrivileged = $user->hasAnyRole(['admin', 'manager']);
+
+        if (! $isPrivileged) {
+            $module = $lesson->module;
+            abort_unless($module->is_published && $lesson->is_published, 404);
+            abort_unless($module->enrolledUsers()->where('user_id', $user->id)->exists(), 403);
+        }
+
+        abort_unless($lesson->video_path, 404);
+
+        $useR2 = (bool) config('filesystems.disks.r2.bucket');
+        $path  = $lesson->video_path;
+        $ext   = strtolower(pathinfo($path, PATHINFO_EXTENSION));
+        $mime  = match ($ext) {
+            'mov'  => 'video/quicktime',
+            'webm' => 'video/webm',
+            'avi'  => 'video/x-msvideo',
+            'mkv'  => 'video/x-matroska',
+            default => 'video/mp4',
+        };
+
+        $disk = $useR2 ? 'r2' : 'public';
+        $size = Storage::disk($disk)->size($path);
+
+        // Parse Range header (browsers always send this for video seeking)
+        $start  = 0;
+        $end    = $size - 1;
+        $status = 200;
+
+        if ($range = $request->header('Range')) {
+            if (preg_match('/bytes=(\d+)-(\d*)/', $range, $m)) {
+                $start  = (int) $m[1];
+                $end    = $m[2] !== '' ? min((int) $m[2], $size - 1) : $size - 1;
+                $status = 206;
+            }
+        }
+
+        $length  = $end - $start + 1;
+        $headers = [
+            'Content-Type'           => $mime,
+            'Content-Length'         => $length,
+            'Accept-Ranges'          => 'bytes',
+            'Content-Disposition'    => 'inline',
+            'Cache-Control'          => 'no-store',
+            'X-Content-Type-Options' => 'nosniff',
+        ];
+
+        if ($status === 206) {
+            $headers['Content-Range'] = "bytes {$start}-{$end}/{$size}";
+        }
+
+        if ($useR2) {
+            // Use S3/R2 SDK directly so we can request only the needed byte range —
+            // this avoids downloading the whole file for every seek operation.
+            /** @var \League\Flysystem\AwsS3V3\AwsS3V3Adapter $adapter */
+            $adapter = Storage::disk('r2')->getAdapter();
+            $client  = $adapter->getClient();
+            $result  = $client->getObject([
+                'Bucket' => config('filesystems.disks.r2.bucket'),
+                'Key'    => $path,
+                'Range'  => "bytes={$start}-{$end}",
+            ]);
+            $body = $result['Body'];
+
+            return response()->stream(function () use ($body) {
+                while (! $body->eof()) {
+                    echo $body->read(256 * 1024);
+                    flush();
+                }
+            }, $status, $headers);
+        }
+
+        // Local public disk — seek directly in the file handle
+        $filePath = Storage::disk('public')->path($path);
+        abort_unless(file_exists($filePath), 404);
+
+        return response()->stream(function () use ($filePath, $start, $length) {
+            $fp        = fopen($filePath, 'rb');
+            $remaining = $length;
+            fseek($fp, $start);
+            while ($remaining > 0 && ! feof($fp)) {
+                $chunk      = min(256 * 1024, $remaining);
+                $remaining -= $chunk;
+                echo fread($fp, $chunk);
+                flush();
+            }
+            fclose($fp);
+        }, $status, $headers);
     }
 
     public function updateProgress(Request $request, TrainingLesson $lesson): RedirectResponse
