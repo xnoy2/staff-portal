@@ -44,25 +44,27 @@ class DebugVideoStream extends Command
 
         if ($useR2) {
             try {
-                $adapter = Storage::disk('r2')->getAdapter();
-                $this->info("Adapter class: " . get_class($adapter));
-                $client = $adapter->getClient();
-                $this->info("Client class: " . get_class($client));
-            } catch (\Throwable $e) {
-                $this->error("getAdapter/getClient failed: " . $e->getMessage());
-            }
+                $client = new \Aws\S3\S3Client([
+                    'region'                  => 'auto',
+                    'endpoint'                => config('filesystems.disks.r2.endpoint'),
+                    'credentials'             => [
+                        'key'    => config('filesystems.disks.r2.key'),
+                        'secret' => config('filesystems.disks.r2.secret'),
+                    ],
+                    'use_path_style_endpoint' => true,
+                    'version'                 => 'latest',
+                ]);
+                $this->info("S3Client created OK");
 
-            try {
-                $adapter = Storage::disk('r2')->getAdapter();
-                $client  = $adapter->getClient();
-                $result  = $client->getObject([
+                $result = $client->getObject([
                     'Bucket' => config('filesystems.disks.r2.bucket'),
                     'Key'    => $lesson->video_path,
                     'Range'  => 'bytes=0-1023',
                 ]);
-                $this->info("S3 GetObject (range) OK, status: " . $result['@metadata']['statusCode']);
+                $this->info("GetObject (range 0-1023) OK, HTTP: " . $result['@metadata']['statusCode']);
+                $this->info("Content-Type: " . ($result['ContentType'] ?? 'unknown'));
             } catch (\Throwable $e) {
-                $this->error("S3 GetObject failed: " . $e->getMessage());
+                $this->error("S3 error: " . $e->getMessage());
             }
         }
 

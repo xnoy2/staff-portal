@@ -198,12 +198,20 @@ class TrainingController extends Controller
         }
 
         if ($useR2) {
-            // Use S3/R2 SDK directly so we can request only the needed byte range —
-            // this avoids downloading the whole file for every seek operation.
-            /** @var \League\Flysystem\AwsS3V3\AwsS3V3Adapter $adapter */
-            $adapter = Storage::disk('r2')->getAdapter();
-            $client  = $adapter->getClient();
-            $result  = $client->getObject([
+            // Build the S3 client directly from config — AwsS3V3Adapter keeps its
+            // client private with no getClient(), so we can't go through Flysystem.
+            $client = new \Aws\S3\S3Client([
+                'region'                  => 'auto',
+                'endpoint'                => config('filesystems.disks.r2.endpoint'),
+                'credentials'             => [
+                    'key'    => config('filesystems.disks.r2.key'),
+                    'secret' => config('filesystems.disks.r2.secret'),
+                ],
+                'use_path_style_endpoint' => true,
+                'version'                 => 'latest',
+            ]);
+
+            $result = $client->getObject([
                 'Bucket' => config('filesystems.disks.r2.bucket'),
                 'Key'    => $path,
                 'Range'  => "bytes={$start}-{$end}",
