@@ -153,13 +153,16 @@
                             {{ editingCategory ? 'Edit Category' : 'New Category' }}
                         </h3>
                         <form @submit.prevent="submitCategory" class="space-y-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
-                                <input v-model="catForm.name" type="text" required maxlength="100" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20 focus:border-[#EF233C]/40" />
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1">Icon (emoji)</label>
-                                <input v-model="catForm.icon" type="text" maxlength="10" placeholder="📁" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20" />
+                            <!-- Icon + Name side by side -->
+                            <div class="flex items-start gap-4">
+                                <div class="flex-shrink-0">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Icon</label>
+                                    <EmojiPicker v-model="catForm.icon" />
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <label class="block text-sm font-medium text-gray-700 mb-1">Name</label>
+                                    <input v-model="catForm.name" type="text" required maxlength="100" class="w-full px-3 py-2 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20 focus:border-[#EF233C]/40" />
+                                </div>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Description</label>
@@ -225,6 +228,7 @@ import { ref, computed } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TiptapEditor from '@/Components/TiptapEditor.vue';
+import EmojiPicker from '@/Components/EmojiPicker.vue';
 import {
     BookOpenIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon,
 } from '@heroicons/vue/24/outline';
