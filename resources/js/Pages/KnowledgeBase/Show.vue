@@ -46,6 +46,10 @@
                         <span :class="['text-xs font-medium px-2 py-0.5 rounded', article.is_published ? 'bg-green-100 text-green-700' : 'bg-amber-100 text-amber-700']">
                             {{ article.is_published ? 'Published' : 'Draft' }}
                         </span>
+                        <span v-if="article.visible_to?.length" class="text-xs font-medium bg-violet-100 text-violet-700 px-2 py-0.5 rounded flex items-center gap-1">
+                            <LockClosedIcon class="w-3 h-3" />
+                            {{ article.visible_to.map(r => availableRoles[r] ?? r).join(', ') }} only
+                        </span>
                         <div class="flex items-center gap-1.5 ml-auto">
                             <button @click="startEditing" class="text-xs px-3 py-1.5 rounded-lg border border-gray-200 hover:bg-white hover:shadow-sm transition-all text-gray-600">
                                 Edit
@@ -66,6 +70,10 @@
                             <span v-if="article.author">By {{ article.author }}</span>
                             <span>·</span>
                             <span>Updated {{ formatDate(article.updated_at) }}</span>
+                            <span v-if="article.visible_to?.length" class="ml-auto flex items-center gap-1 text-violet-500 font-medium">
+                                <LockClosedIcon class="w-3 h-3" />
+                                {{ article.visible_to.map(r => availableRoles[r] ?? r).join(', ') }} only
+                            </span>
                         </div>
 
                         <!-- Rendered content -->
@@ -83,6 +91,37 @@
                                 class="w-full px-3 py-2.5 text-lg font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20 focus:border-[#EF233C]/40"
                             />
                         </div>
+
+                        <!-- Role visibility -->
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-gray-700 mb-2">
+                                Visible to
+                                <span class="text-xs font-normal text-gray-400 ml-1">(leave blank for all staff)</span>
+                            </label>
+                            <div class="flex flex-wrap gap-2">
+                                <label
+                                    v-for="(label, role) in availableRoles"
+                                    :key="role"
+                                    class="flex items-center gap-1.5 cursor-pointer select-none"
+                                >
+                                    <input
+                                        type="checkbox"
+                                        :value="role"
+                                        v-model="editForm.visible_to"
+                                        class="w-3.5 h-3.5 rounded border-gray-300 text-[#EF233C] focus:ring-[#EF233C]/20"
+                                    />
+                                    <span
+                                        :class="[
+                                            'text-xs font-medium px-2 py-0.5 rounded-full border transition-colors',
+                                            editForm.visible_to.includes(role)
+                                                ? 'bg-violet-100 text-violet-700 border-violet-200'
+                                                : 'bg-gray-50 text-gray-500 border-gray-200',
+                                        ]"
+                                    >{{ label }}</span>
+                                </label>
+                            </div>
+                        </div>
+
                         <div class="mb-4">
                             <label class="block text-sm font-medium text-gray-700 mb-1.5">Content</label>
                             <TiptapEditor v-model="editForm.content" />
@@ -121,26 +160,27 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TiptapEditor from '@/Components/TiptapEditor.vue';
-import { ArrowLeftIcon, ChevronRightIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, ChevronRightIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 
 const props = defineProps({
-    category:     { type: Object, required: true },
-    article:      { type: Object, required: true },
-    siblings:     { type: Array,  default: () => [] },
-    isPrivileged: { type: Boolean, default: false },
+    category:       { type: Object, required: true },
+    article:        { type: Object, required: true },
+    siblings:       { type: Array,  default: () => [] },
+    isPrivileged:   { type: Boolean, default: false },
+    availableRoles: { type: Object,  default: () => ({}) },
 });
 
 const editing = ref(false);
 const saving  = ref(false);
 const toggling = ref(false);
 
-const editForm = ref({ title: props.article.title, content: props.article.content });
+const editForm = ref({ title: props.article.title, content: props.article.content, visible_to: props.article.visible_to ?? [] });
 
 function startEditing() {
-    editForm.value = { title: props.article.title, content: props.article.content };
+    editForm.value = { title: props.article.title, content: props.article.content, visible_to: props.article.visible_to ?? [] };
     editing.value  = true;
 }
 

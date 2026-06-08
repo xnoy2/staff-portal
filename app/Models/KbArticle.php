@@ -15,13 +15,26 @@ class KbArticle extends Model
 
     protected $fillable = [
         'category_id', 'title', 'slug', 'content', 'excerpt',
-        'is_published', 'sort_order', 'author_id', 'updated_by',
+        'is_published', 'visible_to', 'sort_order', 'author_id', 'updated_by',
     ];
 
     protected $casts = [
         'is_published' => 'boolean',
         'sort_order'   => 'integer',
+        'visible_to'   => 'array',
     ];
+
+    public function isVisibleTo(\App\Models\User $user): bool
+    {
+        if ($user->hasRole('admin')) {
+            return true;
+        }
+        $roles = $this->visible_to;
+        if (empty($roles)) {
+            return true;
+        }
+        return $user->hasAnyRole($roles);
+    }
 
     protected static function booted(): void
     {

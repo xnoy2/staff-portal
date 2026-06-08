@@ -112,12 +112,19 @@
                                 <h3 class="text-sm font-semibold text-gray-900 group-hover:text-[#EF233C] transition-colors line-clamp-2">
                                     {{ article.title }}
                                 </h3>
-                                <span
-                                    v-if="isPrivileged && !article.is_published"
-                                    class="flex-shrink-0 text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
-                                >
-                                    Draft
-                                </span>
+                                <div class="flex flex-col items-end gap-1 flex-shrink-0">
+                                    <span
+                                        v-if="isPrivileged && !article.is_published"
+                                        class="text-[10px] font-medium bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded"
+                                    >Draft</span>
+                                    <span
+                                        v-if="article.visible_to?.length"
+                                        class="text-[10px] font-medium bg-violet-100 text-violet-700 px-1.5 py-0.5 rounded flex items-center gap-1"
+                                    >
+                                        <LockClosedIcon class="w-2.5 h-2.5" />
+                                        {{ roleLabel(article.visible_to) }}
+                                    </span>
+                                </div>
                             </div>
                             <p class="text-xs text-gray-500 line-clamp-3 leading-relaxed">{{ article.excerpt }}</p>
                             <div class="mt-3 flex items-center gap-2 text-[11px] text-gray-400">
@@ -205,6 +212,41 @@
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Title</label>
                                 <input v-model="articleForm.title" type="text" required maxlength="255" placeholder="Article title" class="w-full px-3 py-2.5 text-sm border border-gray-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20 focus:border-[#EF233C]/40" />
                             </div>
+
+                            <!-- Role visibility -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Visible to
+                                    <span class="text-xs font-normal text-gray-400 ml-1">(leave blank for all staff)</span>
+                                </label>
+                                <div class="flex flex-wrap gap-2">
+                                    <label
+                                        v-for="(label, role) in availableRoles"
+                                        :key="role"
+                                        class="flex items-center gap-1.5 cursor-pointer select-none"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            :value="role"
+                                            v-model="articleForm.visible_to"
+                                            class="w-3.5 h-3.5 rounded border-gray-300 text-[#EF233C] focus:ring-[#EF233C]/20"
+                                        />
+                                        <span
+                                            :class="[
+                                                'text-xs font-medium px-2 py-0.5 rounded-full border transition-colors',
+                                                articleForm.visible_to.includes(role)
+                                                    ? 'bg-violet-100 text-violet-700 border-violet-200'
+                                                    : 'bg-gray-50 text-gray-500 border-gray-200',
+                                            ]"
+                                        >{{ label }}</span>
+                                    </label>
+                                </div>
+                                <p v-if="articleForm.visible_to.length" class="mt-1.5 text-xs text-violet-600 flex items-center gap-1">
+                                    <LockClosedIcon class="w-3 h-3" />
+                                    Restricted to: {{ articleForm.visible_to.map(r => availableRoles[r]).join(', ') }}
+                                </p>
+                            </div>
+
                             <div>
                                 <label class="block text-sm font-medium text-gray-700 mb-1">Content</label>
                                 <TiptapEditor v-model="articleForm.content" placeholder="Write your article…" />
@@ -230,16 +272,17 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import TiptapEditor from '@/Components/TiptapEditor.vue';
 import EmojiPicker from '@/Components/EmojiPicker.vue';
 import {
-    BookOpenIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon,
+    BookOpenIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, LockClosedIcon,
 } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
 
 const props = defineProps({
-    categories: { type: Array, default: () => [] },
-    isPrivileged: { type: Boolean, default: false },
-    search: { type: String, default: '' },
+    categories:     { type: Array,  default: () => [] },
+    isPrivileged:   { type: Boolean, default: false },
+    search:         { type: String,  default: '' },
+    availableRoles: { type: Object,  default: () => ({}) },
 });
 
 const searchQuery    = ref(props.search);
@@ -283,6 +326,11 @@ function categoryIconFor(catId) {
 }
 function formatDate(iso) {
     return iso ? dayjs(iso).fromNow() : '';
+}
+function roleLabel(roles) {
+    if (! roles?.length) return '';
+    if (roles.length <= 2) return roles.map(r => props.availableRoles[r] ?? r).join(', ');
+    return roles.length + ' roles';
 }
 
 function doSearch() {
@@ -332,10 +380,10 @@ function deleteCategory() {
 
 const showArticleModal  = ref(false);
 const articleSubmitting = ref(false);
-const articleForm = ref({ title: '', content: '' });
+const articleForm = ref({ title: '', content: '', visible_to: [] });
 
 function openNewArticle() {
-    articleForm.value = { title: '', content: '' };
+    articleForm.value = { title: '', content: '', visible_to: [] };
     showArticleModal.value = true;
 }
 

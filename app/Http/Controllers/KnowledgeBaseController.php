@@ -15,10 +15,21 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class KnowledgeBaseController extends Controller
 {
+    // All defined roles with display labels
+    const ROLES = [
+        'admin'     => 'Admin',
+        'manager'   => 'Manager',
+        'hr'        => 'HR',
+        'site_head' => 'Site Head',
+        'staff'     => 'Staff',
+    ];
+
     public function index(Request $request): Response
     {
-        $isPrivileged = auth()->user()->hasAnyRole(['admin', 'manager']);
+        $user         = auth()->user();
+        $isPrivileged = $user->hasAnyRole(['admin', 'manager']);
         $search       = $request->query('q', '');
+        $userRoles    = $user->getRoleNames()->toArray();
 
         $categoriesQuery = KbCategory::with([
             $isPrivileged ? 'articles' : 'publishedArticles',
@@ -36,8 +47,11 @@ class KnowledgeBaseController extends Controller
             });
         }
 
-        $categories = $categoriesQuery->get()->map(function ($cat) use ($isPrivileged) {
-            $articles = $isPrivileged ? $cat->articles : $cat->publishedArticles;
+        $categories = $categoriesQuery->get()->map(function ($cat) use ($isPrivileged, $user) {
+            $articles = ($isPrivileged ? $cat->articles : $cat->publishedArticles)
+                ->filter(fn ($a) => $a->isVisibleTo($user))
+                ->values();
+
             return [
                 'id'          => $cat->id,
                 'name'        => $cat->name,
@@ -51,6 +65,7 @@ class KnowledgeBaseController extends Controller
                     'slug'         => $a->slug,
                     'excerpt'      => $a->excerpt,
                     'is_published' => $a->is_published,
+                    'visible_to'   => $a->visible_to ?? [],
                     'sort_order'   => $a->sort_order,
                     'updated_at'   => $a->updated_at?->toISOString(),
                 ]),
@@ -58,9 +73,10 @@ class KnowledgeBaseController extends Controller
         });
 
         return Inertia::render('KnowledgeBase/Index', [
-            'categories'   => $categories,
-            'isPrivileged' => $isPrivileged,
-            'search'       => $search,
+            'categories'     => $categories,
+            'isPrivileged'   => $isPrivileged,
+            'search'         => $search,
+            'availableRoles' => self::ROLES,
         ]);
     }
 
@@ -68,36 +84,41 @@ class KnowledgeBaseController extends Controller
     {
         $category     = KbCategory::where('slug', $categorySlug)->firstOrFail();
         $article      = KbArticle::where('slug', $articleSlug)->where('category_id', $category->id)->firstOrFail();
-        $isPrivileged = auth()->user()->hasAnyRole(['admin', 'manager']);
+        $user         = auth()->user();
+        $isPrivileged = $user->hasAnyRole(['admin', 'manager']);
 
         if (! $isPrivileged) {
             abort_unless($article->is_published, 404);
         }
+        abort_unless($article->isVisibleTo($user), 403);
 
         $siblings = ($isPrivileged ? $category->articles : $category->publishedArticles)
+            ->filter(fn ($a) => $a->isVisibleTo($user))
             ->map(fn ($a) => [
                 'id'    => $a->id,
                 'title' => $a->title,
                 'slug'  => $a->slug,
-            ]);
+            ])->values();
 
         return Inertia::render('KnowledgeBase/Show', [
-            'category'     => [
+            'category'       => [
                 'id'   => $category->id,
                 'name' => $category->name,
                 'slug' => $category->slug,
             ],
-            'article'      => [
+            'article'        => [
                 'id'           => $article->id,
                 'title'        => $article->title,
                 'slug'         => $article->slug,
                 'content'      => $article->content,
                 'is_published' => $article->is_published,
+                'visible_to'   => $article->visible_to ?? [],
                 'author'       => $article->author?->name,
                 'updated_at'   => $article->updated_at?->toISOString(),
             ],
-            'siblings'     => $siblings,
-            'isPrivileged' => $isPrivileged,
+            'siblings'       => $siblings,
+            'isPrivileged'   => $isPrivileged,
+            'availableRoles' => self::ROLES,
         ]);
     }
 
@@ -161,8 +182,10 @@ class KnowledgeBaseController extends Controller
         abort_unless(auth()->user()->hasAnyRole(['admin', 'manager']), 403);
 
         $data = $request->validate([
-            'title'   => ['required', 'string', 'max:255'],
-            'content' => ['required', 'string'],
+            'title'      => ['required', 'string', 'max:255'],
+            'content'    => ['required', 'string'],
+            'visible_to' => ['nullable', 'array'],
+            'visible_to.*' => ['string', 'in:' . implode(',', array_keys(self::ROLES))],
         ]);
 
         $slug = Str::slug($data['title']);
@@ -181,6 +204,7 @@ class KnowledgeBaseController extends Controller
             'content'     => $data['content'],
             'excerpt'     => Str::limit(strip_tags($data['content']), 200),
             'is_published'=> false,
+            'visible_to'  => empty($data['visible_to']) ? null : $data['visible_to'],
             'sort_order'  => $maxOrder + 1,
             'author_id'   => auth()->id(),
             'updated_by'  => auth()->id(),
@@ -196,14 +220,17 @@ class KnowledgeBaseController extends Controller
         abort_unless($article->category_id === $category->id, 404);
 
         $data = $request->validate([
-            'title'   => ['required', 'string', 'max:255'],
-            'content' => ['required', 'string'],
+            'title'        => ['required', 'string', 'max:255'],
+            'content'      => ['required', 'string'],
+            'visible_to'   => ['nullable', 'array'],
+            'visible_to.*' => ['string', 'in:' . implode(',', array_keys(self::ROLES))],
         ]);
 
         $article->update([
             'title'      => $data['title'],
             'content'    => $data['content'],
             'excerpt'    => Str::limit(strip_tags($data['content']), 200),
+            'visible_to' => empty($data['visible_to']) ? null : $data['visible_to'],
             'updated_by' => auth()->id(),
         ]);
 
