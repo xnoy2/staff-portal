@@ -189,7 +189,7 @@ class TrainingController extends Controller
             'Content-Length'         => $length,
             'Accept-Ranges'          => 'bytes',
             'Content-Disposition'    => 'inline',
-            'Cache-Control'          => 'no-store',
+            'Cache-Control'          => 'private, max-age=3600',
             'X-Content-Type-Options' => 'nosniff',
         ];
 
