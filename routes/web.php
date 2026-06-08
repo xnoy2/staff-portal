@@ -27,6 +27,7 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\SubcontractorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\HelpController;
+use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\QrScanController;
 use Illuminate\Support\Facades\Route;
 
@@ -203,6 +204,20 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{subcontractor}',                            [SubcontractorController::class, 'destroy'])->name('destroy');
         Route::post('/{subcontractor}/photos',                       [SubcontractorController::class, 'uploadPhoto'])->name('photos.upload');
         Route::delete('/{subcontractor}/photos/{photo}',             [SubcontractorController::class, 'deletePhoto'])->name('photos.delete');
+    });
+
+    // Knowledge Base
+    Route::prefix('knowledge-base')->name('kb.')->group(function () {
+        Route::get('/',                                          [KnowledgeBaseController::class, 'index'])->name('index');
+        Route::get('/{category}/{article}',                     [KnowledgeBaseController::class, 'show'])->name('show');
+        // Admin / Manager
+        Route::post('/categories',                              [KnowledgeBaseController::class, 'storeCategory'])->name('categories.store');
+        Route::patch('/categories/{category}',                  [KnowledgeBaseController::class, 'updateCategory'])->name('categories.update');
+        Route::delete('/categories/{category}',                 [KnowledgeBaseController::class, 'destroyCategory'])->name('categories.destroy');
+        Route::post('/categories/{category}/articles',          [KnowledgeBaseController::class, 'storeArticle'])->name('articles.store');
+        Route::patch('/categories/{category}/articles/{article}', [KnowledgeBaseController::class, 'updateArticle'])->name('articles.update');
+        Route::post('/categories/{category}/articles/{article}/toggle', [KnowledgeBaseController::class, 'toggleArticle'])->name('articles.toggle');
+        Route::delete('/categories/{category}/articles/{article}', [KnowledgeBaseController::class, 'destroyArticle'])->name('articles.destroy');
     });
 
     // Settings

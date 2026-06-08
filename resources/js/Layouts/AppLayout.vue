@@ -122,6 +122,7 @@
 
                 <!-- Help / User Guide – always visible -->
                 <NavGroup label="Help" :collapsed="!sidebarOpen && !isMobile">
+                    <NavItem :href="route('kb.index')" routeName="kb.*" icon="BookOpenIcon" label="Knowledge Base" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem :href="route('guide')" routeName="guide" icon="QuestionMarkCircleIcon" label="User Guide" :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
             </nav>
