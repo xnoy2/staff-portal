@@ -12,6 +12,7 @@ use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Sanctum\HasApiTokens;
 use Spatie\Permission\Traits\HasRoles;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -19,7 +20,7 @@ use Spatie\Activitylog\Support\LogOptions;
 class User extends Authenticatable
 {
     /** @use HasFactory<UserFactory> */
-    use HasUuids, HasFactory, Notifiable, HasRoles, LogsActivity, SoftDeletes;
+    use HasUuids, HasApiTokens, HasFactory, Notifiable, HasRoles, LogsActivity, SoftDeletes;
 
     protected static function booted(): void
     {
