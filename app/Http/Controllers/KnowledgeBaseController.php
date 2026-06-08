@@ -61,14 +61,15 @@ class KnowledgeBaseController extends Controller
         ]);
     }
 
-    public function show(KbCategory $category, KbArticle $article): Response
+    public function show(string $categorySlug, string $articleSlug): Response
     {
+        $category     = KbCategory::where('slug', $categorySlug)->firstOrFail();
+        $article      = KbArticle::where('slug', $articleSlug)->where('category_id', $category->id)->firstOrFail();
         $isPrivileged = auth()->user()->hasAnyRole(['admin', 'manager']);
 
         if (! $isPrivileged) {
             abort_unless($article->is_published, 404);
         }
-        abort_unless($article->category_id === $category->id, 404);
 
         $siblings = ($isPrivileged ? $category->articles : $category->publishedArticles)
             ->map(fn ($a) => [

@@ -31,11 +31,6 @@ class KbCategory extends Model
         });
     }
 
-    public function getRouteKeyName(): string
-    {
-        return 'slug';
-    }
-
     public function articles(): HasMany
     {
         return $this->hasMany(KbArticle::class, 'category_id')->orderBy('sort_order');

@@ -209,7 +209,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
     // Knowledge Base
     Route::prefix('knowledge-base')->name('kb.')->group(function () {
         Route::get('/',                                          [KnowledgeBaseController::class, 'index'])->name('index');
-        Route::get('/{category}/{article}',                     [KnowledgeBaseController::class, 'show'])->name('show');
+        Route::get('/{categorySlug}/{articleSlug}',             [KnowledgeBaseController::class, 'show'])->name('show');
         // Admin / Manager
         Route::post('/categories',                              [KnowledgeBaseController::class, 'storeCategory'])->name('categories.store');
         Route::patch('/categories/{category}',                  [KnowledgeBaseController::class, 'updateCategory'])->name('categories.update');
