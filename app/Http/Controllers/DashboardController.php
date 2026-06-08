@@ -24,13 +24,13 @@ class DashboardController extends Controller
 
         $data = array_merge(
             $data,
-            $isManager ? $this->managerData() : $this->staffData($user)
+            $isManager ? $this->managerData($user) : $this->staffData($user)
         );
 
         return Inertia::render('Dashboard', $data);
     }
 
-    private function managerData(): array
+    private function managerData($user): array
     {
         $clockedInCount = TimeEntry::active()->count();
         $pendingLeave   = LeaveRequest::where('status', 'pending')->count();
@@ -112,6 +112,31 @@ class DashboardController extends Controller
             ->take(8)
             ->values();
 
+        // Admin's own active entry (so they can clock in/out from the dashboard)
+        $myEntry = TimeEntry::active()->forUser($user->id)->with('breaks')->first();
+        $myEntryPayload = null;
+        if ($myEntry) {
+            $activeBreak       = $myEntry->breaks->whereNull('ended_at')->first();
+            $totalBreakMinutes = (int) $myEntry->breaks->whereNotNull('ended_at')->sum('duration_minutes');
+            $myEntryPayload = [
+                'id'                  => $myEntry->id,
+                'clock_in'            => $myEntry->clock_in->toIso8601String(),
+                'clock_state'         => $myEntry->clock_state ?? 'working',
+                'ot_type'             => $myEntry->ot_type,
+                'active_break'        => $activeBreak ? [
+                    'id'         => $activeBreak->id,
+                    'type'       => $activeBreak->type,
+                    'started_at' => $activeBreak->started_at->toIso8601String(),
+                ] : null,
+                'total_break_minutes' => $totalBreakMinutes,
+            ];
+        }
+
+        $todayOt = OvertimeRequest::where('user_id', $user->id)
+            ->where('date', today()->toDateString())
+            ->where('status', 'approved')
+            ->first();
+
         return [
             'stats' => [
                 'todaysJobs'     => $todaysJobs->count(),
@@ -119,11 +144,13 @@ class DashboardController extends Controller
                 'pendingLeave'   => $pendingLeave,
                 'pendingOt'      => $pendingOt,
             ],
-            'todaysJobs'       => $todaysJobs,
-            'projectsByStatus' => $projectsByStatus,
-            'clockedInStaff'   => $clockedInStaff,
-            'weekJobsByDay'    => $weekJobsByDay,
-            'staffHoursWeek'   => $staffHoursWeek,
+            'todaysJobs'        => $todaysJobs,
+            'projectsByStatus'  => $projectsByStatus,
+            'clockedInStaff'    => $clockedInStaff,
+            'weekJobsByDay'     => $weekJobsByDay,
+            'staffHoursWeek'    => $staffHoursWeek,
+            'activeEntry'       => $myEntryPayload,
+            'todayApprovedOt'   => $todayOt ? $todayOt->type : null,
         ];
     }
 
