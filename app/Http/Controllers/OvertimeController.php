@@ -57,11 +57,12 @@ class OvertimeController extends Controller
     public function store(Request $request): RedirectResponse
     {
         $data = $request->validate([
-            'date'       => ['required', 'date'],
-            'start_time' => ['required', 'date_format:H:i'],
-            'end_time'   => ['required', 'date_format:H:i', 'after:start_time'],
-            'type'       => ['required', 'in:ot,rdot'],
-            'reason'     => ['nullable', 'string', 'max:500'],
+            'date'          => ['required', 'date'],
+            'start_time'    => ['required', 'date_format:H:i'],
+            'end_time'      => ['required', 'date_format:H:i', 'after:start_time'],
+            'type'          => ['required', 'in:ot,rdot'],
+            'reason'        => ['nullable', 'string', 'max:500'],
+            'time_entry_id' => ['nullable', 'string', 'exists:time_entries,id'],
         ]);
 
         OvertimeRequest::create(array_merge($data, ['user_id' => $request->user()->id]));

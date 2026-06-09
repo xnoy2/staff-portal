@@ -8,7 +8,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 class OvertimeRequest extends Model
 {
     protected $fillable = [
-        'user_id', 'date', 'start_time', 'end_time', 'type',
+        'user_id', 'time_entry_id', 'date', 'start_time', 'end_time', 'type',
         'reason', 'status', 'reviewed_by', 'reviewed_at', 'reviewer_notes',
     ];
 
@@ -28,6 +28,11 @@ class OvertimeRequest extends Model
     public function reviewer(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by');
+    }
+
+    public function timeEntry(): BelongsTo
+    {
+        return $this->belongsTo(TimeEntry::class);
     }
 
     public function getDurationHoursAttribute(): float

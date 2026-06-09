@@ -54,6 +54,7 @@ class HandleInertiaRequests extends Middleware
                 'warning'       => session('warning'),
                 'info'          => session('info'),
                 'temp_password' => session('temp_password'),
+                'ot_excess'     => session('ot_excess'),
             ],
             'notifications' => $user ? $user->unreadNotifications()
                 ->latest()

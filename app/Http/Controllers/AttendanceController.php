@@ -111,14 +111,30 @@ class AttendanceController extends Controller
             $b->end();
         });
 
-        $entry->clock_out  = now();
+        $entry->clock_out   = now();
         $entry->clock_state = 'working'; // reset; no longer active
         $entry->calculateHours();
         $entry->save();
 
         broadcast(new AttendanceUpdated());
 
-        return back()->with('success', 'Clocked out. Duration: ' . $entry->duration_label);
+        $response = back()->with('success', 'Clocked out. Duration: ' . $entry->duration_label);
+
+        // For regular shifts only: flag excess hours so the frontend can prompt OT filing
+        if ($entry->ot_type === null && $entry->total_hours > 8) {
+            $excess         = round((float) $entry->total_hours - 8, 2);
+            $otStartCarbon  = $entry->clock_out->copy()->subMinutes((int) round($excess * 60));
+
+            $response = $response->with('ot_excess', [
+                'hours'      => $excess,
+                'date'       => $entry->clock_in->toDateString(),
+                'start_time' => $otStartCarbon->format('H:i'),
+                'end_time'   => $entry->clock_out->format('H:i'),
+                'entry_id'   => $entry->id,
+            ]);
+        }
+
+        return $response;
     }
 
     public function forceClockOut(Request $request, User $user): RedirectResponse

@@ -111,14 +111,93 @@
                 </button>
             </div>
         </div>
+
+        <!-- Excess OT banner (shown after clocking out with > 8h on a regular shift) -->
+        <div v-if="otExcess && !otDismissed" class="border-t border-amber-200 bg-amber-50 px-5 py-4">
+            <div v-if="!otFormOpen">
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex items-start gap-2">
+                        <ExclamationTriangleIcon class="w-4 h-4 text-amber-600 flex-shrink-0 mt-0.5" />
+                        <div>
+                            <p class="text-xs font-semibold text-amber-800">
+                                {{ otExcess.hours }}h excess — OT not yet filed
+                            </p>
+                            <p class="text-xs text-amber-700 mt-0.5">
+                                You worked past 8 hours today. File an OT request to have the extra time credited.
+                            </p>
+                        </div>
+                    </div>
+                    <button @click="otDismissed = true" class="text-amber-400 hover:text-amber-600 flex-shrink-0">
+                        <XMarkIcon class="w-4 h-4" />
+                    </button>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button
+                        @click="otFormOpen = true"
+                        class="text-xs font-semibold bg-amber-600 hover:bg-amber-700 text-white px-3 py-1.5 rounded-lg transition-colors"
+                    >File OT Request</button>
+                    <button
+                        @click="otDismissed = true"
+                        class="text-xs text-amber-600 hover:text-amber-800 px-2 py-1.5"
+                    >Later</button>
+                </div>
+            </div>
+
+            <!-- Inline OT filing form -->
+            <div v-else>
+                <p class="text-xs font-semibold text-amber-800 mb-3">File OT Request</p>
+                <div class="space-y-2">
+                    <div class="grid grid-cols-2 gap-2">
+                        <div>
+                            <label class="block text-xs text-amber-700 mb-1">Start time</label>
+                            <input v-model="otForm.start_time" type="time" class="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                        </div>
+                        <div>
+                            <label class="block text-xs text-amber-700 mb-1">End time</label>
+                            <input v-model="otForm.end_time" type="time" class="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400" />
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-amber-700 mb-1">Type</label>
+                        <div class="flex gap-2">
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="radio" v-model="otForm.type" value="ot" class="text-amber-600 focus:ring-amber-400" />
+                                <span class="text-xs font-medium text-amber-800">OT</span>
+                            </label>
+                            <label class="flex items-center gap-1.5 cursor-pointer">
+                                <input type="radio" v-model="otForm.type" value="rdot" class="text-amber-600 focus:ring-amber-400" />
+                                <span class="text-xs font-medium text-amber-800">RDOT</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-xs text-amber-700 mb-1">Reason <span class="font-normal">(optional)</span></label>
+                        <textarea
+                            v-model="otForm.reason"
+                            rows="2"
+                            placeholder="Why was overtime necessary?"
+                            class="w-full text-xs border border-amber-200 rounded-lg px-2 py-1.5 bg-white focus:outline-none focus:ring-1 focus:ring-amber-400 resize-none"
+                        />
+                    </div>
+                </div>
+                <div class="flex gap-2 mt-3">
+                    <button
+                        @click="submitOtRequest"
+                        :disabled="otSubmitting"
+                        class="text-xs font-semibold bg-amber-600 hover:bg-amber-700 disabled:opacity-60 text-white px-3 py-1.5 rounded-lg transition-colors"
+                    >{{ otSubmitting ? 'Submitting…' : 'Submit' }}</button>
+                    <button @click="otFormOpen = false" class="text-xs text-amber-600 hover:text-amber-800 px-2 py-1.5">Back</button>
+                </div>
+            </div>
+        </div>
     </div>
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { router } from '@inertiajs/vue3';
+import { ref, computed, watch, onMounted, onUnmounted } from 'vue';
+import { router, usePage } from '@inertiajs/vue3';
 import { PlayCircleIcon, StopCircleIcon, PauseCircleIcon } from '@heroicons/vue/24/solid';
-import { ClockIcon } from '@heroicons/vue/24/outline';
+import { ClockIcon, ExclamationTriangleIcon, XMarkIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     activeEntry:     { type: Object, default: null },
@@ -233,6 +312,47 @@ function doStartBreak(type) {
 function doEndBreak() {
     breakLoading.value = true;
     router.post('/attendance/break/end', {}, { preserveScroll: true, onFinish: () => { breakLoading.value = false; } });
+}
+
+// ── Excess OT banner ──────────────────────────────────────────────────────────
+
+const page        = usePage();
+const otExcess    = computed(() => page.props.flash?.ot_excess ?? null);
+const otDismissed = ref(false);
+const otFormOpen  = ref(false);
+const otSubmitting = ref(false);
+
+const otForm = ref({ start_time: '', end_time: '', type: 'ot', reason: '' });
+
+// Reset dismissed/form state when a fresh excess arrives
+watch(otExcess, (val) => {
+    if (val) {
+        otDismissed.value = false;
+        otFormOpen.value  = false;
+        otForm.value = {
+            start_time: val.start_time,
+            end_time:   val.end_time,
+            type:       'ot',
+            reason:     '',
+        };
+    }
+}, { immediate: true });
+
+function submitOtRequest() {
+    if (!otExcess.value) return;
+    otSubmitting.value = true;
+    router.post(route('overtime.store'), {
+        date:          otExcess.value.date,
+        start_time:    otForm.value.start_time,
+        end_time:      otForm.value.end_time,
+        type:          otForm.value.type,
+        reason:        otForm.value.reason || null,
+        time_entry_id: otExcess.value.entry_id,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => { otDismissed.value = true; otFormOpen.value = false; },
+        onFinish:  () => { otSubmitting.value = false; },
+    });
 }
 </script>
 

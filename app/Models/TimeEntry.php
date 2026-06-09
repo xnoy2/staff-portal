@@ -79,6 +79,11 @@ class TimeEntry extends Model
         return $this->hasMany(TimeEntryBreak::class);
     }
 
+    public function overtimeRequest(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(OvertimeRequest::class);
+    }
+
     public function activeBreak(): ?TimeEntryBreak
     {
         return $this->breaks()->whereNull('ended_at')->latest()->first();
