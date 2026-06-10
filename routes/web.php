@@ -26,6 +26,7 @@ use App\Http\Controllers\OvertimeController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\SubcontractorController;
 use App\Http\Controllers\ProfileController;
+use App\Http\Controllers\FeedController;
 use App\Http\Controllers\HelpController;
 use App\Http\Controllers\KnowledgeBaseController;
 use App\Http\Controllers\QrScanController;
@@ -204,6 +205,18 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{subcontractor}',                            [SubcontractorController::class, 'destroy'])->name('destroy');
         Route::post('/{subcontractor}/photos',                       [SubcontractorController::class, 'uploadPhoto'])->name('photos.upload');
         Route::delete('/{subcontractor}/photos/{photo}',             [SubcontractorController::class, 'deletePhoto'])->name('photos.delete');
+    });
+
+    // Newsfeed (intranet)
+    Route::prefix('feed')->name('feed.')->group(function () {
+        Route::get('/',                                  [FeedController::class, 'index'])->name('index');
+        Route::post('/',                                 [FeedController::class, 'store'])->name('store');
+        Route::post('/upload',                           [FeedController::class, 'upload'])->name('upload');
+        Route::delete('/{post}',                         [FeedController::class, 'destroy'])->name('destroy');
+        Route::post('/{post}/pin',                       [FeedController::class, 'pin'])->name('pin');
+        Route::post('/{post}/react',                     [FeedController::class, 'react'])->name('react');
+        Route::post('/{post}/comments',                  [FeedController::class, 'comment'])->name('comments.store');
+        Route::delete('/{post}/comments/{comment}',      [FeedController::class, 'destroyComment'])->name('comments.destroy');
     });
 
     // Knowledge Base
