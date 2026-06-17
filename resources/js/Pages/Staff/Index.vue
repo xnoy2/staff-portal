@@ -66,7 +66,7 @@
                     <div class="flex-1 min-w-0">
                         <div class="flex items-center gap-2 flex-wrap">
                             <p class="font-semibold text-gray-800 text-sm truncate">{{ member.name }}</p>
-                            <span v-if="member.must_change_password" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">pwd</span>
+                            <span v-if="member.must_change_password" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium whitespace-nowrap" title="Has a temporary password — must change it on next login">Temp password</span>
                         </div>
                         <p class="text-xs text-gray-400 truncate">{{ member.email }}</p>
                         <p v-if="member.employee_id" class="text-xs font-mono text-gray-400">{{ member.employee_id }}</p>
@@ -133,7 +133,7 @@
                                         <p class="text-xs text-gray-400">{{ member.email }}</p>
                                         <p v-if="member.employee_id" class="text-xs font-mono text-gray-400">{{ member.employee_id }}</p>
                                     </div>
-                                    <span v-if="member.must_change_password" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium" title="Must change password">pwd</span>
+                                    <span v-if="member.must_change_password" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium whitespace-nowrap" title="Has a temporary password — must change it on next login">Temp password</span>
                                 </div>
                             </td>
                             <td class="px-4 py-3">
