@@ -82,7 +82,7 @@
                 <!-- Contracted Hours -->
                 <div>
                     <label class="block text-sm font-medium text-gray-700 mb-1.5">Contracted Hours / Week</label>
-                    <input v-model.number="form.contracted_hours" type="number" min="1" max="168" class="form-input" placeholder="40" />
+                    <input v-model.number="form.contracted_hours" type="number" min="1" max="168" step="0.5" class="form-input" placeholder="40" />
                     <p v-if="form.errors.contracted_hours" class="mt-1 text-xs text-red-600">{{ form.errors.contracted_hours }}</p>
                 </div>
             </div>

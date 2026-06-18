@@ -92,7 +92,7 @@ class StaffController extends Controller
             'notes'                   => $request->notes,
             'annual_leave_days'       => $request->integer('annual_leave_days', 28),
             'hourly_rate'             => $request->filled('hourly_rate') ? round((float) $request->input('hourly_rate'), 2) : null,
-            'contracted_hours'        => $request->integer('contracted_hours', 40),
+            'contracted_hours'        => $request->filled('contracted_hours') ? round((float) $request->input('contracted_hours'), 2) : 40,
             'avatar'                  => $avatarPath,
         ]);
 
@@ -254,7 +254,7 @@ class StaffController extends Controller
             'notes'                   => $request->notes,
             'annual_leave_days'       => $request->integer('annual_leave_days', 28),
             'hourly_rate'             => $request->filled('hourly_rate') ? round((float) $request->input('hourly_rate'), 2) : null,
-            'contracted_hours'        => $request->integer('contracted_hours', 40),
+            'contracted_hours'        => $request->filled('contracted_hours') ? round((float) $request->input('contracted_hours'), 2) : 40,
             'bcf_worker_id'           => $request->filled('bcf_worker_id') ? $request->bcf_worker_id : null,
         ];
 

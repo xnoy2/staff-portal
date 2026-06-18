@@ -88,6 +88,7 @@ class User extends Authenticatable
         'last_login_at'     => 'datetime',
             'certifications' => 'array',
             'preferences'    => 'array',
+            'contracted_hours' => 'float',
         ];
     }
 
