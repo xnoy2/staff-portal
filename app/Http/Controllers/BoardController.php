@@ -51,7 +51,13 @@ class BoardController extends Controller
 
         $this->ensureLabels($board);
 
-        $workspace = $board->workspace;
+        $workspace = $board->workspace->load('members:id,name,avatar');
+
+        // Members available to @mention, and an id→name lookup for highlighting
+        $members    = $workspace->members->map(fn ($u) => [
+            'id' => $u->id, 'name' => $u->name, 'avatar_url' => $u->avatar_url,
+        ])->values();
+        $memberNames = $workspace->members->pluck('name', 'id');
 
         return Inertia::render('Boards/Show', [
             'nav'         => $this->workspaceNav($request->user()),
@@ -61,6 +67,7 @@ class BoardController extends Controller
                 'color'    => $workspace->color,
                 'is_owner' => $workspace->isOwner($request->user()->id),
             ],
+            'members'     => $members,
             'board'  => [
                 'id'     => $board->id,
                 'name'   => $board->name,
@@ -71,7 +78,7 @@ class BoardController extends Controller
                     'id'         => $list->id,
                     'name'       => $list->name,
                     'sort_order' => $list->sort_order,
-                    'cards'      => $list->cards->map(fn ($card) => $this->cardPayload($card)),
+                    'cards'      => $list->cards->map(fn ($card) => $this->cardPayload($card, $memberNames)),
                 ]),
             ],
         ]);
@@ -187,7 +194,7 @@ class BoardController extends Controller
 
     // ── Helpers ───────────────────────────────────────────────────────────────
 
-    private function cardPayload($card): array
+    private function cardPayload($card, $memberNames = null): array
     {
         $items = $card->checklistItems;
 
@@ -223,11 +230,14 @@ class BoardController extends Controller
                 'is_image' => $a->isImage(),
             ])->values(),
             'comments'        => $card->comments->map(fn ($c) => [
-                'id'         => $c->id,
-                'body'       => $c->body,
-                'created_at' => $c->created_at->toIso8601String(),
-                'can_delete' => $c->user_id === auth()->id(),
-                'user'       => [
+                'id'             => $c->id,
+                'body'           => $c->body,
+                'created_at'     => $c->created_at->toIso8601String(),
+                'can_delete'     => $c->user_id === auth()->id(),
+                'mention_names'  => collect($c->mentions ?? [])
+                    ->map(fn ($id) => $memberNames?->get($id))
+                    ->filter()->values(),
+                'user'           => [
                     'name'       => $c->user->name,
                     'avatar_url' => $c->user->avatar_url,
                 ],

@@ -10,7 +10,9 @@ class CardComment extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['card_id', 'user_id', 'body'];
+    protected $fillable = ['card_id', 'user_id', 'body', 'mentions'];
+
+    protected $casts = ['mentions' => 'array'];
 
     public function card(): BelongsTo
     {

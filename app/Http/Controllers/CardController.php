@@ -9,6 +9,9 @@ use App\Models\BoardList;
 use App\Models\CardAttachment;
 use App\Models\CardChecklistItem;
 use App\Models\CardComment;
+use App\Models\User;
+use App\Models\Workspace;
+use App\Notifications\CardMentioned;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
@@ -186,13 +189,45 @@ class CardController extends Controller
     {
         $this->authorizeCard($request, $card);
 
-        $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
+        $data = $request->validate([
+            'body'       => ['required', 'string', 'max:2000'],
+            'mentions'   => ['nullable', 'array'],
+            'mentions.*' => ['string', 'exists:users,id'],
+        ]);
+
+        $card->loadMissing('list.board');
+        $workspaceId = $card->list->board->workspace_id;
+        $boardId     = $card->list->board_id;
+        $author      = $request->user();
+
+        // Keep only mentions that are real members of the workspace (excluding the author)
+        $memberIds  = Workspace::find($workspaceId)?->members()->pluck('users.id') ?? collect();
+        $mentionIds = collect($data['mentions'] ?? [])
+            ->unique()
+            ->filter(fn ($id) => $id !== $author->id && $memberIds->contains($id))
+            ->values();
 
         CardComment::create([
-            'card_id' => $card->id,
-            'user_id' => $request->user()->id,
-            'body'    => $data['body'],
+            'card_id'  => $card->id,
+            'user_id'  => $author->id,
+            'body'     => $data['body'],
+            'mentions' => $mentionIds->isEmpty() ? null : $mentionIds->all(),
         ]);
+
+        // Notify each mentioned member (in-app + broadcast + email via Resend)
+        foreach ($mentionIds as $id) {
+            try {
+                User::find($id)?->notify(new CardMentioned(
+                    $author->name,
+                    $card->title,
+                    $boardId,
+                    $card->id,
+                    $data['body'],
+                ));
+            } catch (\Throwable $e) {
+                report($e);
+            }
+        }
 
         return back();
     }

@@ -210,13 +210,30 @@
                             <!-- Write a comment -->
                             <div class="flex items-start gap-2.5 mb-4">
                                 <img :src="me.avatar_url" class="w-8 h-8 rounded-full object-cover flex-shrink-0" />
-                                <div class="flex-1 min-w-0">
+                                <div class="flex-1 min-w-0 relative">
                                     <textarea
+                                        ref="commentInput"
                                         v-model="commentBody"
+                                        @input="onCommentInput"
+                                        @keydown="onCommentKeydown"
                                         rows="2"
-                                        placeholder="Write a comment…"
+                                        placeholder="Write a comment… use @ to mention"
                                         class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#EF233C]/15 focus:border-[#EF233C]/40"
                                     />
+
+                                    <!-- @mention autocomplete -->
+                                    <div v-if="mentionOpen && mentionMatches.length" class="absolute z-20 left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg py-1 max-h-44 overflow-y-auto">
+                                        <button
+                                            v-for="(m, i) in mentionMatches"
+                                            :key="m.id"
+                                            @mousedown.prevent="pickMention(m)"
+                                            :class="['w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors', i === mentionIndex ? 'bg-[#EF233C]/8 text-[#EF233C]' : 'text-gray-700 hover:bg-gray-50']"
+                                        >
+                                            <img :src="m.avatar_url" class="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                                            <span class="truncate">{{ m.name }}</span>
+                                        </button>
+                                    </div>
+
                                     <button v-if="commentBody.trim()" @click="addComment" class="mt-1 text-xs font-semibold bg-[#2B2D42] hover:bg-[#EF233C] text-white px-3 py-1.5 rounded-lg transition-colors">Comment</button>
                                 </div>
                             </div>
@@ -227,7 +244,7 @@
                                     <img :src="c.user.avatar_url" class="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                                     <div class="flex-1 min-w-0">
                                         <p class="text-xs mb-1"><span class="font-semibold text-gray-800">{{ c.user.name }}</span> <span class="text-gray-400">{{ ago(c.created_at) }}</span></p>
-                                        <div class="text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 break-words whitespace-pre-wrap shadow-sm">{{ c.body }}</div>
+                                        <div class="text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 break-words whitespace-pre-wrap shadow-sm" v-html="renderComment(c)"></div>
                                         <button v-if="c.can_delete" @click="deleteComment(c)" class="text-[10px] text-gray-400 hover:text-red-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Delete</button>
                                     </div>
                                 </div>
@@ -274,6 +291,7 @@ const props = defineProps({
     card:        { type: Object, default: null },
     listName:    { type: String, default: '' },
     boardLabels: { type: Array,  default: () => [] },
+    members:     { type: Array,  default: () => [] },
 });
 
 defineEmits(['close', 'delete']);
@@ -387,15 +405,81 @@ function addItem() {
 function toggleItem(item) { router.patch(route('boards.checklist.update', item.id), { is_done: !item.is_done }, opts); }
 function deleteItem(item) { router.delete(route('boards.checklist.destroy', item.id), opts); }
 
-// ── Comments ──────────────────────────────────────────────────────────────────
-const commentBody = ref('');
+// ── Comments + @mentions ───────────────────────────────────────────────────────
+const commentBody  = ref('');
+const commentInput = ref(null);
+const picked       = ref([]); // { id, name } the user selected via the picker
+
+// Autocomplete state
+const mentionOpen  = ref(false);
+const mentionQuery = ref('');
+const mentionIndex = ref(0);
+
+const mentionMatches = computed(() => {
+    const q = mentionQuery.value.toLowerCase();
+    return props.members
+        .filter(m => m.id !== me.value.id && m.name.toLowerCase().includes(q))
+        .slice(0, 6);
+});
+
+// Detect a "@partial" token immediately before the caret (no spaces in the partial)
+function onCommentInput(e) {
+    const el = e.target;
+    const upToCaret = el.value.slice(0, el.selectionStart);
+    const match = upToCaret.match(/(?:^|\s)@([\w]*)$/);
+    if (match) {
+        mentionQuery.value = match[1];
+        mentionOpen.value = true;
+        mentionIndex.value = 0;
+    } else {
+        mentionOpen.value = false;
+    }
+}
+
+function onCommentKeydown(e) {
+    if (!mentionOpen.value || !mentionMatches.value.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); mentionIndex.value = (mentionIndex.value + 1) % mentionMatches.value.length; }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); mentionIndex.value = (mentionIndex.value - 1 + mentionMatches.value.length) % mentionMatches.value.length; }
+    else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(mentionMatches.value[mentionIndex.value]); }
+    else if (e.key === 'Escape') { mentionOpen.value = false; }
+}
+
+function pickMention(m) {
+    const el = commentInput.value;
+    const caret = el ? el.selectionStart : commentBody.value.length;
+    const before = commentBody.value.slice(0, caret);
+    const after  = commentBody.value.slice(caret);
+    // Replace the trailing "@partial" with "@Name "
+    const newBefore = before.replace(/@([\w]*)$/, `@${m.name} `);
+    commentBody.value = newBefore + after;
+    if (!picked.value.some(p => p.id === m.id)) picked.value.push({ id: m.id, name: m.name });
+    mentionOpen.value = false;
+    nextTick(() => { el?.focus(); const pos = newBefore.length; el?.setSelectionRange(pos, pos); });
+}
+
 function addComment() {
     const b = commentBody.value.trim();
     if (!b) return;
+    // Only send mentions whose "@Name" still appears in the body
+    const mentions = picked.value.filter(p => b.includes('@' + p.name)).map(p => p.id);
     commentBody.value = '';
-    router.post(route('boards.cards.comments.store', props.card.id), { body: b }, opts);
+    picked.value = [];
+    mentionOpen.value = false;
+    router.post(route('boards.cards.comments.store', props.card.id), { body: b, mentions }, opts);
 }
 function deleteComment(c) { router.delete(route('boards.comments.destroy', c.id), opts); }
+
+// Render a comment body with @mentions highlighted (HTML-escaped first)
+function renderComment(c) {
+    let html = (c.body ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    for (const name of (c.mention_names ?? [])) {
+        const safe = name.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        const escaped = safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+        html = html.replace(new RegExp('@' + escaped, 'g'),
+            `<span class="text-[#EF233C] font-semibold bg-[#EF233C]/8 rounded px-0.5">@${safe}</span>`);
+    }
+    return html;
+}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function ago(iso) { return iso ? dayjs(iso).fromNow() : ''; }

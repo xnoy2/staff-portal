@@ -203,6 +203,7 @@
             :card="activeCard"
             :list-name="activeCardListName"
             :board-labels="board.labels"
+            :members="members"
             @close="activeCardId = null"
             @delete="deleteCard"
         />
@@ -210,7 +211,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick } from 'vue';
+import { ref, computed, watch, nextTick, onMounted } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import draggable from 'vuedraggable';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -232,6 +233,7 @@ const props = defineProps({
     nav:       { type: Array,  default: () => [] },
     workspace: { type: Object, required: true },
     board:     { type: Object, required: true },
+    members:   { type: Array,  default: () => [] },
 });
 
 const opts = { preserveScroll: true, preserveState: true };
@@ -307,6 +309,14 @@ const activeCardListName = computed(() => {
 });
 
 function openCard(card) { activeCardId.value = card.id; }
+
+// Deep-link: ?card=<id> opens that card (e.g. from a mention notification)
+onMounted(() => {
+    const id = new URLSearchParams(window.location.search).get('card');
+    if (id && lists.value.some(l => l.cards.some(c => c.id === id))) {
+        activeCardId.value = id;
+    }
+});
 
 // ── Card-face helpers ─────────────────────────────────────────────────────────
 
