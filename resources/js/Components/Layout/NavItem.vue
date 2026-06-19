@@ -46,9 +46,13 @@ const page = usePage();
 
 const isActive = computed(() => {
     try {
-        // Prefer Ziggy's route().current() when a route name is given — most reliable
+        // Prefer Ziggy's route().current() when a route name is given — most reliable.
+        // Supports a comma-separated list of patterns so one item can stay active
+        // across related routes (e.g. "boards.*,workspaces.*").
         if (props.routeName) {
-            return !!route().current(props.routeName);
+            return props.routeName
+                .split(',')
+                .some(name => !!route().current(name.trim()));
         }
 
         // For hard-coded paths: extract just the pathname and compare with current URL
