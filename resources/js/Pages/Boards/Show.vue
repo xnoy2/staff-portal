@@ -261,6 +261,8 @@ const LABEL_CLASSES = {
     red:    'bg-red-300 text-red-900',
     purple: 'bg-purple-300 text-purple-900',
     blue:   'bg-sky-300 text-sky-900',
+    pink:   'bg-pink-300 text-pink-900',
+    slate:  'bg-slate-300 text-slate-900',
 };
 function labelClass(c) { return LABEL_CLASSES[c] ?? 'bg-gray-300 text-gray-800'; }
 

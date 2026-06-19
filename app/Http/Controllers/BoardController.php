@@ -167,7 +167,7 @@ class BoardController extends Controller
 
         $data = $request->validate([
             'name'  => ['sometimes', 'nullable', 'string', 'max:50'],
-            'color' => ['sometimes', 'required', 'string', 'max:20'],
+            'color' => ['sometimes', 'required', 'in:green,yellow,orange,red,purple,blue,pink,slate'],
         ]);
 
         $label->update($data);

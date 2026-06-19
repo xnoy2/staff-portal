@@ -6,6 +6,7 @@ use App\Http\Controllers\Concerns\AuthorizesWorkspace;
 use App\Http\Controllers\Concerns\BuildsWorkspaceNav;
 use App\Models\User;
 use App\Models\Workspace;
+use App\Notifications\WorkspaceMemberAdded;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -138,7 +139,22 @@ class WorkspaceController extends Controller
             return back()->with('error', 'Already a member.');
         }
 
-        $workspace->members()->attach($data['user_id'], ['role' => $data['role'] ?? 'member']);
+        $role = $data['role'] ?? 'member';
+        $workspace->members()->attach($data['user_id'], ['role' => $role]);
+
+        // Notify the new member (database + broadcast + email).
+        // Guard so a mail failure never blocks the membership itself.
+        $newMember = User::find($data['user_id']);
+        try {
+            $newMember?->notify(new WorkspaceMemberAdded(
+                $workspace->name,
+                $workspace->id,
+                $request->user()->name,
+                $role,
+            ));
+        } catch (\Throwable $e) {
+            report($e);
+        }
 
         return back()->with('success', 'Member added.');
     }

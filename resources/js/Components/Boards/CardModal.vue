@@ -2,9 +2,9 @@
     <Teleport to="body">
         <Transition name="cm">
             <div v-if="card" class="fixed inset-0 z-50 overflow-y-auto bg-black/50 backdrop-blur-sm p-0 sm:p-4" @click.self="$emit('close')">
-                <div class="cm-panel relative bg-white w-full max-w-3xl mx-auto sm:rounded-2xl shadow-2xl min-h-screen sm:min-h-0 sm:my-6">
+                <div class="cm-panel relative bg-white w-full max-w-4xl mx-auto rounded-b-2xl sm:rounded-2xl shadow-2xl my-0 sm:my-6 flex flex-col sm:overflow-hidden">
                     <!-- Header -->
-                    <div class="flex items-start gap-3 px-5 py-4 border-b border-gray-100">
+                    <div class="flex items-start gap-3 px-5 py-4 border-b border-gray-100 flex-shrink-0">
                         <ViewColumnsIcon class="w-5 h-5 text-gray-300 flex-shrink-0 mt-1.5" />
                         <div class="flex-1 min-w-0">
                             <input
@@ -20,19 +20,19 @@
                         </button>
                     </div>
 
-                    <!-- Quick actions -->
-                    <div class="flex flex-wrap gap-1.5 px-5 pt-3">
-                        <button @click="togglePanel('labels')" :class="actionBtn"><TagIcon class="w-3.5 h-3.5" /> Labels</button>
-                        <button @click="togglePanel('date')" :class="actionBtn"><ClockIcon class="w-3.5 h-3.5" /> Dates</button>
-                        <button @click="$refs.fileInput.click()" :class="actionBtn"><PaperClipIcon class="w-3.5 h-3.5" /> Attachment</button>
-                        <input ref="fileInput" type="file" class="hidden" @change="uploadAttachment" />
-                    </div>
+                    <!-- Body: two independently-scrolling panels -->
+                    <div class="flex flex-col sm:flex-row">
 
-                    <!-- Body: two columns -->
-                    <div class="flex flex-col sm:flex-row gap-0 sm:gap-4 px-5 py-4">
+                        <!-- Left: details (own scrollbar) -->
+                        <div class="sm:flex-1 min-w-0 sm:max-h-[65vh] sm:overflow-y-auto px-5 py-4 space-y-5">
 
-                        <!-- Left: details -->
-                        <div class="flex-1 min-w-0 space-y-5">
+                            <!-- Quick actions -->
+                            <div class="flex flex-wrap gap-1.5">
+                                <button @click="togglePanel('labels')" :class="actionBtn"><TagIcon class="w-3.5 h-3.5" /> Labels</button>
+                                <button @click="togglePanel('date')" :class="actionBtn"><ClockIcon class="w-3.5 h-3.5" /> Dates</button>
+                                <button @click="$refs.fileInput.click()" :class="actionBtn"><PaperClipIcon class="w-3.5 h-3.5" /> Attachment</button>
+                                <input ref="fileInput" type="file" class="hidden" @change="uploadAttachment" />
+                            </div>
 
                             <!-- Labels -->
                             <div v-if="card.labels.length || panel === 'labels'">
@@ -45,21 +45,40 @@
                                     >{{ l.name || '&nbsp;' }}</span>
                                 </div>
                                 <!-- Picker -->
-                                <div v-if="panel === 'labels'" class="mt-2 p-2 bg-gray-50 rounded-xl border border-gray-100 space-y-1">
-                                    <div v-for="l in boardLabels" :key="l.id" class="flex items-center gap-2">
-                                        <button
-                                            @click="toggleLabel(l)"
-                                            :class="['flex-1 flex items-center h-7 px-2 rounded text-xs font-semibold transition-all', labelClass(l.color), hasLabel(l.id) ? 'ring-2 ring-offset-1 ring-gray-400' : 'opacity-90 hover:opacity-100']"
-                                        >
-                                            <span class="truncate">{{ l.name }}</span>
-                                            <CheckIcon v-if="hasLabel(l.id)" class="w-3.5 h-3.5 ml-auto" />
-                                        </button>
-                                        <input
-                                            :value="l.name"
-                                            @change="renameLabel(l, $event.target.value)"
-                                            placeholder="name…"
-                                            class="w-20 text-[11px] border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-[#EF233C]/20"
-                                        />
+                                <div v-if="panel === 'labels'" class="mt-2 p-2 bg-gray-50 rounded-xl border border-gray-100 space-y-2">
+                                    <div v-for="l in boardLabels" :key="l.id">
+                                        <div class="flex items-center gap-2">
+                                            <button
+                                                @click="toggleLabel(l)"
+                                                :class="['flex-1 flex items-center h-7 px-2 rounded text-xs font-semibold transition-all', labelClass(l.color), hasLabel(l.id) ? 'ring-2 ring-offset-1 ring-gray-400' : 'opacity-90 hover:opacity-100']"
+                                            >
+                                                <span class="truncate">{{ l.name }}</span>
+                                                <CheckIcon v-if="hasLabel(l.id)" class="w-3.5 h-3.5 ml-auto" />
+                                            </button>
+                                            <input
+                                                :value="l.name"
+                                                @change="renameLabel(l, $event.target.value)"
+                                                placeholder="name…"
+                                                class="w-20 text-[11px] border border-gray-200 rounded px-1.5 py-1 focus:outline-none focus:ring-1 focus:ring-[#EF233C]/20"
+                                            />
+                                            <button
+                                                @click="colorEditId = colorEditId === l.id ? null : l.id"
+                                                :title="'Change colour'"
+                                                class="p-1.5 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-200 transition-colors"
+                                            >
+                                                <SwatchIcon class="w-4 h-4" />
+                                            </button>
+                                        </div>
+                                        <!-- Colour swatches -->
+                                        <div v-if="colorEditId === l.id" class="flex flex-wrap gap-1.5 mt-1.5 pl-0.5">
+                                            <button
+                                                v-for="c in LABEL_COLORS"
+                                                :key="c"
+                                                @click="setLabelColor(l, c)"
+                                                :title="c"
+                                                :class="['w-7 h-7 rounded-md transition-all', swatchClass(c), l.color === c ? 'ring-2 ring-offset-1 ring-gray-600' : 'hover:scale-110']"
+                                            />
+                                        </div>
                                     </div>
                                 </div>
                             </div>
@@ -182,16 +201,16 @@
                             </div>
                         </div>
 
-                        <!-- Right: comments and activity -->
-                        <div class="sm:w-60 flex-shrink-0 mt-6 sm:mt-0 sm:border-l sm:border-gray-100 sm:pl-4">
-                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2 flex items-center gap-1.5">
+                        <!-- Right: comments and activity (separate panel, own scrollbar) -->
+                        <div class="sm:w-80 flex-shrink-0 sm:max-h-[65vh] sm:overflow-y-auto bg-gray-50 border-t sm:border-t-0 sm:border-l border-gray-200 px-5 py-4">
+                            <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-3 flex items-center gap-1.5">
                                 <ChatBubbleLeftRightIcon class="w-4 h-4" /> Comments and activity
                             </p>
 
                             <!-- Write a comment -->
-                            <div class="flex items-start gap-2 mb-3">
-                                <img :src="me.avatar_url" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-                                <div class="flex-1">
+                            <div class="flex items-start gap-2.5 mb-4">
+                                <img :src="me.avatar_url" class="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                                <div class="flex-1 min-w-0">
                                     <textarea
                                         v-model="commentBody"
                                         rows="2"
@@ -203,23 +222,23 @@
                             </div>
 
                             <!-- Feed -->
-                            <div class="space-y-3">
-                                <div v-for="c in [...card.comments].reverse()" :key="c.id" class="flex items-start gap-2 group">
-                                    <img :src="c.user.avatar_url" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
+                            <div class="space-y-4">
+                                <div v-for="c in [...card.comments].reverse()" :key="c.id" class="flex items-start gap-2.5 group">
+                                    <img :src="c.user.avatar_url" class="w-8 h-8 rounded-full object-cover flex-shrink-0" />
                                     <div class="flex-1 min-w-0">
-                                        <p class="text-xs"><span class="font-semibold text-gray-800">{{ c.user.name }}</span> <span class="text-gray-400">{{ ago(c.created_at) }}</span></p>
-                                        <div class="text-sm text-gray-700 bg-gray-50 rounded-lg px-3 py-1.5 mt-0.5 break-words whitespace-pre-wrap">{{ c.body }}</div>
-                                        <button v-if="c.can_delete" @click="deleteComment(c)" class="text-[10px] text-gray-400 hover:text-red-500 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity">Delete</button>
+                                        <p class="text-xs mb-1"><span class="font-semibold text-gray-800">{{ c.user.name }}</span> <span class="text-gray-400">{{ ago(c.created_at) }}</span></p>
+                                        <div class="text-sm text-gray-700 bg-white border border-gray-200 rounded-lg px-3 py-2 break-words whitespace-pre-wrap shadow-sm">{{ c.body }}</div>
+                                        <button v-if="c.can_delete" @click="deleteComment(c)" class="text-[10px] text-gray-400 hover:text-red-500 mt-1 opacity-0 group-hover:opacity-100 transition-opacity">Delete</button>
                                     </div>
                                 </div>
 
                                 <!-- Creation activity -->
-                                <div class="flex items-start gap-2">
-                                    <img :src="card.creator?.avatar_url ?? me.avatar_url" class="w-7 h-7 rounded-full object-cover flex-shrink-0" />
-                                    <p class="text-xs text-gray-500 mt-1">
+                                <div class="flex items-start gap-2.5">
+                                    <img :src="card.creator?.avatar_url ?? me.avatar_url" class="w-8 h-8 rounded-full object-cover flex-shrink-0" />
+                                    <p class="text-xs text-gray-500 mt-1.5">
                                         <span class="font-semibold text-gray-700">{{ card.creator?.name ?? 'Someone' }}</span>
                                         added this card to <span class="font-medium">{{ listName }}</span>
-                                        <span class="block text-gray-400">{{ ago(card.created_at) }}</span>
+                                        <span class="block text-gray-400 mt-0.5">{{ ago(card.created_at) }}</span>
                                     </p>
                                 </div>
                             </div>
@@ -227,7 +246,7 @@
                     </div>
 
                     <!-- Footer -->
-                    <div class="px-5 py-3 border-t border-gray-100 flex justify-end">
+                    <div class="px-5 py-3 border-t border-gray-100 flex justify-end flex-shrink-0 bg-white">
                         <button @click="$emit('delete', card)" class="inline-flex items-center gap-1.5 text-xs font-semibold text-red-500 border border-red-200 hover:bg-red-50 px-3 py-2 rounded-lg transition-colors">
                             <TrashIcon class="w-3.5 h-3.5" /> Delete card
                         </button>
@@ -245,7 +264,7 @@ import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import {
     ViewColumnsIcon, XMarkIcon, CheckCircleIcon, TrashIcon, TagIcon, ClockIcon,
-    PaperClipIcon, Bars3BottomLeftIcon, DocumentIcon, ChatBubbleLeftRightIcon, CheckIcon,
+    PaperClipIcon, Bars3BottomLeftIcon, DocumentIcon, ChatBubbleLeftRightIcon, CheckIcon, SwatchIcon,
 } from '@heroicons/vue/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/vue/24/solid';
 
@@ -265,6 +284,7 @@ const me   = computed(() => page.props.auth.user);
 const opts = { preserveScroll: true, preserveState: true };
 
 // ── Labels ────────────────────────────────────────────────────────────────────
+const LABEL_COLORS = ['green', 'yellow', 'orange', 'red', 'purple', 'blue', 'pink', 'slate'];
 const LABEL_CLASSES = {
     green:  'bg-emerald-200 text-emerald-900',
     yellow: 'bg-yellow-200 text-yellow-900',
@@ -272,11 +292,21 @@ const LABEL_CLASSES = {
     red:    'bg-red-200 text-red-900',
     purple: 'bg-purple-200 text-purple-900',
     blue:   'bg-sky-200 text-sky-900',
+    pink:   'bg-pink-200 text-pink-900',
+    slate:  'bg-slate-200 text-slate-900',
+};
+const SWATCH_CLASSES = {
+    green:  'bg-emerald-400', yellow: 'bg-yellow-400', orange: 'bg-orange-400', red: 'bg-red-400',
+    purple: 'bg-purple-400', blue: 'bg-sky-400', pink: 'bg-pink-400', slate: 'bg-slate-400',
 };
 function labelClass(c) { return LABEL_CLASSES[c] ?? 'bg-gray-200 text-gray-800'; }
+function swatchClass(c) { return SWATCH_CLASSES[c] ?? 'bg-gray-400'; }
 function hasLabel(id) { return props.card?.labels.some(l => l.id === id); }
 function toggleLabel(l) { router.post(route('boards.cards.labels.toggle', [props.card.id, l.id]), {}, opts); }
 function renameLabel(l, name) { router.patch(route('boards.labels.update', l.id), { name }, opts); }
+
+const colorEditId = ref(null);
+function setLabelColor(l, color) { router.patch(route('boards.labels.update', l.id), { color }, opts); }
 
 // ── Panels ────────────────────────────────────────────────────────────────────
 const panel = ref(null);
