@@ -24,6 +24,8 @@ use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
 use App\Http\Controllers\OvertimeController;
 use App\Http\Controllers\ScheduleController;
+use App\Http\Controllers\BoardController;
+use App\Http\Controllers\CardController;
 use App\Http\Controllers\SubcontractorController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\FeedController;
@@ -205,6 +207,37 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{subcontractor}',                            [SubcontractorController::class, 'destroy'])->name('destroy');
         Route::post('/{subcontractor}/photos',                       [SubcontractorController::class, 'uploadPhoto'])->name('photos.upload');
         Route::delete('/{subcontractor}/photos/{photo}',             [SubcontractorController::class, 'deletePhoto'])->name('photos.delete');
+    });
+
+    // Boards (Trello-style)
+    Route::prefix('boards')->name('boards.')->group(function () {
+        Route::get('/',                          [BoardController::class, 'index'])->name('index');
+        Route::post('/',                         [BoardController::class, 'store'])->name('store');
+        Route::patch('/{board}',                 [BoardController::class, 'update'])->name('update');
+        Route::delete('/{board}',                [BoardController::class, 'destroy'])->name('destroy');
+        // Lists
+        Route::post('/{board}/lists',            [BoardController::class, 'storeList'])->name('lists.store');
+        Route::post('/lists/reorder',            [BoardController::class, 'reorderLists'])->name('lists.reorder');
+        Route::patch('/lists/{list}',            [BoardController::class, 'updateList'])->name('lists.update');
+        Route::delete('/lists/{list}',           [BoardController::class, 'destroyList'])->name('lists.destroy');
+        // Cards
+        Route::post('/lists/{list}/cards',       [CardController::class, 'store'])->name('cards.store');
+        Route::post('/cards/{card}/move',        [CardController::class, 'move'])->name('cards.move');
+        Route::patch('/cards/{card}',            [CardController::class, 'update'])->name('cards.update');
+        Route::delete('/cards/{card}',           [CardController::class, 'destroy'])->name('cards.destroy');
+        // Checklist items
+        Route::post('/cards/{card}/checklist',   [CardController::class, 'storeChecklistItem'])->name('checklist.store');
+        Route::patch('/checklist/{item}',        [CardController::class, 'updateChecklistItem'])->name('checklist.update');
+        Route::delete('/checklist/{item}',       [CardController::class, 'destroyChecklistItem'])->name('checklist.destroy');
+        // Labels
+        Route::patch('/labels/{label}',          [BoardController::class, 'updateLabel'])->name('labels.update');
+        Route::post('/cards/{card}/labels/{label}/toggle', [CardController::class, 'toggleLabel'])->name('cards.labels.toggle');
+        // Attachments
+        Route::post('/cards/{card}/attachments', [CardController::class, 'storeAttachment'])->name('cards.attachments.store');
+        Route::delete('/attachments/{attachment}', [CardController::class, 'destroyAttachment'])->name('attachments.destroy');
+        // Comments
+        Route::post('/cards/{card}/comments',    [CardController::class, 'storeComment'])->name('cards.comments.store');
+        Route::delete('/comments/{comment}',     [CardController::class, 'destroyComment'])->name('comments.destroy');
     });
 
     // Newsfeed (intranet)

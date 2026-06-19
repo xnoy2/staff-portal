@@ -92,6 +92,11 @@ class User extends Authenticatable
         ];
     }
 
+    public function boards(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(Board::class);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
