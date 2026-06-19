@@ -2,18 +2,20 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AuthorizesWorkspace;
 use App\Models\BoardCard;
 use App\Models\BoardLabel;
 use App\Models\BoardList;
 use App\Models\CardAttachment;
 use App\Models\CardChecklistItem;
 use App\Models\CardComment;
-use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 
 class CardController extends Controller
 {
+    use AuthorizesWorkspace;
+
     public function store(Request $request, BoardList $list): RedirectResponse
     {
         $this->authorizeList($request, $list);
@@ -171,7 +173,7 @@ class CardController extends Controller
 
     public function destroyAttachment(Request $request, CardAttachment $attachment): RedirectResponse
     {
-        abort_unless($attachment->card->list->board->user_id === $request->user()->id, 403);
+        $this->requireMember($request, $attachment->card->list->board->workspace_id);
 
         $attachment->delete();
 
@@ -208,16 +210,16 @@ class CardController extends Controller
 
     private function authorizeList(Request $request, BoardList $list): void
     {
-        abort_unless($list->board->user_id === $request->user()->id, 403);
+        $this->requireMember($request, $list->board->workspace_id);
     }
 
     private function authorizeCard(Request $request, BoardCard $card): void
     {
-        abort_unless($card->list->board->user_id === $request->user()->id, 403);
+        $this->requireMember($request, $card->list->board->workspace_id);
     }
 
     private function authorizeItem(Request $request, CardChecklistItem $item): void
     {
-        abort_unless($item->card->list->board->user_id === $request->user()->id, 403);
+        $this->requireMember($request, $item->card->list->board->workspace_id);
     }
 }

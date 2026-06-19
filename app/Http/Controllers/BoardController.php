@@ -2,9 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Http\Controllers\Concerns\AuthorizesWorkspace;
+use App\Http\Controllers\Concerns\BuildsWorkspaceNav;
 use App\Models\Board;
 use App\Models\BoardLabel;
 use App\Models\BoardList;
+use App\Models\Workspace;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -12,40 +15,42 @@ use Inertia\Response;
 
 class BoardController extends Controller
 {
-    public function index(Request $request): Response
+    use AuthorizesWorkspace;
+    use BuildsWorkspaceNav;
+
+    /** Entry point — land on the first workspace's boards grid. */
+    public function index(Request $request): RedirectResponse
     {
-        $user = $request->user();
+        $ws = $this->ensureWorkspace($request->user());
 
-        // Ensure the user always has at least one board
-        if (! Board::where('user_id', $user->id)->exists()) {
-            $this->createDefaultBoard($user->id);
-        }
+        return redirect()->route('workspaces.show', $ws->id);
+    }
 
-        $boards = Board::where('user_id', $user->id)
-            ->orderBy('sort_order')->orderBy('created_at')
-            ->get(['id', 'name']);
+    public function show(Request $request, Board $board): Response
+    {
+        $this->authorizeBoard($request, $board);
 
-        // Active board: requested ?board= or the first one
-        $activeId = $request->query('board');
-        $active   = $boards->firstWhere('id', $activeId) ?? $boards->first();
-
-        $board = Board::with([
+        $board->load([
             'labels',
             'lists.cards.checklistItems',
             'lists.cards.labels',
             'lists.cards.attachments',
             'lists.cards.comments.user:id,name,avatar',
             'lists.cards.creator:id,name,avatar',
-        ])->findOrFail($active->id);
+        ]);
 
-        // Guard: only the owner may view
-        abort_unless($board->user_id === $user->id, 403);
-
-        // Ensure every board has the default label palette
         $this->ensureLabels($board);
 
+        $workspace = $board->workspace;
+
         return Inertia::render('Boards/Show', [
-            'boards' => $boards,
+            'nav'         => $this->workspaceNav($request->user()),
+            'workspace'   => [
+                'id'       => $workspace->id,
+                'name'     => $workspace->name,
+                'color'    => $workspace->color,
+                'is_owner' => $workspace->isOwner($request->user()->id),
+            ],
             'board'  => [
                 'id'     => $board->id,
                 'name'   => $board->name,
@@ -62,21 +67,22 @@ class BoardController extends Controller
         ]);
     }
 
-    public function store(Request $request): RedirectResponse
+    public function store(Request $request, Workspace $workspace): RedirectResponse
     {
+        $this->requireMember($request, $workspace->id);
+
         $data = $request->validate(['name' => ['required', 'string', 'max:100']]);
 
-        $user     = $request->user();
-        $maxOrder = Board::where('user_id', $user->id)->max('sort_order') ?? 0;
+        $maxOrder = $workspace->boards()->max('sort_order') ?? 0;
 
         $board = Board::create([
-            'user_id'    => $user->id,
-            'name'       => $data['name'],
-            'sort_order' => $maxOrder + 1,
+            'user_id'      => $request->user()->id,
+            'workspace_id' => $workspace->id,
+            'name'         => $data['name'],
+            'sort_order'   => $maxOrder + 1,
         ]);
 
-        return redirect()->route('boards.index', ['board' => $board->id])
-            ->with('success', 'Board created.');
+        return redirect()->route('boards.show', $board->id)->with('success', 'Board created.');
     }
 
     public function update(Request $request, Board $board): RedirectResponse
@@ -93,9 +99,10 @@ class BoardController extends Controller
     {
         $this->authorizeBoard($request, $board);
 
+        $workspaceId = $board->workspace_id;
         $board->delete();
 
-        return redirect()->route('boards.index')->with('success', 'Board deleted.');
+        return redirect()->route('workspaces.show', $workspaceId)->with('success', 'Board deleted.');
     }
 
     // ── Lists ─────────────────────────────────────────────────────────────────
@@ -156,7 +163,7 @@ class BoardController extends Controller
 
     public function updateLabel(Request $request, BoardLabel $label): RedirectResponse
     {
-        abort_unless($label->board->user_id === $request->user()->id, 403);
+        $this->requireMember($request, $label->board->workspace_id);
 
         $data = $request->validate([
             'name'  => ['sometimes', 'nullable', 'string', 'max:50'],
@@ -232,22 +239,29 @@ class BoardController extends Controller
         $board->load('labels');
     }
 
-    private function createDefaultBoard(string $userId): void
+    public function createStarterBoard(Workspace $workspace, string $userId): Board
     {
-        $board = Board::create(['user_id' => $userId, 'name' => 'My Board', 'sort_order' => 1]);
+        $board = Board::create([
+            'user_id'      => $userId,
+            'workspace_id' => $workspace->id,
+            'name'         => 'My Board',
+            'sort_order'   => 1,
+        ]);
 
         foreach (['To Do', 'In Progress', 'Done'] as $i => $name) {
             BoardList::create(['board_id' => $board->id, 'name' => $name, 'sort_order' => $i + 1]);
         }
+
+        return $board;
     }
 
     private function authorizeBoard(Request $request, Board $board): void
     {
-        abort_unless($board->user_id === $request->user()->id, 403);
+        $this->requireMember($request, $board->workspace_id);
     }
 
     private function authorizeList(Request $request, BoardList $list): void
     {
-        abort_unless($list->board->user_id === $request->user()->id, 403);
+        $this->requireMember($request, $list->board->workspace_id);
     }
 }

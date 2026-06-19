@@ -97,6 +97,32 @@ class User extends Authenticatable
         return $this->hasMany(Board::class);
     }
 
+    public function workspaces(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(Workspace::class, 'workspace_members')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function isMemberOfWorkspace(?string $workspaceId): bool
+    {
+        if (! $workspaceId) {
+            return false;
+        }
+        return $this->workspaces()->where('workspaces.id', $workspaceId)->exists();
+    }
+
+    public function ownsWorkspace(?string $workspaceId): bool
+    {
+        if (! $workspaceId) {
+            return false;
+        }
+        return $this->workspaces()
+            ->where('workspaces.id', $workspaceId)
+            ->wherePivot('role', 'owner')
+            ->exists();
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

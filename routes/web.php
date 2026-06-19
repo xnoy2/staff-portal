@@ -27,6 +27,7 @@ use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\BoardController;
 use App\Http\Controllers\CardController;
 use App\Http\Controllers\SubcontractorController;
+use App\Http\Controllers\WorkspaceController;
 use App\Http\Controllers\ProfileController;
 use App\Http\Controllers\FeedController;
 use App\Http\Controllers\HelpController;
@@ -209,10 +210,25 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{subcontractor}/photos/{photo}',             [SubcontractorController::class, 'deletePhoto'])->name('photos.delete');
     });
 
+    // Workspaces (Trello-style, contain boards)
+    Route::prefix('workspaces')->name('workspaces.')->group(function () {
+        Route::post('/',                          [WorkspaceController::class, 'store'])->name('store');
+        Route::get('/{workspace}',                [WorkspaceController::class, 'show'])->name('show');
+        Route::get('/{workspace}/members',        [WorkspaceController::class, 'members'])->name('members');
+        Route::get('/{workspace}/settings',       [WorkspaceController::class, 'settings'])->name('settings');
+        Route::patch('/{workspace}',              [WorkspaceController::class, 'update'])->name('update');
+        Route::delete('/{workspace}',             [WorkspaceController::class, 'destroy'])->name('destroy');
+        Route::post('/{workspace}/members',       [WorkspaceController::class, 'storeMember'])->name('members.store');
+        Route::patch('/{workspace}/members/{user}', [WorkspaceController::class, 'updateMember'])->name('members.update');
+        Route::delete('/{workspace}/members/{user}', [WorkspaceController::class, 'destroyMember'])->name('members.destroy');
+        // Board creation is workspace-scoped
+        Route::post('/{workspace}/boards',        [BoardController::class, 'store'])->name('boards.store');
+    });
+
     // Boards (Trello-style)
     Route::prefix('boards')->name('boards.')->group(function () {
         Route::get('/',                          [BoardController::class, 'index'])->name('index');
-        Route::post('/',                         [BoardController::class, 'store'])->name('store');
+        Route::get('/{board}',                   [BoardController::class, 'show'])->name('show');
         Route::patch('/{board}',                 [BoardController::class, 'update'])->name('update');
         Route::delete('/{board}',                [BoardController::class, 'destroy'])->name('destroy');
         // Lists

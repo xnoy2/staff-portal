@@ -1,51 +1,14 @@
 <template>
     <AppLayout title="Boards">
-        <!-- ── Board top bar ────────────────────────────────────────────────── -->
-        <div class="flex items-center gap-3 mb-4">
-            <!-- Board switcher -->
-            <div class="relative" ref="switcherEl">
-                <button
-                    @click="switcherOpen = !switcherOpen"
-                    class="flex items-center gap-2 bg-white border border-gray-200 rounded-xl px-3 py-2 shadow-sm hover:bg-gray-50 transition-colors"
-                >
-                    <ViewColumnsIcon class="w-4 h-4 text-[#EF233C]" />
-                    <span class="text-sm font-bold text-[#2B2D42] max-w-[40vw] truncate">{{ board.name }}</span>
-                    <ChevronDownIcon class="w-4 h-4 text-gray-400" />
-                </button>
-                <div v-if="switcherOpen" class="absolute left-0 top-full mt-1 w-64 bg-white rounded-xl border border-gray-200 shadow-lg py-1 z-30">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-wider px-3 py-1.5">Your boards</p>
-                    <Link
-                        v-for="b in boards"
-                        :key="b.id"
-                        :href="`/boards?board=${b.id}`"
-                        @click="switcherOpen = false"
-                        :class="['flex items-center gap-2 px-3 py-2 text-sm transition-colors', b.id === board.id ? 'bg-[#EF233C]/8 text-[#EF233C] font-medium' : 'text-gray-700 hover:bg-gray-50']"
-                    >
-                        <ViewColumnsIcon class="w-4 h-4 flex-shrink-0" />
-                        <span class="truncate">{{ b.name }}</span>
-                    </Link>
-                    <div class="border-t border-gray-100 mt-1 pt-1">
-                        <div v-if="addingBoard" class="px-2 py-1">
-                            <input
-                                ref="boardInput"
-                                v-model="newBoardName"
-                                @keydown.enter.prevent="createBoard"
-                                @keydown.esc="addingBoard = false"
-                                type="text"
-                                placeholder="Board name…"
-                                class="w-full text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/15"
-                            />
-                            <div class="flex gap-1 mt-1">
-                                <button @click="createBoard" class="text-xs font-semibold bg-[#2B2D42] text-white px-3 py-1.5 rounded-lg">Create</button>
-                                <button @click="addingBoard = false" class="text-xs text-gray-400 px-2">Cancel</button>
-                            </div>
-                        </div>
-                        <button v-else @click="startAddBoard" class="w-full text-left flex items-center gap-2 px-3 py-2 text-sm text-gray-600 hover:bg-gray-50">
-                            <PlusIcon class="w-4 h-4" /> Create board
-                        </button>
-                    </div>
-                </div>
-            </div>
+        <div class="flex h-[calc(100vh-4rem)] -m-4 sm:-m-6">
+            <WorkspaceNav :workspaces="nav" :current-workspace-id="workspace.id" section="boards" />
+
+            <main class="flex-1 min-w-0 flex flex-col p-4">
+
+        <!-- ── Board header ─────────────────────────────────────────────────── -->
+        <div class="flex items-center gap-2 mb-3 flex-shrink-0">
+            <Link :href="route('workspaces.show', workspace.id)" class="text-sm text-gray-400 hover:text-gray-700 truncate max-w-[30vw]">{{ workspace.name }}</Link>
+            <ChevronRightIcon class="w-3.5 h-3.5 text-gray-300 flex-shrink-0" />
 
             <!-- Rename current board -->
             <input
@@ -55,16 +18,15 @@
                 @blur="saveBoardName"
                 @keydown.enter.prevent="$event.target.blur()"
                 @keydown.esc="renamingBoard = false"
-                class="text-sm font-bold text-[#2B2D42] border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/15"
+                class="text-base font-bold text-[#2B2D42] border border-gray-200 rounded-lg px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/15"
             />
-            <button v-else @click="startRenameBoard" class="text-xs text-gray-400 hover:text-gray-600 px-2 py-1.5 rounded-lg hover:bg-gray-100" title="Rename board">
-                <PencilSquareIcon class="w-4 h-4" />
+            <button v-else @click="startRenameBoard" class="text-base font-bold text-[#2B2D42] hover:bg-gray-100 rounded-lg px-2 py-1 truncate" title="Rename board">
+                {{ board.name }}
             </button>
 
             <button
-                v-if="boards.length > 1"
                 @click="deleteBoard"
-                class="text-xs text-gray-300 hover:text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-50 ml-auto"
+                class="text-xs text-gray-300 hover:text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-50 ml-auto flex-shrink-0"
                 title="Delete this board"
             >
                 <TrashIcon class="w-4 h-4" />
@@ -72,7 +34,7 @@
         </div>
 
         <!-- ── Lists ────────────────────────────────────────────────────────── -->
-        <div class="overflow-x-auto pb-4 -mx-4 px-4 sm:mx-0 sm:px-0">
+        <div class="flex-1 overflow-x-auto overflow-y-hidden pb-2">
             <draggable
                 v-model="lists"
                 :group="{ name: 'lists' }"
@@ -209,6 +171,8 @@
                 </template>
             </draggable>
         </div>
+            </main>
+        </div>
 
         <!-- Card detail modal -->
         <CardModal
@@ -222,21 +186,23 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
+import { ref, computed, watch, nextTick } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import draggable from 'vuedraggable';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import CardModal from '@/Components/Boards/CardModal.vue';
+import WorkspaceNav from '@/Components/Boards/WorkspaceNav.vue';
 import {
-    ViewColumnsIcon, ChevronDownIcon, PlusIcon, TrashIcon,
-    PencilSquareIcon, CheckCircleIcon, ClockIcon, Bars3BottomLeftIcon,
+    PlusIcon, TrashIcon, ChevronRightIcon,
+    CheckCircleIcon, ClockIcon, Bars3BottomLeftIcon,
     PaperClipIcon, ChatBubbleLeftRightIcon,
 } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 
 const props = defineProps({
-    boards: { type: Array, default: () => [] },
-    board:  { type: Object, required: true },
+    nav:       { type: Array,  default: () => [] },
+    workspace: { type: Object, required: true },
+    board:     { type: Object, required: true },
 });
 
 const opts = { preserveScroll: true, preserveState: true };
@@ -383,27 +349,7 @@ function deleteList(list) {
     router.delete(route('boards.lists.destroy', list.id), opts);
 }
 
-// ── Boards: switcher / add / rename / delete ──────────────────────────────────
-
-const switcherOpen = ref(false);
-const switcherEl = ref(null);
-
-const addingBoard = ref(false);
-const newBoardName = ref('');
-const boardInput = ref(null);
-
-function startAddBoard() {
-    addingBoard.value = true;
-    nextTick(() => boardInput.value?.focus());
-}
-function createBoard() {
-    const name = newBoardName.value.trim();
-    if (!name) return;
-    newBoardName.value = '';
-    addingBoard.value = false;
-    switcherOpen.value = false;
-    router.post(route('boards.store'), { name }); // redirects to new board
-}
+// ── Board: rename / delete ────────────────────────────────────────────────────
 
 const renamingBoard = ref(false);
 const boardNameDraft = ref('');
@@ -425,13 +371,6 @@ function deleteBoard() {
     if (!confirm(`Delete board "${props.board.name}" and everything in it?`)) return;
     router.delete(route('boards.destroy', props.board.id));
 }
-
-// Close switcher on outside click
-function onClickOutside(e) {
-    if (switcherEl.value && !switcherEl.value.contains(e.target)) switcherOpen.value = false;
-}
-onMounted(() => document.addEventListener('mousedown', onClickOutside));
-onUnmounted(() => document.removeEventListener('mousedown', onClickOutside));
 </script>
 
 <style scoped>
