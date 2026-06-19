@@ -41,11 +41,11 @@ class WorkspaceController extends Controller
         $this->requireMember($request, $workspace->id);
 
         $workspace->load('members');
-        $isOwner = $workspace->isOwner($request->user()->id);
+        $canManage = $request->user()->canManageWorkspaces();
 
         // Staff who could be added (active users not already members)
         $memberIds = $workspace->members->pluck('id');
-        $candidates = $isOwner
+        $candidates = $canManage
             ? User::where('is_active', true)
                 ->whereNotIn('id', $memberIds)
                 ->orderBy('name')
@@ -79,6 +79,8 @@ class WorkspaceController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        abort_unless($request->user()->canManageWorkspaces(), 403);
+
         $data = $request->validate([
             'name'  => ['required', 'string', 'max:100'],
             'color' => ['nullable', 'in:' . implode(',', self::COLORS)],
@@ -100,7 +102,7 @@ class WorkspaceController extends Controller
 
     public function update(Request $request, Workspace $workspace): RedirectResponse
     {
-        $this->requireOwner($request, $workspace->id);
+        $this->requireWorkspaceManager($request, $workspace->id);
 
         $data = $request->validate([
             'name'  => ['sometimes', 'required', 'string', 'max:100'],
@@ -114,21 +116,23 @@ class WorkspaceController extends Controller
 
     public function destroy(Request $request, Workspace $workspace): RedirectResponse
     {
-        $this->requireOwner($request, $workspace->id);
+        $this->requireWorkspaceManager($request, $workspace->id);
 
         $workspace->delete();
 
-        // Send the user to whatever workspace remains (creating one if needed)
-        $next = $this->ensureWorkspace($request->user());
+        // Send the user to whatever workspace remains — never auto-create one.
+        $next = $this->firstWorkspace($request->user());
 
-        return redirect()->route('workspaces.show', $next->id)->with('success', 'Workspace deleted.');
+        return $next
+            ? redirect()->route('workspaces.show', $next->id)->with('success', 'Workspace deleted.')
+            : redirect()->route('boards.index')->with('success', 'Workspace deleted.');
     }
 
     // ── Members ───────────────────────────────────────────────────────────────
 
     public function storeMember(Request $request, Workspace $workspace): RedirectResponse
     {
-        $this->requireOwner($request, $workspace->id);
+        $this->requireWorkspaceManager($request, $workspace->id);
 
         $data = $request->validate([
             'user_id' => ['required', 'string', 'exists:users,id'],
@@ -161,7 +165,7 @@ class WorkspaceController extends Controller
 
     public function updateMember(Request $request, Workspace $workspace, User $user): RedirectResponse
     {
-        $this->requireOwner($request, $workspace->id);
+        $this->requireWorkspaceManager($request, $workspace->id);
 
         $data = $request->validate(['role' => ['required', 'in:owner,member']]);
 
@@ -177,10 +181,7 @@ class WorkspaceController extends Controller
 
     public function destroyMember(Request $request, Workspace $workspace, User $user): RedirectResponse
     {
-        $self = $request->user()->id === $user->id;
-
-        // Owners can remove anyone; a member may remove themselves (leave)
-        abort_unless($request->user()->ownsWorkspace($workspace->id) || $self, 403);
+        $this->requireWorkspaceManager($request, $workspace->id);
 
         if ($this->isLastOwner($workspace, $user->id)) {
             return back()->with('error', 'A workspace must keep at least one owner.');
@@ -188,9 +189,12 @@ class WorkspaceController extends Controller
 
         $workspace->members()->detach($user->id);
 
-        if ($self) {
-            $next = $this->ensureWorkspace($request->user());
-            return redirect()->route('workspaces.show', $next->id)->with('success', 'You left the workspace.');
+        // If a manager removed themselves, send them on to a remaining workspace.
+        if ($request->user()->id === $user->id) {
+            $next = $this->firstWorkspace($request->user());
+            return $next
+                ? redirect()->route('workspaces.show', $next->id)->with('success', 'You left the workspace.')
+                : redirect()->route('boards.index')->with('success', 'You left the workspace.');
         }
 
         return back()->with('success', 'Member removed.');
@@ -211,6 +215,7 @@ class WorkspaceController extends Controller
             'name'         => $workspace->name,
             'color'        => $workspace->color,
             'is_owner'     => $workspace->isOwner($request->user()->id),
+            'can_manage'   => $request->user()->canManageWorkspaces(),
             'member_count' => $workspace->members()->count(),
         ];
     }

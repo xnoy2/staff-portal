@@ -123,6 +123,15 @@ class User extends Authenticatable
             ->exists();
     }
 
+    /**
+     * Whether this user may create workspaces and manage workspace membership.
+     * Workspaces are admin-controlled: only admins/managers assign members.
+     */
+    public function canManageWorkspaces(): bool
+    {
+        return $this->hasAnyRole(['admin', 'manager']);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()

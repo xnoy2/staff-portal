@@ -18,12 +18,22 @@ class BoardController extends Controller
     use AuthorizesWorkspace;
     use BuildsWorkspaceNav;
 
-    /** Entry point — land on the first workspace's boards grid. */
-    public function index(Request $request): RedirectResponse
+    /**
+     * Entry point. Land on the first workspace the user belongs to, or show an
+     * empty state if they have not been added to any workspace yet.
+     */
+    public function index(Request $request): Response|RedirectResponse
     {
-        $ws = $this->ensureWorkspace($request->user());
+        $ws = $this->firstWorkspace($request->user());
 
-        return redirect()->route('workspaces.show', $ws->id);
+        if ($ws) {
+            return redirect()->route('workspaces.show', $ws->id);
+        }
+
+        return Inertia::render('Boards/Empty', [
+            'nav'        => $this->workspaceNav($request->user()),
+            'can_create' => $request->user()->canManageWorkspaces(),
+        ]);
     }
 
     public function show(Request $request, Board $board): Response
@@ -237,22 +247,6 @@ class BoardController extends Controller
             BoardLabel::create(['board_id' => $board->id, 'color' => $color, 'name' => null, 'sort_order' => $i + 1]);
         }
         $board->load('labels');
-    }
-
-    public function createStarterBoard(Workspace $workspace, string $userId): Board
-    {
-        $board = Board::create([
-            'user_id'      => $userId,
-            'workspace_id' => $workspace->id,
-            'name'         => 'My Board',
-            'sort_order'   => 1,
-        ]);
-
-        foreach (['To Do', 'In Progress', 'Done'] as $i => $name) {
-            BoardList::create(['board_id' => $board->id, 'name' => $name, 'sort_order' => $i + 1]);
-        }
-
-        return $board;
     }
 
     private function authorizeBoard(Request $request, Board $board): void

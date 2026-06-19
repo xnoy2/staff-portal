@@ -7,24 +7,18 @@ use App\Models\Workspace;
 
 trait BuildsWorkspaceNav
 {
-    /** Ensure the user belongs to at least one workspace (personal default). */
-    protected function ensureWorkspace(User $user): Workspace
+    /**
+     * The user's first workspace, or null if they belong to none.
+     *
+     * Workspaces are never auto-created: a user only sees a workspace after an
+     * admin/manager has explicitly added them as a member.
+     */
+    protected function firstWorkspace(User $user): ?Workspace
     {
-        $ws = $user->workspaces()->orderBy('workspaces.sort_order')->first();
-        if ($ws) {
-            return $ws;
-        }
-
-        $first = strtok($user->name ?? 'My', ' ');
-        $ws = Workspace::create([
-            'owner_id'   => $user->id,
-            'name'       => $first . "'s Workspace",
-            'color'      => 'blue',
-            'sort_order' => 1,
-        ]);
-        $ws->members()->attach($user->id, ['role' => 'owner']);
-
-        return $ws;
+        return $user->workspaces()
+            ->orderBy('workspaces.sort_order')
+            ->orderBy('workspaces.created_at')
+            ->first();
     }
 
     /** Left-nav data: every workspace the user belongs to, with its boards. */

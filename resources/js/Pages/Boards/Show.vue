@@ -24,17 +24,20 @@
                 {{ board.name }}
             </button>
 
+            <!-- View switcher -->
+            <ViewSwitcher v-model="view" class="ml-auto flex-shrink-0" />
+
             <button
                 @click="deleteBoard"
-                class="text-xs text-gray-300 hover:text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-50 ml-auto flex-shrink-0"
+                class="text-xs text-gray-300 hover:text-red-500 px-2 py-1.5 rounded-lg hover:bg-red-50 flex-shrink-0"
                 title="Delete this board"
             >
                 <TrashIcon class="w-4 h-4" />
             </button>
         </div>
 
-        <!-- ── Lists ────────────────────────────────────────────────────────── -->
-        <div class="flex-1 overflow-x-auto overflow-y-hidden pb-2">
+        <!-- ── Board view (lists + drag-and-drop) ───────────────────────────── -->
+        <div v-show="view === 'board'" class="flex-1 overflow-x-auto overflow-y-hidden pb-2">
             <draggable
                 v-model="lists"
                 :group="{ name: 'lists' }"
@@ -171,6 +174,27 @@
                 </template>
             </draggable>
         </div>
+
+        <!-- ── Table view ───────────────────────────────────────────────────── -->
+        <TableView
+            v-if="view === 'table'"
+            :cards="allCards"
+            @open-card="openCard"
+        />
+
+        <!-- ── Calendar view ────────────────────────────────────────────────── -->
+        <CalendarView
+            v-if="view === 'calendar'"
+            :cards="allCards"
+            @open-card="openCard"
+        />
+
+        <!-- ── Timeline view ────────────────────────────────────────────────── -->
+        <TimelineView
+            v-if="view === 'timeline'"
+            :cards="allCards"
+            @open-card="openCard"
+        />
             </main>
         </div>
 
@@ -192,6 +216,11 @@ import draggable from 'vuedraggable';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import CardModal from '@/Components/Boards/CardModal.vue';
 import WorkspaceNav from '@/Components/Boards/WorkspaceNav.vue';
+import ViewSwitcher from '@/Components/Boards/ViewSwitcher.vue';
+import TableView from '@/Components/Boards/TableView.vue';
+import CalendarView from '@/Components/Boards/CalendarView.vue';
+import TimelineView from '@/Components/Boards/TimelineView.vue';
+import { flattenCards } from '@/Components/Boards/cardHelpers';
 import {
     PlusIcon, TrashIcon, ChevronRightIcon,
     CheckCircleIcon, ClockIcon, Bars3BottomLeftIcon,
@@ -214,6 +243,33 @@ function buildLists(board) {
     lists.value = board.lists.map(l => ({ ...l, cards: [...l.cards] }));
 }
 watch(() => props.board, (b) => buildLists(b), { immediate: true });
+
+// ── View switching (Board / Table / Calendar / Timeline) ──────────────────────
+// All views render the same `lists` data; only the Board view is interactive
+// (drag-and-drop). The choice is remembered per board via localStorage.
+
+const VALID_VIEWS = ['board', 'table', 'calendar', 'timeline'];
+
+function viewStorageKey(boardId) { return `board-view:${boardId}`; }
+
+function loadView(boardId) {
+    try {
+        const saved = localStorage.getItem(viewStorageKey(boardId));
+        return VALID_VIEWS.includes(saved) ? saved : 'board';
+    } catch { return 'board'; }
+}
+
+const view = ref(loadView(props.board.id));
+
+watch(view, (v) => {
+    try { localStorage.setItem(viewStorageKey(props.board.id), v); } catch { /* ignore */ }
+});
+
+// When navigating to a different board, restore that board's saved view.
+watch(() => props.board.id, (id) => { view.value = loadView(id); });
+
+// Flat list of every card (tagged with its list) for the non-board views.
+const allCards = computed(() => flattenCards(lists.value));
 
 // ── Drag handlers ─────────────────────────────────────────────────────────────
 

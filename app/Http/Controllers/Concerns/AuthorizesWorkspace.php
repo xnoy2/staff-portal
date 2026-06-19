@@ -12,9 +12,13 @@ trait AuthorizesWorkspace
         abort_unless($request->user()->isMemberOfWorkspace($workspaceId), 403);
     }
 
-    /** Only the workspace owner may manage the workspace itself (settings, members). */
-    protected function requireOwner(Request $request, ?string $workspaceId): void
+    /**
+     * Only an admin/manager who is a member may manage the workspace itself
+     * (settings, deletion, and membership assignments).
+     */
+    protected function requireWorkspaceManager(Request $request, ?string $workspaceId): void
     {
-        abort_unless($request->user()->ownsWorkspace($workspaceId), 403);
+        $user = $request->user();
+        abort_unless($user->canManageWorkspaces() && $user->isMemberOfWorkspace($workspaceId), 403);
     }
 }

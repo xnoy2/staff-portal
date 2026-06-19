@@ -15,8 +15,8 @@
                         </div>
                     </div>
 
-                    <!-- Add member (owner only) -->
-                    <div v-if="workspace.is_owner" class="bg-white border border-gray-200 rounded-xl p-4 mb-5">
+                    <!-- Add member (admin/manager only) -->
+                    <div v-if="workspace.can_manage" class="bg-white border border-gray-200 rounded-xl p-4 mb-5">
                         <p class="text-sm font-semibold text-gray-700 mb-2">Add a member</p>
                         <div class="flex gap-2">
                             <select v-model="selectedUser" class="flex-1 text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]">
@@ -41,8 +41,8 @@
                                 <p class="text-xs text-gray-400 capitalize">{{ m.role }}</p>
                             </div>
 
-                            <!-- Owner controls -->
-                            <div v-if="workspace.is_owner" class="flex items-center gap-2">
+                            <!-- Management controls (admin/manager only) -->
+                            <div v-if="workspace.can_manage" class="flex items-center gap-2">
                                 <select
                                     :value="m.role"
                                     @change="changeRole(m, $event.target.value)"
@@ -55,12 +55,6 @@
                                     <TrashIcon class="w-4 h-4" />
                                 </button>
                             </div>
-                            <!-- Self-leave for non-owners -->
-                            <button
-                                v-else-if="m.id === me.id"
-                                @click="removeMember(m)"
-                                class="text-xs font-medium text-red-500 hover:text-red-600 border border-red-200 hover:bg-red-50 px-3 py-1.5 rounded-lg"
-                            >Leave</button>
                         </div>
                     </div>
                 </div>

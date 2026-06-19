@@ -2,10 +2,15 @@
     <aside class="w-60 flex-shrink-0 bg-white border-r border-gray-200 overflow-y-auto py-4 px-3">
         <div class="flex items-center justify-between px-2 mb-2">
             <p class="text-xs font-bold text-gray-400 uppercase tracking-wider">Workspaces</p>
-            <button @click="startCreate" class="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100" title="Create workspace">
+            <button v-if="canManage" @click="startCreate" class="p-1 rounded text-gray-400 hover:text-gray-700 hover:bg-gray-100" title="Create workspace">
                 <PlusIcon class="w-4 h-4" />
             </button>
         </div>
+
+        <!-- Empty hint when the user belongs to no workspaces -->
+        <p v-if="!workspaces.length" class="px-2 text-xs text-gray-400 leading-relaxed">
+            {{ canManage ? 'Create a workspace to get started.' : 'No workspaces yet. An admin will add you to one.' }}
+        </p>
 
         <!-- Create form -->
         <div v-if="creating" class="px-2 mb-2">
@@ -64,14 +69,20 @@
 </template>
 
 <script setup>
-import { ref, nextTick } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { ref, computed, nextTick } from 'vue';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import { PlusIcon, ChevronDownIcon, ViewColumnsIcon, UsersIcon, Cog6ToothIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     workspaces:         { type: Array,  default: () => [] },
     currentWorkspaceId: { type: String, default: '' },
     section:            { type: String, default: 'boards' }, // boards | members | settings
+});
+
+// Only admins/managers may create workspaces.
+const canManage = computed(() => {
+    const roles = usePage().props.auth?.user?.roles ?? [];
+    return roles.includes('admin') || roles.includes('manager');
 });
 
 const COLORS = {

@@ -7,8 +7,8 @@
                 <div class="max-w-lg">
                     <h1 class="text-lg font-bold text-[#2B2D42] mb-6">Workspace settings</h1>
 
-                    <div v-if="!workspace.is_owner" class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 mb-4">
-                        Only the workspace owner can change these settings.
+                    <div v-if="!workspace.can_manage" class="bg-amber-50 border border-amber-200 rounded-xl p-4 text-sm text-amber-800 mb-4">
+                        Only an admin or manager can change these settings.
                     </div>
 
                     <!-- Name -->
@@ -17,11 +17,11 @@
                         <div class="flex gap-2">
                             <input
                                 v-model="name"
-                                :disabled="!workspace.is_owner"
+                                :disabled="!workspace.can_manage"
                                 class="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 disabled:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/15"
                             />
                             <button
-                                v-if="workspace.is_owner"
+                                v-if="workspace.can_manage"
                                 @click="saveName"
                                 :disabled="!name.trim() || name === workspace.name"
                                 class="text-sm font-semibold bg-[#2B2D42] hover:bg-[#EF233C] disabled:opacity-40 text-white px-4 py-2 rounded-lg transition-colors"
@@ -36,18 +36,18 @@
                             <button
                                 v-for="c in colors"
                                 :key="c"
-                                @click="workspace.is_owner && setColor(c)"
+                                @click="workspace.can_manage && setColor(c)"
                                 :class="[
                                     'w-9 h-9 rounded-lg transition-all', squareColor(c),
                                     workspace.color === c ? 'ring-2 ring-offset-2 ring-gray-500' : 'hover:scale-105',
-                                    !workspace.is_owner ? 'cursor-not-allowed opacity-70' : '',
+                                    !workspace.can_manage ? 'cursor-not-allowed opacity-70' : '',
                                 ]"
                             />
                         </div>
                     </div>
 
                     <!-- Danger zone -->
-                    <div v-if="workspace.is_owner" class="bg-white border border-red-200 rounded-xl p-4">
+                    <div v-if="workspace.can_manage" class="bg-white border border-red-200 rounded-xl p-4">
                         <p class="text-sm font-semibold text-red-600 mb-1">Delete workspace</p>
                         <p class="text-xs text-gray-500 mb-3">This permanently deletes the workspace and all its boards, lists and cards.</p>
                         <button @click="destroy" class="text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors">
