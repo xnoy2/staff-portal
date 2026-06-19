@@ -26,7 +26,6 @@ class WorkspaceMemberAdded extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->mailer('resend')
             ->subject("You've been added to {$this->workspaceName} — BCF Staff Portal")
             ->greeting("Hi {$notifiable->name},")
             ->line("**{$this->addedByName}** added you to the **{$this->workspaceName}** workspace as a {$this->role}.")
