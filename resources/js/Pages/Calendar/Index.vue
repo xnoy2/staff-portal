@@ -216,7 +216,7 @@
                                     Jobs · {{ selectedJobs.length }}
                                 </p>
                             </div>
-                            <div v-for="job in selectedJobs" :key="job.id" class="mx-3 mb-2 p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
+                            <Link v-for="job in selectedJobs" :key="job.id" :href="`/jobs?date=${selectedDay}`" class="block mx-3 mb-2 p-3 rounded-xl border border-gray-100 bg-gray-50/50 hover:bg-gray-50 transition-colors">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="min-w-0 flex-1">
                                         <p class="text-sm font-semibold text-gray-800 leading-snug truncate">{{ job.title }}</p>
@@ -230,7 +230,7 @@
                                         {{ jobLabel(job.status) }}
                                     </span>
                                 </div>
-                            </div>
+                            </Link>
                         </template>
 
                         <!-- Projects -->
@@ -241,7 +241,7 @@
                                     Projects · {{ selectedProjects.length }}
                                 </p>
                             </div>
-                            <div v-for="proj in selectedProjects" :key="`${proj.source}-${proj.id}`" class="mx-3 mb-2 p-3 rounded-xl border border-violet-100 bg-violet-50/40 hover:bg-violet-50 transition-colors">
+                            <Link v-for="proj in selectedProjects" :key="`${proj.source}-${proj.id}`" :href="projectHref(proj)" class="block mx-3 mb-2 p-3 rounded-xl border border-violet-100 bg-violet-50/40 hover:bg-violet-50 transition-colors">
                                 <div class="flex items-start justify-between gap-2">
                                     <div class="min-w-0 flex-1">
                                         <div class="flex items-center gap-1.5 flex-wrap">
@@ -272,7 +272,7 @@
                                         {{ projectLabel(proj.status) }}
                                     </span>
                                 </div>
-                            </div>
+                            </Link>
                         </template>
 
                         <!-- Leave -->
@@ -302,6 +302,7 @@
                     <div class="px-5 py-3 border-t border-gray-100 flex-shrink-0 flex items-center justify-between bg-gray-50/50">
                         <span class="text-xs text-gray-400">{{ selectedEvents.length }} event{{ selectedEvents.length !== 1 ? 's' : '' }}</span>
                         <Link
+                            v-if="selectedJobs.length > 0"
                             :href="`/jobs?date=${selectedDay}`"
                             class="text-xs text-[#EF233C] hover:underline font-semibold flex items-center gap-1"
                         >
@@ -530,6 +531,11 @@ function selectDay(dateStr) { selectedDay.value = dateStr; }
 
 function formatDate(dateStr) {
     return dateStr ? dayjs(dateStr).format('D MMM YYYY') : '—';
+}
+
+// Where a project event links to — its own page, not the jobs board
+function projectHref(proj) {
+    return proj.source === 'bgr' ? `/client-projects/${proj.id}` : `/projects/${proj.id}`;
 }
 
 // ── Styling helpers ───────────────────────────────────────────────────────────

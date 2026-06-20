@@ -26,12 +26,12 @@ class WorkspaceMemberAdded extends Notification
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject("You've been added to {$this->workspaceName} — BCF Staff Portal")
+            ->subject("You've been added to {$this->workspaceName} — Staff Portal")
             ->greeting("Hi {$notifiable->name},")
             ->line("**{$this->addedByName}** added you to the **{$this->workspaceName}** workspace as a {$this->role}.")
             ->line('You can now see and collaborate on all of its boards.')
             ->action('Open Workspace', url(route('workspaces.show', $this->workspaceId)))
-            ->salutation('BCF Staff Portal');
+            ->salutation('Staff Portal');
     }
 
     public function toArray(object $notifiable): array
