@@ -97,7 +97,7 @@ class PayrollSummaryMail extends Mailable
             'Period From', 'Period To',
             'Shifts',
             'Regular Hours', 'Overtime Hours', 'Total Hours',
-            'Hourly Rate (£)', 'Regular Pay (£)', 'Overtime Pay (£)',
+            'Hourly Rate (£)', 'Regular Pay (£)', 'Overtime Pay (£)', 'Leave Pay (£)',
             'Gross Pay (£)', 'Deductions (£)', 'Net Pay (£)',
             'Approved By', 'Approved At',
         ]);
@@ -118,6 +118,7 @@ class PayrollSummaryMail extends Mailable
                 $noRate ? 'N/A' : number_format($run->hourly_rate, 2),
                 $noRate ? 'N/A' : number_format($run->regular_pay,  2),
                 $noRate ? 'N/A' : number_format($run->overtime_pay, 2),
+                $noRate ? 'N/A' : number_format($run->leave_pay ?? 0, 2),
                 $noRate ? 'N/A' : number_format($run->gross_pay,    2),
                 number_format($deductions, 2),
                 $noRate ? 'N/A' : number_format($run->net_pay ?? ($run->gross_pay - $deductions), 2),

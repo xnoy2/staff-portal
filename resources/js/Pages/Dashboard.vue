@@ -208,7 +208,7 @@
                     <div class="bg-white rounded-xl border border-gray-200 p-5">
                         <div class="flex items-center justify-between mb-3">
                             <h2 class="text-sm font-semibold text-gray-800">Upcoming Jobs</h2>
-                            <Link href="/jobs" class="text-xs text-[#EF233C] hover:underline">Live Board</Link>
+                            <Link href="/jobs" class="text-xs text-[#EF233C] hover:underline">Daily Job Board</Link>
                         </div>
                         <div v-if="upcomingJobs.length === 0" class="text-center py-6 text-gray-400 text-sm">
                             No upcoming jobs assigned.

@@ -140,6 +140,15 @@
                                 <td class="py-2.5 text-right text-gray-400 text-xs">{{ hasRate ? '£' + (Number(hourlyRate) * 1.5).toFixed(2) + '/hr' : '—' }}</td>
                                 <td class="py-2.5 text-right font-semibold text-amber-600">{{ hasRate ? '£' + overtimePay.toFixed(2) : '—' }}</td>
                             </tr>
+                            <tr v-if="leavePay > 0" class="border-b border-gray-50">
+                                <td class="py-2.5 text-gray-700 font-medium">
+                                    Leave Pay
+                                    <span class="text-xs text-emerald-500 ml-1 font-normal">(paid leave)</span>
+                                </td>
+                                <td class="py-2.5 text-right font-mono text-gray-600">{{ leaveDays.toFixed(1) }}d</td>
+                                <td class="py-2.5 text-right text-gray-400 text-xs">—</td>
+                                <td class="py-2.5 text-right font-semibold text-emerald-600">£{{ leavePay.toFixed(2) }}</td>
+                            </tr>
                         </tbody>
                         <tfoot>
                             <tr class="border-t-2 border-gray-200">
@@ -300,6 +309,8 @@ const props = defineProps({
     hourlyRate:    { type: Number,  default: 0 },
     regularPay:    { type: Number,  default: 0 },
     overtimePay:   { type: Number,  default: 0 },
+    leavePay:      { type: Number,  default: 0 },
+    leaveDays:     { type: Number,  default: 0 },
     grossPay:      { type: Number,  default: 0 },
     hasRate:       { type: Boolean, default: false },
     isLocked:      { type: Boolean, default: false },

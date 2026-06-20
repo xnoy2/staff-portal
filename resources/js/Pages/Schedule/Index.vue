@@ -136,7 +136,7 @@
                 <span :class="['w-2.5 h-2.5 rounded-full', s.dot]"></span>
                 <span class="text-xs text-gray-500">{{ s.label }}</span>
             </div>
-            <span class="text-xs text-gray-300 ml-auto hidden sm:inline">Click any day header to open Live Board</span>
+            <span class="text-xs text-gray-300 ml-auto hidden sm:inline">Click any day header to open Daily Job Board</span>
         </div>
         </div><!-- end jobs tab -->
 

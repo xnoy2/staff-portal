@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Models\LeaveRequest;
+use App\Models\OvertimeRequest;
 use App\Models\TimeEntry;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
@@ -13,10 +14,16 @@ class PayrollRun extends Model
 {
     use HasUuids;
 
+    /** Leave types that are paid at normal rate (others, e.g. unpaid, pay nothing). */
+    public const PAID_LEAVE_TYPES = ['annual', 'sick', 'compassionate'];
+
+    /** Assumed working days per week for converting weekly contracted hours to a daily basis. */
+    public const WORK_DAYS_PER_WEEK = 5;
+
     protected $fillable = [
         'user_id', 'period_from', 'period_to',
         'regular_hours', 'overtime_hours', 'total_hours',
-        'hourly_rate', 'regular_pay', 'overtime_pay', 'gross_pay', 'net_pay',
+        'hourly_rate', 'regular_pay', 'overtime_pay', 'leave_pay', 'gross_pay', 'net_pay',
         'shifts_count', 'status', 'generated_by', 'approved_by',
         'approved_at', 'entries_snapshot', 'deductions',
         'leave_days', 'leave_snapshot',
@@ -37,6 +44,7 @@ class PayrollRun extends Model
             'hourly_rate'      => 'float',
             'regular_pay'      => 'float',
             'overtime_pay'     => 'float',
+            'leave_pay'        => 'float',
             'gross_pay'        => 'float',
             'net_pay'          => 'float',
             'deductions'       => 'array',
@@ -100,17 +108,35 @@ class PayrollRun extends Model
             ->orderBy('clock_in')
             ->get();
 
+        // ── Approved overtime allowance per day ───────────────────────────────
+        // OT premium is only paid for hours covered by an approved OvertimeRequest.
+        // Build a per-date pool of approved OT hours, consumed as entries claim it.
+        $otPool = [];
+        OvertimeRequest::where('user_id', $staff->id)
+            ->where('status', 'approved')
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->get()
+            ->each(function ($r) use (&$otPool) {
+                $d = $r->date->toDateString();
+                $otPool[$d] = ($otPool[$d] ?? 0.0) + (float) $r->duration_hours;
+            });
+
         $regularHours  = 0.0;
         $overtimeHours = 0.0;
 
-        $snapshot = $entries->map(function ($entry) use (&$regularHours, &$overtimeHours) {
-            $hours = (float) $entry->total_hours;
-            [$regH, $otH] = static::splitHours($hours, $entry->is_overtime, $entry->ot_type);
+        $snapshot = $entries->map(function ($entry) use (&$regularHours, &$overtimeHours, &$otPool) {
+            $hours     = (float) $entry->total_hours;
+            $date      = $entry->clock_in->toDateString();
+            $available = $otPool[$date] ?? 0.0;
+
+            [$regH, $otH] = static::splitHours($hours, $entry->is_overtime, $entry->ot_type, $available);
+            $otPool[$date] = max(0.0, $available - $otH); // consume approved allowance
+
             $regularHours  += $regH;
             $overtimeHours += $otH;
 
             return [
-                'date'           => $entry->clock_in->toDateString(),
+                'date'           => $date,
                 'day'            => $entry->clock_in->format('D'),
                 'clock_in'       => $entry->clock_in->format('H:i'),
                 'clock_out'      => $entry->clock_out?->format('H:i'),
@@ -123,26 +149,50 @@ class PayrollRun extends Model
             ];
         })->values()->toArray();
 
-        // ── Leave records overlapping this period ─────────────────────────────
+        // ── Pay rate + leave basis ────────────────────────────────────────────
+        $rate       = (float) ($staff->hourly_rate ?? 0);
+        $dailyHours = (float) ($staff->contracted_hours ?? 40) / self::WORK_DAYS_PER_WEEK;
+
+        $pStart = $from->copy()->startOfDay();
+        $pEnd   = $to->copy()->startOfDay();
+
+        // ── Leave overlapping this period (paid leave adds to gross) ───────────
         $leaveRecords = LeaveRequest::where('user_id', $staff->id)
             ->where('status', 'approved')
             ->where('start_date', '<=', $to->toDateString())
             ->where('end_date', '>=', $from->toDateString())
             ->get();
 
-        $leaveSnapshot = $leaveRecords->map(fn ($l) => [
-            'type'       => $l->type,
-            'start_date' => $l->start_date->toDateString(),
-            'end_date'   => $l->end_date->toDateString(),
-            'days'       => (float) $l->days,
-        ])->values()->toArray();
+        $leaveDays = 0.0;
+        $leavePay  = 0.0;
 
-        $leaveDays = (float) $leaveRecords->sum('days');
+        $leaveSnapshot = $leaveRecords->map(function ($l) use ($pStart, $pEnd, $dailyHours, $rate, &$leaveDays, &$leavePay) {
+            // Count only the portion of the leave that falls inside this period
+            $segStart = $l->start_date->lt($pStart) ? $pStart->copy() : $l->start_date->copy();
+            $segEnd   = $l->end_date->gt($pEnd)     ? $pEnd->copy()   : $l->end_date->copy();
+            $inPeriodDays = $segStart->gt($segEnd) ? 0.0 : LeaveRequest::workingDays($segStart, $segEnd);
+
+            $paid = in_array($l->type, self::PAID_LEAVE_TYPES, true);
+            $pay  = $paid ? round($inPeriodDays * $dailyHours * $rate, 2) : 0.0;
+
+            $leaveDays += $inPeriodDays;
+            $leavePay  += $pay;
+
+            return [
+                'type'       => $l->type,
+                'start_date' => $l->start_date->toDateString(),
+                'end_date'   => $l->end_date->toDateString(),
+                'days'       => $inPeriodDays,
+                'paid'       => $paid,
+                'pay'        => $pay,
+            ];
+        })->values()->toArray();
 
         // ── Pay calculation ───────────────────────────────────────────────────
-        $rate        = (float) ($staff->hourly_rate ?? 0);
         $regularPay  = round($regularHours * $rate, 2);
         $overtimePay = round($overtimeHours * $rate * 1.5, 2);
+        $leavePay    = round($leavePay, 2);
+        $grossPay    = round($regularPay + $overtimePay + $leavePay, 2);
 
         return static::create([
             'user_id'          => $staff->id,
@@ -154,12 +204,14 @@ class PayrollRun extends Model
             'hourly_rate'      => $staff->hourly_rate,
             'regular_pay'      => $regularPay,
             'overtime_pay'     => $overtimePay,
-            'gross_pay'        => round($regularPay + $overtimePay, 2),
+            'leave_pay'        => $leavePay,
+            'gross_pay'        => $grossPay,
+            'net_pay'          => $grossPay, // no deductions yet
             'shifts_count'     => $entries->count(),
             'status'           => 'draft',
             'generated_by'     => $generatedBy,
             'entries_snapshot' => $snapshot,
-            'leave_days'       => $leaveDays,
+            'leave_days'       => round($leaveDays, 2),
             'leave_snapshot'   => $leaveSnapshot,
         ]);
     }
@@ -167,21 +219,28 @@ class PayrollRun extends Model
     /**
      * Split worked hours into [regularHours, overtimeHours].
      *
-     * Rules:
-     *  - ot_type set (approved OT/RDOT shift) → entire shift is overtime
-     *  - is_overtime (shift exceeded 8h, no ot_type) → first 8h regular, rest OT
-     *  - otherwise → all regular
+     * All worked hours are always paid; the OT *premium* (1.5×) only applies to
+     * hours that are covered by an approved OvertimeRequest ($approvedOtHours).
+     * Anything beyond the approved allowance is paid at the regular rate.
+     *
+     * OT-eligible hours per shift:
+     *  - ot_type set (clocked in as OT/RDOT) → the whole shift is eligible
+     *  - is_overtime (>8h, no ot_type)       → only the hours beyond 8 are eligible
+     *  - otherwise                            → none
      */
-    public static function splitHours(float $hours, bool $isOvertime, ?string $otType): array
+    public static function splitHours(float $hours, bool $isOvertime, ?string $otType, float $approvedOtHours = 0.0): array
     {
         if ($otType !== null) {
-            return [0.0, $hours];
+            $eligible = $hours;
+        } elseif ($isOvertime) {
+            $eligible = max(0.0, $hours - 8.0);
+        } else {
+            $eligible = 0.0;
         }
 
-        if ($isOvertime) {
-            return [min($hours, 8.0), max(0.0, $hours - 8.0)];
-        }
+        $overtime = min($eligible, max(0.0, $approvedOtHours));
+        $regular  = $hours - $overtime;
 
-        return [$hours, 0.0];
+        return [$regular, $overtime];
     }
 }

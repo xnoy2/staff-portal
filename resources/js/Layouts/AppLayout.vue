@@ -42,7 +42,7 @@
                     <NavItem :href="route('dashboard')" routeName="dashboard" icon="HomeIcon"                  label="Dashboard"  :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem :href="route('feed.index')" routeName="feed.*"   icon="NewspaperIcon"             label="Newsfeed"   :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem :href="route('boards.index')" routeName="boards.*,workspaces.*" icon="ViewColumnsIcon" label="Workspace"  :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem v-if="isManager" href="/jobs"              routeName="jobs.index" icon="ClipboardDocumentListIcon" label="Live Board" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem v-if="isManager" href="/jobs"              routeName="jobs.index" icon="ClipboardDocumentListIcon" label="Daily Job Board" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem :href="route('jobs.list')"                routeName="jobs.list"  icon="ListBulletIcon"            :label="isManager ? 'All Jobs' : 'My Jobs'" :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/schedule"                                  icon="CalendarIcon"              label="Schedule"   :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/calendar"                                  icon="CalendarDaysIcon"          label="Calendar"   :collapsed="!sidebarOpen && !isMobile" />

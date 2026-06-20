@@ -704,14 +704,14 @@ const hrPages = [
 // Admin/Manager specific pages
 const adminPages = [
     {
-        title: 'Live Board',
+        title: 'Daily Job Board',
         subtitle: 'Day-by-day job scheduling and monitoring',
         icon: ClipboardDocumentListIcon,
         iconBg: 'bg-[#EF233C]/10',
         iconColor: 'text-[#EF233C]',
         headerBg: 'bg-gradient-to-r from-[#EF233C]/5 to-white',
         badge: { text: 'Admin / Manager', class: 'bg-[#EF233C]/10 text-[#EF233C]' },
-        description: 'The Live Board is your command centre for daily operations. Navigate between dates to see all jobs scheduled, their statuses, assigned crew, and clock-in indicators. You can create, edit, and manage jobs directly from here.',
+        description: 'The Daily Job Board is your command centre for daily operations. Navigate between dates to see all jobs scheduled, their statuses, assigned crew, and clock-in indicators. You can create, edit, and manage jobs directly from here.',
         sections: [
             {
                 heading: 'Key features',
@@ -735,13 +735,13 @@ const adminPages = [
         iconColor: 'text-amber-600',
         headerBg: 'bg-gradient-to-r from-amber-50 to-white',
         badge: { text: 'Admin / Manager', class: 'bg-[#EF233C]/10 text-[#EF233C]' },
-        description: 'The All Jobs list shows every job across all dates in a scrollable, paginated list. Unlike the Live Board (single day), this gives you a broad view — useful for spotting upcoming work, reviewing past jobs, or checking status across weeks.',
+        description: 'The All Jobs list shows every job across all dates in a scrollable, paginated list. Unlike the Daily Job Board (single day), this gives you a broad view — useful for spotting upcoming work, reviewing past jobs, or checking status across weeks.',
         sections: [
             {
                 items: [
                     { icon: CalendarDaysIcon, iconBg: 'bg-blue-50',   iconColor: 'text-blue-500',   title: 'Period filter',     desc: 'Toggle between Upcoming, Past, and All jobs at the top.' },
                     { icon: ClipboardDocumentListIcon, iconBg: 'bg-gray-100', iconColor: 'text-gray-500', title: 'Date grouping', desc: 'Jobs are grouped under date headings with Today/Tomorrow badges for easy scanning.' },
-                    { icon: CalendarDaysIcon, iconBg: 'bg-[#EF233C]/10', iconColor: 'text-[#EF233C]', title: 'Live Board link',  desc: 'Each job row has a calendar icon to jump directly to that day on the Live Board.' },
+                    { icon: CalendarDaysIcon, iconBg: 'bg-[#EF233C]/10', iconColor: 'text-[#EF233C]', title: 'Daily Job Board link',  desc: 'Each job row has a calendar icon to jump directly to that day on the Daily Job Board.' },
                 ],
             },
         ],

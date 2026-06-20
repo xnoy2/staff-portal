@@ -48,6 +48,8 @@ class PayslipController extends Controller
                 'hourlyRate'   => (float) ($run->hourly_rate ?? 0),
                 'regularPay'   => $run->regular_pay,
                 'overtimePay'  => $run->overtime_pay,
+                'leavePay'     => (float) ($run->leave_pay ?? 0),
+                'leaveDays'    => (float) ($run->leave_days ?? 0),
                 'grossPay'     => $run->gross_pay,
                 'hasRate'      => ! is_null($run->hourly_rate),
                 'isLocked'     => true,

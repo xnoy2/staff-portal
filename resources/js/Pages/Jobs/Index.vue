@@ -1,5 +1,5 @@
 <template>
-    <AppLayout title="Live Board">
+    <AppLayout title="Daily Job Board">
         <div class="max-w-7xl mx-auto space-y-4">
 
             <!-- ── Date navigation ─────────────────────────────────── -->

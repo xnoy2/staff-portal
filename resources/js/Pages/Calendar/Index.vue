@@ -306,7 +306,7 @@
                             :href="`/jobs?date=${selectedDay}`"
                             class="text-xs text-[#EF233C] hover:underline font-semibold flex items-center gap-1"
                         >
-                            Open Live Board
+                            Open Daily Job Board
                             <ChevronRightIcon class="w-3 h-3" />
                         </Link>
                     </div>

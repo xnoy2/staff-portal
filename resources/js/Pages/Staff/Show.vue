@@ -139,7 +139,7 @@
                     <!-- Month breakdown -->
                     <div class="flex items-center justify-between text-sm">
                         <span class="text-gray-500">This month: <span class="font-semibold text-gray-800">{{ jobStats.thisMonth }} jobs</span></span>
-                        <Link :href="route('jobs.index')" class="text-xs text-[#EF233C] hover:underline">Live Board</Link>
+                        <Link :href="route('jobs.index')" class="text-xs text-[#EF233C] hover:underline">Daily Job Board</Link>
                     </div>
 
                     <div v-if="recentJobs.length === 0" class="text-center py-10 text-sm text-gray-400">

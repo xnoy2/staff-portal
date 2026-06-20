@@ -33,14 +33,14 @@
                     >{{ p.label }}</button>
                 </div>
 
-                <!-- Live Board shortcut (admin/manager only) -->
+                <!-- Daily Job Board shortcut (admin/manager only) -->
                 <Link
                     v-if="isManager"
                     :href="route('jobs.index')"
                     class="flex items-center gap-1.5 text-xs font-semibold text-white/70 hover:text-white border border-white/20 hover:border-white/40 hover:bg-white/10 px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap"
                 >
                     <CalendarDaysIcon class="w-4 h-4" />
-                    Live Board
+                    Daily Job Board
                 </Link>
             </div>
 
@@ -108,7 +108,7 @@
                     class="mt-5 inline-flex items-center gap-2 bg-[#EF233C] hover:bg-[#D90429] text-white text-sm font-medium px-5 py-2.5 rounded-xl transition-colors"
                 >
                     <CalendarDaysIcon class="w-4 h-4" />
-                    Open Live Board
+                    Open Daily Job Board
                 </Link>
             </div>
 
@@ -239,12 +239,12 @@
                                         </button>
                                     </template>
 
-                                    <!-- Live Board link (jump to that day) - manager only -->
+                                    <!-- Daily Job Board link (jump to that day) - manager only -->
                                     <Link
                                         v-if="isManager"
                                         :href="route('jobs.index', { date: job.date })"
                                         class="status-action text-gray-500 bg-gray-50 hover:bg-gray-100 border-gray-200 inline-flex items-center gap-1 justify-center"
-                                        title="View on Live Board"
+                                        title="View on Daily Job Board"
                                     >
                                         <CalendarDaysIcon class="w-3.5 h-3.5" />
                                     </Link>
