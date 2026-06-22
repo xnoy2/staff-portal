@@ -68,12 +68,23 @@
                         <h1 class="text-3xl font-bold text-gray-900 mb-3">{{ article.title }}</h1>
                         <div class="flex items-center gap-3 text-xs text-gray-400 mb-8 pb-6 border-b border-gray-100">
                             <span v-if="article.author">By {{ article.author }}</span>
-                            <span>·</span>
+                            <span v-if="article.author">·</span>
                             <span>Updated {{ formatDate(article.updated_at) }}</span>
-                            <span v-if="article.visible_to?.length" class="ml-auto flex items-center gap-1 text-violet-500 font-medium">
-                                <LockClosedIcon class="w-3 h-3" />
-                                {{ article.visible_to.map(r => availableRoles[r] ?? r).join(', ') }} only
-                            </span>
+                            <div class="ml-auto flex items-center gap-3">
+                                <span v-if="article.visible_to?.length" class="flex items-center gap-1 text-violet-500 font-medium">
+                                    <LockClosedIcon class="w-3 h-3" />
+                                    {{ article.visible_to.map(r => availableRoles[r] ?? r).join(', ') }} only
+                                </span>
+                                <button
+                                    @click="copyLink"
+                                    class="inline-flex items-center gap-1 font-medium transition-colors"
+                                    :class="copied ? 'text-emerald-600' : 'text-gray-500 hover:text-[#EF233C]'"
+                                    title="Copy a link to this article"
+                                >
+                                    <component :is="copied ? CheckIcon : LinkIcon" class="w-3.5 h-3.5" />
+                                    {{ copied ? 'Link copied!' : 'Copy link' }}
+                                </button>
+                            </div>
                         </div>
 
                         <!-- Rendered content -->
@@ -160,7 +171,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TiptapEditor from '@/Components/TiptapEditor.vue';
-import { ArrowLeftIcon, ChevronRightIcon, LockClosedIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, ChevronRightIcon, LockClosedIcon, LinkIcon, CheckIcon } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
@@ -172,6 +183,28 @@ const props = defineProps({
     isPrivileged:   { type: Boolean, default: false },
     availableRoles: { type: Object,  default: () => ({}) },
 });
+
+// Copy a shareable link to this article
+const copied = ref(false);
+function copyLink() {
+    const url = window.location.origin + route('kb.show', [props.category.slug, props.article.slug]);
+    const done = () => { copied.value = true; setTimeout(() => { copied.value = false; }, 2000); };
+    if (navigator.clipboard?.writeText) {
+        navigator.clipboard.writeText(url).then(done).catch(() => fallbackCopy(url, done));
+    } else {
+        fallbackCopy(url, done);
+    }
+}
+function fallbackCopy(text, done) {
+    const ta = document.createElement('textarea');
+    ta.value = text;
+    ta.style.position = 'fixed';
+    ta.style.opacity = '0';
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand('copy'); done(); } catch (_) {}
+    document.body.removeChild(ta);
+}
 
 const editing = ref(false);
 const saving  = ref(false);

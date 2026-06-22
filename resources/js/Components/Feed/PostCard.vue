@@ -81,10 +81,29 @@
 
         <!-- Body -->
         <div class="px-4 mt-2">
-            <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words" :class="!expanded && isLong ? 'line-clamp-5' : ''">{{ post.body }}</p>
+            <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words" :class="!expanded && isLong ? 'line-clamp-5' : ''" v-html="renderedBody" />
             <button v-if="isLong" @click="expanded = !expanded" class="text-xs font-medium text-gray-400 hover:text-gray-600 mt-1">
                 {{ expanded ? 'See less' : 'See more' }}
             </button>
+        </div>
+
+        <!-- Knowledge Base article references -->
+        <div v-if="post.article_links?.length" class="px-4 mt-3 space-y-2">
+            <Link
+                v-for="(a, i) in post.article_links"
+                :key="i"
+                :href="a.url"
+                class="flex items-center gap-3 p-3 rounded-xl border border-gray-200 hover:border-[#EF233C]/40 hover:bg-gray-50 transition-colors group"
+            >
+                <span class="w-9 h-9 rounded-lg bg-[#EF233C]/10 flex items-center justify-center flex-shrink-0 text-lg">
+                    {{ a.icon || '📖' }}
+                </span>
+                <span class="min-w-0 flex-1">
+                    <span class="block text-[10px] font-bold text-gray-400 uppercase tracking-wide">Knowledge Base · {{ a.category }}</span>
+                    <span class="block text-sm font-semibold text-gray-800 truncate group-hover:text-[#EF233C] transition-colors">{{ a.title }}</span>
+                </span>
+                <BookOpenIcon class="w-4 h-4 text-gray-300 flex-shrink-0" />
+            </Link>
         </div>
 
         <!-- Images -->
@@ -250,11 +269,11 @@
 
 <script setup>
 import { ref, computed, onMounted, onUnmounted } from 'vue';
-import { router, usePage } from '@inertiajs/vue3';
+import { Link, router, usePage } from '@inertiajs/vue3';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
 import {
     EllipsisHorizontalIcon, TrashIcon, BookmarkIcon, TrophyIcon, MapPinIcon,
-    HandThumbUpIcon, ChatBubbleOvalLeftIcon, PaperAirplaneIcon,
+    HandThumbUpIcon, ChatBubbleOvalLeftIcon, PaperAirplaneIcon, BookOpenIcon,
 } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -280,6 +299,19 @@ const typeBadge = computed(() => ({
 // Body see-more
 const expanded = ref(false);
 const isLong   = computed(() => props.post.body.length > 480 || props.post.body.split('\n').length > 6);
+
+// Render the body as escaped text with clickable links
+function escapeHtml(s) {
+    return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+}
+const renderedBody = computed(() => {
+    return escapeHtml(props.post.body).replace(/(https?:\/\/[^\s]+)/g, (m) => {
+        const trail = m.match(/[.,!?;:)\]]+$/);
+        const suffix = trail ? trail[0] : '';
+        const url = suffix ? m.slice(0, -suffix.length) : m;
+        return `<a href="${url}" target="_blank" rel="noopener" class="text-[#EF233C] underline break-all hover:text-[#D90429]">${url}</a>${suffix}`;
+    });
+});
 
 // Event date parts
 const eventMonth = computed(() => props.post.event_date ? dayjs(props.post.event_date).format('MMM') : '');

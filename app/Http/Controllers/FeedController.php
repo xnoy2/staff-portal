@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\KbArticle;
+use App\Models\KbCategory;
 use App\Models\Post;
 use App\Models\PostComment;
 use App\Models\PostReaction;
@@ -213,6 +215,7 @@ class FeedController extends Controller
             'reactions'       => $reactionSummary,
             'my_reaction'     => $myReaction,
             'reaction_count'  => $post->reactions->count(),
+            'article_links'   => $this->articleLinks($post->body, $viewer),
             'comments'        => $post->comments->map(fn ($c) => [
                 'id'         => $c->id,
                 'body'       => $c->body,
@@ -226,5 +229,50 @@ class FeedController extends Controller
             ]),
             'can_delete'      => $post->user_id === $viewer->id || $isPrivileged,
         ];
+    }
+
+    /**
+     * Find Knowledge Base article links inside a post body and resolve them to
+     * lightweight reference cards (only published articles the viewer may see).
+     */
+    private function articleLinks(string $body, User $viewer): array
+    {
+        if (! preg_match_all('#knowledge-base/([a-z0-9\-]+)/([a-z0-9\-]+)#i', $body, $matches, PREG_SET_ORDER)) {
+            return [];
+        }
+
+        $links = [];
+        $seen  = [];
+
+        foreach ($matches as $m) {
+            [$full, $categorySlug, $articleSlug] = $m;
+            $key = $categorySlug . '/' . $articleSlug;
+            if (isset($seen[$key])) {
+                continue;
+            }
+            $seen[$key] = true;
+
+            $category = KbCategory::where('slug', $categorySlug)->first();
+            if (! $category) {
+                continue;
+            }
+
+            $article = KbArticle::where('slug', $articleSlug)
+                ->where('category_id', $category->id)
+                ->first();
+
+            if (! $article || ! $article->is_published || ! $article->isVisibleTo($viewer)) {
+                continue;
+            }
+
+            $links[] = [
+                'title'    => $article->title,
+                'category' => $category->name,
+                'icon'     => $category->icon,
+                'url'      => route('kb.show', [$category->slug, $article->slug]),
+            ];
+        }
+
+        return $links;
     }
 }
