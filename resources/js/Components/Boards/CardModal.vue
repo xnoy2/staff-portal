@@ -29,7 +29,7 @@
                             <!-- Quick actions -->
                             <div class="flex flex-wrap gap-1.5">
                                 <button @click="togglePanel('labels')" :class="actionBtn"><TagIcon class="w-3.5 h-3.5" /> Labels</button>
-                                <button @click="togglePanel('date')" :class="actionBtn"><ClockIcon class="w-3.5 h-3.5" /> Dates</button>
+                                <button @click="openDates($event)" :class="actionBtn"><ClockIcon class="w-3.5 h-3.5" /> Dates</button>
                                 <button @click="$refs.fileInput.click()" :class="actionBtn"><PaperClipIcon class="w-3.5 h-3.5" /> Attachment</button>
                                 <input ref="fileInput" type="file" class="hidden" @change="uploadAttachment" />
                             </div>
@@ -83,24 +83,27 @@
                                 </div>
                             </div>
 
-                            <!-- Due date -->
-                            <div v-if="card.due_date || panel === 'date'">
-                                <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-1.5">Due date</p>
-                                <div v-if="card.due_date && panel !== 'date'" class="flex items-center gap-2">
-                                    <label class="flex items-center gap-2 cursor-pointer">
-                                        <input type="checkbox" :checked="card.due_done" @change="toggleDueDone" class="rounded text-emerald-500 focus:ring-emerald-400" />
-                                        <span :class="['text-sm px-2.5 py-1 rounded-md font-medium', dueChipClass]">{{ formatDue(card.due_date) }}</span>
-                                    </label>
-                                    <button @click="panel = 'date'" class="text-xs text-gray-400 hover:text-gray-600">Edit</button>
+                            <!-- Dates -->
+                            <div v-if="hasDates">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <p class="text-xs font-bold text-gray-500 uppercase tracking-wide">Dates</p>
+                                    <button @click="openDates($event)" class="text-xs text-gray-400 hover:text-gray-600">Edit</button>
                                 </div>
-                                <div v-else class="flex items-center gap-2">
-                                    <input
-                                        type="datetime-local"
-                                        :value="toLocalInput(card.due_date)"
-                                        @change="setDue($event.target.value)"
-                                        class="text-sm border border-gray-200 rounded-lg px-2 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/15"
-                                    />
-                                    <button v-if="card.due_date" @click="setDue('')" class="text-xs text-red-400 hover:text-red-600">Remove</button>
+
+                                <!-- Summary -->
+                                <div class="flex flex-wrap items-center gap-2">
+                                    <span v-if="card.start_date" class="inline-flex items-center gap-1.5 text-sm px-2.5 py-1 rounded-md font-medium bg-gray-100 text-gray-700">
+                                        <ClockIcon class="w-3.5 h-3.5" /> Start: {{ formatDate(card.start_date) }}
+                                    </span>
+                                    <label v-if="card.due_date" class="flex items-center gap-2 cursor-pointer">
+                                        <input type="checkbox" :checked="card.due_done" @change="toggleDueDone" class="rounded text-emerald-500 focus:ring-emerald-400" />
+                                        <span :class="['inline-flex items-center gap-1.5 text-sm px-2.5 py-1 rounded-md font-medium', dueChipClass]">
+                                            <ClockIcon class="w-3.5 h-3.5" /> Due: {{ formatDue(card.due_date) }}
+                                        </span>
+                                    </label>
+                                    <span v-if="card.recurring && card.recurring !== 'never'" class="inline-flex items-center gap-1 text-[11px] font-semibold px-2 py-1 rounded-md bg-sky-100 text-sky-700">
+                                        <ArrowPathIcon class="w-3.5 h-3.5" /> {{ recurringLabel }}
+                                    </span>
                                 </div>
                             </div>
 
@@ -268,6 +271,16 @@
                             <TrashIcon class="w-3.5 h-3.5" /> Delete card
                         </button>
                     </div>
+
+                    <!-- Floating date popover (Trello-style) -->
+                    <CardDatePopover
+                        v-if="panel === 'date'"
+                        :card="card"
+                        :anchor="dateAnchor"
+                        @save="onDateSave"
+                        @remove="onDateRemove"
+                        @close="panel = null"
+                    />
                 </div>
             </div>
         </Transition>
@@ -282,8 +295,10 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import {
     ViewColumnsIcon, XMarkIcon, CheckCircleIcon, TrashIcon, TagIcon, ClockIcon,
     PaperClipIcon, Bars3BottomLeftIcon, DocumentIcon, ChatBubbleLeftRightIcon, CheckIcon, SwatchIcon,
+    ArrowPathIcon,
 } from '@heroicons/vue/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/vue/24/solid';
+import CardDatePopover from '@/Components/Boards/CardDatePopover.vue';
 
 dayjs.extend(relativeTime);
 
@@ -353,15 +368,35 @@ function saveDesc() {
     router.patch(route('boards.cards.update', props.card.id), { description: descDraft.value }, opts);
 }
 
-// ── Due date ──────────────────────────────────────────────────────────────────
-function toLocalInput(iso) { return iso ? dayjs(iso).format('YYYY-MM-DDTHH:mm') : ''; }
-function setDue(val) {
+// ── Dates (start / due / recurring / reminder) ──────────────────────────────────
+const RECURRING_LABELS = { daily: 'Repeats daily', weekly: 'Repeats weekly', monthly: 'Repeats monthly' };
+const hasDates = computed(() => !!(props.card?.start_date || props.card?.due_date));
+const recurringLabel = computed(() => RECURRING_LABELS[props.card?.recurring] ?? '');
+
+// Open the floating date popover anchored to the button that was clicked.
+const dateAnchor = ref(null);
+function openDates(e) {
+    dateAnchor.value = e.currentTarget.getBoundingClientRect();
+    panel.value = 'date';
+}
+
+function onDateSave(payload) {
     panel.value = null;
-    router.patch(route('boards.cards.update', props.card.id), { due_date: val || null, due_done: val ? props.card.due_done : false }, opts);
+    router.patch(route('boards.cards.update', props.card.id), {
+        ...payload,
+        due_done: payload.due_date ? props.card.due_done : false,
+    }, opts);
+}
+function onDateRemove() {
+    panel.value = null;
+    router.patch(route('boards.cards.update', props.card.id), {
+        start_date: null, due_date: null, due_done: false, due_reminder: null, recurring: 'never',
+    }, opts);
 }
 function toggleDueDone() {
     router.patch(route('boards.cards.update', props.card.id), { due_done: !props.card.due_done }, opts);
 }
+function formatDate(iso) { return dayjs(iso).format('D MMM YYYY'); }
 function formatDue(iso) { return dayjs(iso).format('D MMM YYYY, HH:mm'); }
 const dueChipClass = computed(() => {
     if (!props.card?.due_date) return '';

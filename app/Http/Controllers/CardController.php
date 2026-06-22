@@ -14,6 +14,7 @@ use App\Models\Workspace;
 use App\Notifications\CardMentioned;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class CardController extends Controller
 {
@@ -42,11 +43,19 @@ class CardController extends Controller
         $this->authorizeCard($request, $card);
 
         $data = $request->validate([
-            'title'       => ['sometimes', 'required', 'string', 'max:500'],
-            'description' => ['sometimes', 'nullable', 'string', 'max:10000'],
-            'due_date'    => ['sometimes', 'nullable', 'date'],
-            'due_done'    => ['sometimes', 'boolean'],
+            'title'        => ['sometimes', 'required', 'string', 'max:500'],
+            'description'  => ['sometimes', 'nullable', 'string', 'max:10000'],
+            'start_date'   => ['sometimes', 'nullable', 'date'],
+            'due_date'     => ['sometimes', 'nullable', 'date'],
+            'due_done'     => ['sometimes', 'boolean'],
+            'due_reminder' => ['sometimes', 'nullable', Rule::in(array_keys(BoardCard::REMINDER_OFFSETS))],
+            'recurring'    => ['sometimes', Rule::in(BoardCard::RECURRING_OPTIONS)],
         ]);
+
+        // A changed due date or reminder re-arms the reminder so it can fire again.
+        if (array_key_exists('due_date', $data) || array_key_exists('due_reminder', $data)) {
+            $data['due_reminder_sent_at'] = null;
+        }
 
         $card->update($data);
 
@@ -84,9 +93,11 @@ class CardController extends Controller
             $card->update(['list_id' => $destList->id]);
         }
 
+        // Re-number the destination list. Scope to that list (already authorized
+        // above) so any workspace member — not just the board owner — can reorder.
         foreach ($data['ids'] as $i => $id) {
             BoardCard::where('id', $id)
-                ->whereHas('list.board', fn ($q) => $q->where('user_id', $request->user()->id))
+                ->where('list_id', $destList->id)
                 ->update(['sort_order' => $i + 1]);
         }
 

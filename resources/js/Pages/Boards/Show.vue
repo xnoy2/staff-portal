@@ -74,14 +74,19 @@
                             item-key="id"
                             class="flex-1 overflow-y-auto px-2 pb-1 space-y-2 min-h-[12px]"
                             ghost-class="card-ghost"
+                            chosen-class="card-chosen"
                             drag-class="card-drag"
-                            :animation="160"
+                            fallback-class="card-drag"
+                            :force-fallback="true"
+                            :fallback-on-body="true"
+                            :fallback-tolerance="4"
+                            :animation="180"
                             @change="onCardChange($event, list)"
                         >
                             <template #item="{ element: card }">
                                 <div
                                     @click="openCard(card)"
-                                    class="group bg-white rounded-xl border border-gray-200 px-3 py-2.5 shadow-sm cursor-pointer hover:border-gray-300 hover:shadow transition-all"
+                                    class="group select-none bg-white rounded-xl border border-gray-200 px-3 py-2.5 shadow-sm cursor-pointer hover:border-gray-300 hover:shadow transition-all"
                                 >
                                     <!-- Label bars -->
                                     <div v-if="card.labels.length" class="flex flex-wrap gap-1 mb-1.5">
@@ -99,6 +104,7 @@
                                         <span v-if="card.due_date" :class="['inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded', dueClass(card)]">
                                             <ClockIcon class="w-3 h-3" /> {{ shortDue(card.due_date) }}
                                         </span>
+                                        <span v-if="card.recurring && card.recurring !== 'never'" title="Recurring"><ArrowPathIcon class="w-3.5 h-3.5" /></span>
                                         <span v-if="card.checklist_total > 0" :class="[
                                             'inline-flex items-center gap-1 text-[10px] font-semibold px-1.5 py-0.5 rounded',
                                             card.checklist_done === card.checklist_total ? 'bg-emerald-100 text-emerald-700' : 'bg-gray-100 text-gray-500',
@@ -248,7 +254,7 @@ import { flattenCards } from '@/Components/Boards/cardHelpers';
 import {
     PlusIcon, TrashIcon, ChevronRightIcon,
     CheckCircleIcon, ClockIcon, Bars3BottomLeftIcon,
-    PaperClipIcon, ChatBubbleLeftRightIcon,
+    PaperClipIcon, ChatBubbleLeftRightIcon, ArrowPathIcon,
 } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 
@@ -483,7 +489,29 @@ function confirmDeleteBoard() {
 }
 </script>
 
-<style scoped>
-.card-ghost { opacity: 0.4; border: 2px dashed #9ca3af !important; }
-.card-drag { transform: rotate(2deg); box-shadow: 0 10px 30px -8px rgba(43,45,66,0.35); }
+<!-- Not scoped: SortableJS appends the dragged clone to <body>, outside this
+     component's subtree, so these classes must be global to reach it. -->
+<style>
+/* Subtle press feedback the moment a card is picked up */
+.card-chosen { cursor: grabbing; }
+
+/* The empty slot left behind in the list — a muted placeholder (Trello-style) */
+.card-ghost > * { visibility: hidden; }
+.card-ghost {
+    background: #e2e8f0 !important;
+    border-color: #cbd5e1 !important;
+    box-shadow: none !important;
+}
+
+/* The card that follows the cursor: lifted, tilted and shadowed.
+   SortableJS drives movement via `transform: translate3d(...)`, so the tilt/scale
+   use the individual `rotate`/`scale` properties to compose with it rather than
+   overwrite it. */
+.card-drag {
+    rotate: 4deg;
+    scale: 1.03;
+    box-shadow: 0 18px 32px -8px rgba(15, 23, 42, 0.5) !important;
+    cursor: grabbing !important;
+    opacity: 1 !important;
+}
 </style>

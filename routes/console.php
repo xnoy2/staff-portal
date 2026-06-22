@@ -11,3 +11,7 @@ Artisan::command('inspire', function () {
 // Auto-generate payroll runs at midnight on the cut-off day.
 // The command checks internally whether today matches the configured cut-off day.
 Schedule::command('payroll:generate')->dailyAt('00:05');
+
+// Board card due-date reminders and recurring-card spawning.
+Schedule::command('cards:due-reminders')->everyMinute()->withoutOverlapping();
+Schedule::command('cards:recur')->everyFiveMinutes()->withoutOverlapping();

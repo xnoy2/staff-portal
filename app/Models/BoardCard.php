@@ -15,14 +15,33 @@ class BoardCard extends Model
     protected $table = 'board_cards';
 
     protected $fillable = [
-        'list_id', 'title', 'description', 'due_date', 'due_done', 'created_by', 'sort_order',
+        'list_id', 'title', 'description', 'start_date', 'due_date', 'due_done',
+        'due_reminder', 'due_reminder_sent_at', 'recurring', 'recurred_at',
+        'created_by', 'sort_order',
     ];
 
     protected $casts = [
-        'sort_order' => 'integer',
-        'due_date'   => 'datetime',
-        'due_done'   => 'boolean',
+        'sort_order'           => 'integer',
+        'start_date'           => 'date',
+        'due_date'             => 'datetime',
+        'due_done'             => 'boolean',
+        'due_reminder_sent_at' => 'datetime',
+        'recurred_at'          => 'datetime',
     ];
+
+    /** Minutes-before-due for each reminder option. */
+    public const REMINDER_OFFSETS = [
+        'at_time' => 0,
+        '5_min'   => 5,
+        '10_min'  => 10,
+        '15_min'  => 15,
+        '1_hour'  => 60,
+        '2_hour'  => 120,
+        '1_day'   => 1440,
+        '2_day'   => 2880,
+    ];
+
+    public const RECURRING_OPTIONS = ['never', 'daily', 'weekly', 'monthly'];
 
     public function list(): BelongsTo
     {

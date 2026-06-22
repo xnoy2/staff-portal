@@ -167,11 +167,14 @@ class BoardController extends Controller
             'ids.*' => ['string', 'exists:board_lists,id'],
         ]);
 
-        $userId = $request->user()->id;
+        // All ids belong to a single board; authorize the user as a member of it
+        // (not just the owner) and scope the update to that board's lists.
+        $board = BoardList::findOrFail($data['ids'][0])->board;
+        $this->requireMember($request, $board->workspace_id);
 
         foreach ($data['ids'] as $i => $id) {
             BoardList::where('id', $id)
-                ->whereHas('board', fn ($q) => $q->where('user_id', $userId))
+                ->where('board_id', $board->id)
                 ->update(['sort_order' => $i + 1]);
         }
 
@@ -203,8 +206,11 @@ class BoardController extends Controller
             'list_id'         => $card->list_id,
             'title'           => $card->title,
             'description'     => $card->description,
+            'start_date'      => $card->start_date?->toDateString(),
             'due_date'        => $card->due_date?->toIso8601String(),
             'due_done'        => $card->due_done,
+            'due_reminder'    => $card->due_reminder,
+            'recurring'       => $card->recurring,
             'sort_order'      => $card->sort_order,
             'created_at'      => $card->created_at?->toIso8601String(),
             'creator'         => $card->creator ? [
