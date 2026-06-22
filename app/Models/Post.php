@@ -16,7 +16,7 @@ class Post extends Model
     public const REACTION_TYPES = ['like', 'love', 'celebrate', 'clap', 'laugh'];
 
     protected $fillable = [
-        'user_id', 'type', 'title', 'body', 'images',
+        'user_id', 'type', 'title', 'body', 'images', 'mentions',
         'event_date', 'event_location', 'recognized_user_id', 'is_pinned',
     ];
 
@@ -24,6 +24,7 @@ class Post extends Model
     {
         return [
             'images'     => 'array',
+            'mentions'   => 'array',
             'event_date' => 'date',
             'is_pinned'  => 'boolean',
         ];

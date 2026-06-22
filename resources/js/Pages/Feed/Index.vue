@@ -79,13 +79,33 @@
                     </div>
 
                     <!-- Body -->
-                    <textarea
-                        ref="bodyInput"
-                        v-model="form.body"
-                        :rows="form.type === 'blog' ? 8 : 4"
-                        :placeholder="bodyPlaceholder"
-                        class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20 focus:border-[#EF233C]/40 resize-none"
-                    />
+                    <div class="relative">
+                        <textarea
+                            ref="bodyInput"
+                            v-model="form.body"
+                            @input="onBodyInput"
+                            @keydown="onMentionKeydown"
+                            :rows="form.type === 'blog' ? 8 : 4"
+                            :placeholder="bodyPlaceholder"
+                            class="w-full text-sm border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20 focus:border-[#EF233C]/40 resize-none"
+                        />
+
+                        <!-- @mention autocomplete -->
+                        <div v-if="mentionOpen && mentionMatches.length" class="absolute z-20 left-0 right-0 mt-1 bg-white rounded-xl border border-gray-200 shadow-lg py-1 max-h-52 overflow-y-auto">
+                            <button
+                                v-for="(m, i) in mentionMatches"
+                                :key="m.id"
+                                @mousedown.prevent="pickMention(m)"
+                                :class="['w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors text-left', i === mentionIndex ? 'bg-[#EF233C]/8 text-[#EF233C]' : 'text-gray-700 hover:bg-gray-50']"
+                            >
+                                <span v-if="m.id === 'all'" class="w-6 h-6 rounded-full bg-[#EF233C]/10 flex items-center justify-center flex-shrink-0">
+                                    <UsersIcon class="w-3.5 h-3.5 text-[#EF233C]" />
+                                </span>
+                                <img v-else :src="m.avatar_url" class="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                                <span class="truncate">{{ m.name }}<span v-if="m.id === 'all'" class="text-gray-400"> — notify everyone</span></span>
+                            </button>
+                        </div>
+                    </div>
 
                     <!-- Image previews -->
                     <div v-if="form.images.length || pendingUploads.length" class="grid grid-cols-3 gap-2 mt-2">
@@ -173,7 +193,7 @@ import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import PostCard from '@/Components/Feed/PostCard.vue';
 import {
-    XMarkIcon, PhotoIcon, NewspaperIcon,
+    XMarkIcon, PhotoIcon, NewspaperIcon, UsersIcon,
     ChatBubbleBottomCenterTextIcon, DocumentTextIcon, CalendarDaysIcon, TrophyIcon,
 } from '@heroicons/vue/24/outline';
 
@@ -203,6 +223,66 @@ const form = ref({
     event_location: '',
     recognized_user_id: '',
 });
+
+// ── @mention autocomplete ─────────────────────────────────────────────────────
+
+const mentions    = ref([]); // selected { id, name } (excludes the special "all")
+const mentionOpen  = ref(false);
+const mentionIndex = ref(0);
+const mentionStart = ref(-1); // index of the '@' currently being completed
+
+const everyone = { id: 'all', name: 'all', avatar_url: '' };
+
+const mentionQuery = computed(() => {
+    if (mentionStart.value < 0) return '';
+    return form.value.body.slice(mentionStart.value + 1, bodyInput.value?.selectionStart ?? form.value.body.length);
+});
+
+const mentionMatches = computed(() => {
+    const q = mentionQuery.value.toLowerCase();
+    const pool = [everyone, ...props.staffList];
+    return pool
+        .filter(m => m.name.toLowerCase().includes(q) && m.id !== me.value.id)
+        .slice(0, 6);
+});
+
+function onBodyInput() {
+    const el = bodyInput.value;
+    if (!el) return;
+    const pos = el.selectionStart;
+    const upto = form.value.body.slice(0, pos);
+    // Find an '@' starting a token (preceded by start or whitespace) with no space after it
+    const match = upto.match(/(?:^|\s)@([^\s@]*)$/);
+    if (match) {
+        mentionStart.value = pos - match[1].length - 1;
+        mentionOpen.value = true;
+        mentionIndex.value = 0;
+    } else {
+        mentionOpen.value = false;
+        mentionStart.value = -1;
+    }
+}
+
+function onMentionKeydown(e) {
+    if (!mentionOpen.value || !mentionMatches.value.length) return;
+    if (e.key === 'ArrowDown') { e.preventDefault(); mentionIndex.value = (mentionIndex.value + 1) % mentionMatches.value.length; }
+    else if (e.key === 'ArrowUp') { e.preventDefault(); mentionIndex.value = (mentionIndex.value - 1 + mentionMatches.value.length) % mentionMatches.value.length; }
+    else if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickMention(mentionMatches.value[mentionIndex.value]); }
+    else if (e.key === 'Escape') { mentionOpen.value = false; }
+}
+
+function pickMention(m) {
+    const body = form.value.body;
+    const before = body.slice(0, mentionStart.value);
+    const after  = body.slice(bodyInput.value?.selectionStart ?? body.length);
+    form.value.body = `${before}@${m.name} ${after}`;
+    if (m.id !== 'all' && !mentions.value.some(x => x.id === m.id)) {
+        mentions.value.push({ id: m.id, name: m.name });
+    }
+    mentionOpen.value = false;
+    mentionStart.value = -1;
+    nextTick(() => bodyInput.value?.focus());
+}
 
 const postTypes = [
     { value: 'general',     label: 'Post',        icon: ChatBubbleBottomCenterTextIcon },
@@ -299,11 +379,17 @@ function submitPost() {
     if (!canPost.value || posting.value) return;
     posting.value = true;
 
+    // Only send mentions whose @name is still present in the body
+    const activeMentions = mentions.value
+        .filter(m => form.value.body.includes('@' + m.name))
+        .map(m => m.id);
+
     router.post(route('feed.store'), {
         type:               form.value.type,
         title:              form.value.title || null,
         body:               form.value.body,
         images:             form.value.images,
+        mentions:           activeMentions,
         event_date:         form.value.event_date || null,
         event_location:     form.value.event_location || null,
         recognized_user_id: form.value.recognized_user_id || null,
@@ -312,6 +398,7 @@ function submitPost() {
         onSuccess: () => {
             composerOpen.value = false;
             clearPreviews();
+            mentions.value = [];
             form.value = { type: 'general', title: '', body: '', images: [], event_date: '', event_location: '', recognized_user_id: '' };
         },
         onFinish: () => { posting.value = false; },

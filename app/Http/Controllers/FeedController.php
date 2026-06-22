@@ -2,15 +2,18 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\NewsfeedPostMail;
 use App\Models\KbArticle;
 use App\Models\KbCategory;
 use App\Models\Post;
 use App\Models\PostComment;
 use App\Models\PostReaction;
 use App\Models\User;
+use App\Notifications\NewsfeedActivity;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Inertia;
 use Inertia\Response;
 
@@ -33,14 +36,12 @@ class FeedController extends Controller
             ->withQueryString()
             ->through(fn ($post) => $this->payload($post, $user, $isPrivileged));
 
-        // Staff list only needed for the recognition picker (privileged users)
-        $staffList = $isPrivileged
-            ? User::where('is_active', true)
-                ->select('id', 'name', 'avatar')
-                ->orderBy('name')
-                ->get()
-                ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'avatar_url' => $u->avatar_url])
-            : collect();
+        // Staff list — used by the recognition picker and the @mention autocomplete
+        $staffList = User::where('is_active', true)
+            ->select('id', 'name', 'avatar')
+            ->orderBy('name')
+            ->get()
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'avatar_url' => $u->avatar_url]);
 
         return Inertia::render('Feed/Index', [
             'posts'        => $posts,
@@ -63,6 +64,8 @@ class FeedController extends Controller
                     $fail('Invalid image URL.');
                 }
             }],
+            'mentions'           => ['nullable', 'array'],
+            'mentions.*'         => ['string', 'exists:users,id'],
             'event_date'         => ['nullable', 'date', 'required_if:type,event'],
             'event_location'     => ['nullable', 'string', 'max:255'],
             'recognized_user_id' => ['nullable', 'string', 'exists:users,id', 'required_if:type,recognition'],
@@ -73,18 +76,75 @@ class FeedController extends Controller
             return back()->with('error', 'Only managers can publish recognition posts.');
         }
 
-        Post::create([
+        $mentionIds = collect($data['mentions'] ?? [])->unique()->values();
+
+        $post = Post::create([
             'user_id'            => $user->id,
             'type'               => $data['type'],
             'title'              => $data['title'] ?? null,
             'body'               => $data['body'],
             'images'             => $data['images'] ?? null,
+            'mentions'           => $mentionIds->isEmpty() ? null : $mentionIds->all(),
             'event_date'         => $data['type'] === 'event' ? ($data['event_date'] ?? null) : null,
             'event_location'     => $data['type'] === 'event' ? ($data['event_location'] ?? null) : null,
             'recognized_user_id' => $data['type'] === 'recognition' ? ($data['recognized_user_id'] ?? null) : null,
         ]);
 
+        $this->notifyFeed($post, $user);
+
         return back()->with('success', 'Posted to the feed.');
+    }
+
+    /**
+     * Notify every other active user about a new post:
+     *  - in-app + real-time (per user, "mentioned you" if they were @mentioned / @all)
+     *  - a single BCC email announcement to everyone (one send)
+     */
+    private function notifyFeed(Post $post, User $author): void
+    {
+        $recipients = User::where('is_active', true)
+            ->where('id', '!=', $author->id)
+            ->get();
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        // @all (in the body) mentions everyone; otherwise just the picked users
+        $mentionsAll = (bool) preg_match('/@all\b/i', $post->body);
+        $mentionedIds = $mentionsAll
+            ? $recipients->pluck('id')->all()
+            : (array) ($post->mentions ?? []);
+
+        $excerpt = NewsfeedActivity::excerptOf($post->title, $post->body);
+
+        // In-app + broadcast (per recipient)
+        try {
+            \Illuminate\Support\Facades\Notification::send(
+                $recipients,
+                new NewsfeedActivity($post->id, $author->name, $excerpt, $mentionedIds),
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        // One email to everyone (BCC) — avoids sending N individual emails
+        try {
+            $emails = $recipients->pluck('email')->filter()->values();
+            if ($emails->isNotEmpty()) {
+                Mail::to(config('mail.from.address'))
+                    ->bcc($emails->all())
+                    ->send(new NewsfeedPostMail(
+                        $author->name,
+                        $post->title,
+                        $excerpt,
+                        $post->type,
+                        url('/feed'),
+                    ));
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
     }
 
     public function destroy(Request $request, Post $post): RedirectResponse
@@ -216,6 +276,9 @@ class FeedController extends Controller
             'my_reaction'     => $myReaction,
             'reaction_count'  => $post->reactions->count(),
             'article_links'   => $this->articleLinks($post->body, $viewer),
+            'mention_names'   => empty($post->mentions)
+                ? []
+                : User::whereIn('id', $post->mentions)->pluck('name')->values(),
             'comments'        => $post->comments->map(fn ($c) => [
                 'id'         => $c->id,
                 'body'       => $c->body,

@@ -300,17 +300,36 @@ const typeBadge = computed(() => ({
 const expanded = ref(false);
 const isLong   = computed(() => props.post.body.length > 480 || props.post.body.split('\n').length > 6);
 
-// Render the body as escaped text with clickable links
+// Render the body as escaped text with clickable links and highlighted @mentions
 function escapeHtml(s) {
     return s.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
 }
 const renderedBody = computed(() => {
-    return escapeHtml(props.post.body).replace(/(https?:\/\/[^\s]+)/g, (m) => {
+    let html = escapeHtml(props.post.body);
+
+    // Clickable links
+    html = html.replace(/(https?:\/\/[^\s]+)/g, (m) => {
         const trail = m.match(/[.,!?;:)\]]+$/);
         const suffix = trail ? trail[0] : '';
         const url = suffix ? m.slice(0, -suffix.length) : m;
         return `<a href="${url}" target="_blank" rel="noopener" class="text-[#EF233C] underline break-all hover:text-[#D90429]">${url}</a>${suffix}`;
     });
+
+    const mentionSpan = (t) => `<span class="font-semibold text-[#EF233C] bg-[#EF233C]/8 rounded px-0.5">${t}</span>`;
+
+    // @all
+    html = html.replace(/@all\b/gi, mentionSpan('@all'));
+
+    // Specific @mentions (longest names first to avoid partial overlaps)
+    [...(props.post.mention_names || [])]
+        .sort((a, b) => b.length - a.length)
+        .forEach((name) => {
+            const esc = escapeHtml(name);
+            const safe = esc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            html = html.replace(new RegExp('@' + safe, 'g'), mentionSpan('@' + esc));
+        });
+
+    return html;
 });
 
 // Event date parts
