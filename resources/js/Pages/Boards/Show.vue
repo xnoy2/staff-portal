@@ -48,7 +48,11 @@
                 @change="onListChange"
             >
                 <template #item="{ element: list }">
-                    <div class="flex-shrink-0 w-72 bg-[#EDF2F4] rounded-2xl flex flex-col max-h-[calc(100vh-13rem)]">
+                    <div
+                        :data-list-id="list.id"
+                        :class="['flex-shrink-0 w-72 rounded-2xl flex flex-col max-h-[calc(100vh-13rem)] ring-2 ring-inset transition-[background-color,box-shadow] duration-150',
+                                 dragOverListId === list.id ? 'bg-[#EF233C]/5 ring-[#EF233C]/40' : 'bg-[#EDF2F4] ring-transparent']"
+                    >
                         <!-- List header -->
                         <div class="list-handle flex items-center gap-2 px-3 py-2.5 cursor-grab active:cursor-grabbing">
                             <input
@@ -72,20 +76,21 @@
                             v-model="list.cards"
                             :group="{ name: 'cards' }"
                             item-key="id"
-                            class="flex-1 overflow-y-auto px-2 pb-1 space-y-2 min-h-[12px]"
+                            class="flex-1 overflow-y-auto px-2 pb-1 space-y-2 min-h-[44px]"
                             ghost-class="card-ghost"
-                            chosen-class="card-chosen"
-                            drag-class="card-drag"
-                            fallback-class="card-drag"
+                            drag-class="sjs-clone-hidden"
+                            fallback-class="sjs-clone-hidden"
                             :force-fallback="true"
-                            :fallback-on-body="true"
                             :fallback-tolerance="4"
                             :animation="180"
                             @change="onCardChange($event, list)"
+                            @start="onDragStart"
+                            @end="onDragEnd"
                         >
                             <template #item="{ element: card }">
                                 <div
                                     @click="openCard(card)"
+                                    @pointerdown="onCardPointerDown"
                                     class="group select-none bg-white rounded-xl border border-gray-200 px-3 py-2.5 shadow-sm cursor-pointer hover:border-gray-300 hover:shadow transition-all"
                                 >
                                     <!-- Label bars -->
@@ -239,7 +244,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch, nextTick, onMounted } from 'vue';
+import { ref, computed, watch, nextTick, onMounted, onUnmounted } from 'vue';
 import { Link, router } from '@inertiajs/vue3';
 import draggable from 'vuedraggable';
 import AppLayout from '@/Layouts/AppLayout.vue';
@@ -318,6 +323,95 @@ function onCardChange(evt, list) {
         ids: list.cards.map(c => c.id),
     }, opts);
 }
+
+// ── Trello-style drag visual ───────────────────────────────────────────────────
+// SortableJS (fallback/pointer mode) drives the sorting; its own clone is hidden
+// (it mis-positions on this layout). We render our own lifted/tilted clone and
+// follow the cursor with high-frequency `pointermove`, applied once per frame via
+// requestAnimationFrame for a smooth, composited follow.
+
+let flyEl = null;
+let grabDx = 0;
+let grabDy = 0;
+let lastX = 0;
+let lastY = 0;
+let rafId = null;
+let dirty = false;
+let downPos = null;
+
+// Tilt/scale applied AFTER the translate so it only rotates the card, not the
+// (large) translation vector — otherwise the clone drifts off the cursor.
+const FLY_TILT = ' rotate(3deg) scale(1.02)';
+
+// The list the cursor is currently over, for Trello-style drop-target highlight.
+const dragOverListId = ref(null);
+
+function onCardPointerDown(e) {
+    // Remember the press point AND the card's rect at that same instant, so the
+    // grab offset is exact even if the board scrolls before the drag starts.
+    const r = e.currentTarget.getBoundingClientRect();
+    downPos = { x: e.clientX, y: e.clientY, left: r.left, top: r.top, width: r.width };
+}
+
+function applyFly() {
+    if (flyEl && dirty) {
+        flyEl.style.transform = `translate3d(${lastX - grabDx}px, ${lastY - grabDy}px, 0)${FLY_TILT}`;
+        updateDropTarget();
+        dirty = false;
+    }
+    rafId = requestAnimationFrame(applyFly);
+}
+
+// Highlight the list that actually holds the drop placeholder — i.e. exactly where
+// SortableJS would drop the card right now (works regardless of column height).
+function updateDropTarget() {
+    const col = document.querySelector('.card-ghost')?.closest('[data-list-id]');
+    dragOverListId.value = col?.getAttribute('data-list-id') ?? null;
+}
+
+function onPointerMove(e) {
+    lastX = e.clientX;
+    lastY = e.clientY;
+    dirty = true;
+}
+
+function onDragStart(e) {
+    const el = e.item;
+    const rect = el.getBoundingClientRect();
+
+    flyEl = el.cloneNode(true);
+    ['card-ghost', 'sortable-ghost', 'sortable-chosen', 'sortable-drag', 'sjs-clone-hidden']
+        .forEach(c => flyEl.classList.remove(c));
+    flyEl.classList.add('card-flying');
+    flyEl.style.width = `${downPos?.width ?? rect.width}px`;
+    document.body.appendChild(flyEl);
+
+    // Grab offset from the press point and the card's rect captured together.
+    const px = downPos?.x ?? e.originalEvent?.clientX ?? rect.left + rect.width / 2;
+    const py = downPos?.y ?? e.originalEvent?.clientY ?? rect.top + rect.height / 2;
+    grabDx = px - (downPos?.left ?? rect.left);
+    grabDy = py - (downPos?.top ?? rect.top);
+    lastX = px;
+    lastY = py;
+    // Pivot the tilt/scale around the exact grab point so it stays under the cursor.
+    flyEl.style.transformOrigin = `${grabDx}px ${grabDy}px`;
+    flyEl.style.transform = `translate3d(${px - grabDx}px, ${py - grabDy}px, 0)${FLY_TILT}`;
+
+    document.addEventListener('pointermove', onPointerMove, { passive: true });
+    rafId = requestAnimationFrame(applyFly);
+}
+
+function onDragEnd() {
+    document.removeEventListener('pointermove', onPointerMove);
+    if (rafId) { cancelAnimationFrame(rafId); rafId = null; }
+    if (flyEl) { flyEl.remove(); flyEl = null; }
+    downPos = null;
+    dragOverListId.value = null;
+}
+
+// Safety net: if the board unmounts mid-drag (e.g. navigation), tear the drag
+// down so we don't leak the rAF loop, the pointer listener or the body clone.
+onUnmounted(onDragEnd);
 
 // ── Card modal ────────────────────────────────────────────────────────────────
 
@@ -489,13 +583,10 @@ function confirmDeleteBoard() {
 }
 </script>
 
-<!-- Not scoped: SortableJS appends the dragged clone to <body>, outside this
-     component's subtree, so these classes must be global to reach it. -->
+<!-- Not scoped: the flying clone is appended to <body>, outside this component's
+     subtree, so these classes must be global to reach it. -->
 <style>
-/* Subtle press feedback the moment a card is picked up */
-.card-chosen { cursor: grabbing; }
-
-/* The empty slot left behind in the list — a muted placeholder (Trello-style) */
+/* The empty slot left behind in the list — a muted placeholder (Trello-style). */
 .card-ghost > * { visibility: hidden; }
 .card-ghost {
     background: #e2e8f0 !important;
@@ -503,15 +594,23 @@ function confirmDeleteBoard() {
     box-shadow: none !important;
 }
 
-/* The card that follows the cursor: lifted, tilted and shadowed.
-   SortableJS drives movement via `transform: translate3d(...)`, so the tilt/scale
-   use the individual `rotate`/`scale` properties to compose with it rather than
-   overwrite it. */
-.card-drag {
-    rotate: 4deg;
-    scale: 1.03;
-    box-shadow: 0 18px 32px -8px rgba(15, 23, 42, 0.5) !important;
-    cursor: grabbing !important;
-    opacity: 1 !important;
+/* SortableJS's own drag clone — hidden; we render our own (.card-flying). */
+.sjs-clone-hidden { opacity: 0 !important; }
+
+/* Our own drag image: a lifted, tilted, shadowed card that we position on the
+   cursor ourselves. The tilt is baked into the JS transform (after the translate)
+   so it doesn't skew the position. It must not intercept pointer events so drop
+   detection hits the real cards underneath. */
+.card-flying {
+    position: fixed;
+    top: 0;
+    left: 0;
+    z-index: 9999;
+    margin: 0 !important;
+    pointer-events: none;
+    box-shadow: 0 18px 32px -8px rgba(15, 23, 42, 0.5);
+    cursor: grabbing;
+    transition: none;
+    will-change: transform;
 }
 </style>
