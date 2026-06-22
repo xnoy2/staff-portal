@@ -10,7 +10,9 @@ class PostComment extends Model
 {
     use HasUuids;
 
-    protected $fillable = ['post_id', 'user_id', 'body'];
+    protected $fillable = ['post_id', 'user_id', 'body', 'mentions'];
+
+    protected $casts = ['mentions' => 'array'];
 
     public function post(): BelongsTo
     {

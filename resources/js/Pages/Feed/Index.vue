@@ -164,6 +164,7 @@
                 :key="post.id"
                 :post="post"
                 :isPrivileged="isPrivileged"
+                :staff-list="staffList"
             />
 
             <!-- Pagination -->

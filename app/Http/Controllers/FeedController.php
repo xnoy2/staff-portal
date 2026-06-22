@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Mail\NewsfeedCommentMail;
 use App\Mail\NewsfeedPostMail;
 use App\Models\KbArticle;
 use App\Models\KbCategory;
@@ -10,6 +11,7 @@ use App\Models\PostComment;
 use App\Models\PostReaction;
 use App\Models\User;
 use App\Notifications\NewsfeedActivity;
+use App\Notifications\PostCommentMention;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
@@ -147,6 +149,47 @@ class FeedController extends Controller
         }
     }
 
+    /**
+     * Notify users @mentioned in a comment (directly or via @all):
+     * in-app + real-time per user, plus a single BCC email.
+     */
+    private function notifyCommentMentions(PostComment $comment, User $author): void
+    {
+        $mentionsAll = (bool) preg_match('/@all\b/i', $comment->body);
+
+        $recipients = $mentionsAll
+            ? User::where('is_active', true)->where('id', '!=', $author->id)->get()
+            : User::whereIn('id', (array) ($comment->mentions ?? []))
+                ->where('id', '!=', $author->id)
+                ->get();
+
+        if ($recipients->isEmpty()) {
+            return;
+        }
+
+        $excerpt = PostCommentMention::excerptOf($comment->body);
+
+        try {
+            \Illuminate\Support\Facades\Notification::send(
+                $recipients,
+                new PostCommentMention($author->name, $excerpt),
+            );
+        } catch (\Throwable $e) {
+            report($e);
+        }
+
+        try {
+            $emails = $recipients->pluck('email')->filter()->values();
+            if ($emails->isNotEmpty()) {
+                Mail::to(config('mail.from.address'))
+                    ->bcc($emails->all())
+                    ->send(new NewsfeedCommentMail($author->name, $excerpt, url('/feed')));
+            }
+        } catch (\Throwable $e) {
+            report($e);
+        }
+    }
+
     public function destroy(Request $request, Post $post): RedirectResponse
     {
         $user    = $request->user();
@@ -197,14 +240,22 @@ class FeedController extends Controller
     public function comment(Request $request, Post $post): RedirectResponse
     {
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:2000'],
+            'body'       => ['required', 'string', 'max:2000'],
+            'mentions'   => ['nullable', 'array'],
+            'mentions.*' => ['string', 'exists:users,id'],
         ]);
 
-        PostComment::create([
-            'post_id' => $post->id,
-            'user_id' => $request->user()->id,
-            'body'    => $data['body'],
+        $author     = $request->user();
+        $mentionIds = collect($data['mentions'] ?? [])->unique()->values();
+
+        $comment = PostComment::create([
+            'post_id'  => $post->id,
+            'user_id'  => $author->id,
+            'body'     => $data['body'],
+            'mentions' => $mentionIds->isEmpty() ? null : $mentionIds->all(),
         ]);
+
+        $this->notifyCommentMentions($comment, $author);
 
         return back();
     }
@@ -280,11 +331,14 @@ class FeedController extends Controller
                 ? []
                 : User::whereIn('id', $post->mentions)->pluck('name')->values(),
             'comments'        => $post->comments->map(fn ($c) => [
-                'id'         => $c->id,
-                'body'       => $c->body,
-                'created_at' => $c->created_at->toIso8601String(),
-                'can_delete' => $c->user_id === $viewer->id || $isPrivileged,
-                'user'       => [
+                'id'            => $c->id,
+                'body'          => $c->body,
+                'created_at'    => $c->created_at->toIso8601String(),
+                'can_delete'    => $c->user_id === $viewer->id || $isPrivileged,
+                'mention_names' => empty($c->mentions)
+                    ? []
+                    : User::whereIn('id', $c->mentions)->pluck('name')->values(),
+                'user'          => [
                     'id'         => $c->user->id,
                     'name'       => $c->user->name,
                     'avatar_url' => $c->user->avatar_url,

@@ -196,7 +196,7 @@
                 <img :src="c.user.avatar_url" :alt="c.user.name" class="w-7 h-7 rounded-full object-cover flex-shrink-0 mt-0.5" />
                 <div class="bg-gray-100 rounded-2xl px-3 py-2 min-w-0">
                     <p class="text-xs font-semibold text-gray-800">{{ c.user.name }}</p>
-                    <p class="text-sm text-gray-700 break-words whitespace-pre-wrap">{{ c.body }}</p>
+                    <p class="text-sm text-gray-700 break-words whitespace-pre-wrap" v-html="renderComment(c)" />
                 </div>
                 <div class="flex flex-col items-center gap-0.5 flex-shrink-0 self-center">
                     <button
@@ -223,9 +223,10 @@
                 <input
                     ref="commentInput"
                     v-model="commentBody"
-                    @keydown.enter.prevent="submitComment"
+                    @input="onCommentMentionInput"
+                    @keydown="onCommentKeydown"
                     type="text"
-                    placeholder="Write a comment…"
+                    placeholder="Write a comment… use @ to mention"
                     class="w-full bg-gray-100 border-0 rounded-full text-sm pl-4 pr-10 py-2 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20 placeholder:text-gray-400"
                 />
                 <button
@@ -235,6 +236,22 @@
                 >
                     <PaperAirplaneIcon class="w-4 h-4" />
                 </button>
+
+                <!-- @mention autocomplete -->
+                <div v-if="cMentionOpen && cMentionMatches.length" class="absolute z-30 left-0 right-0 bottom-full mb-1 bg-white rounded-xl border border-gray-200 shadow-lg py-1 max-h-44 overflow-y-auto">
+                    <button
+                        v-for="(m, i) in cMentionMatches"
+                        :key="m.id"
+                        @mousedown.prevent="pickCommentMention(m)"
+                        :class="['w-full flex items-center gap-2 px-3 py-1.5 text-sm transition-colors text-left', i === cMentionIndex ? 'bg-[#EF233C]/8 text-[#EF233C]' : 'text-gray-700 hover:bg-gray-50']"
+                    >
+                        <span v-if="m.id === 'all'" class="w-6 h-6 rounded-full bg-[#EF233C]/10 flex items-center justify-center flex-shrink-0">
+                            <UsersIcon class="w-3.5 h-3.5 text-[#EF233C]" />
+                        </span>
+                        <img v-else :src="m.avatar_url" class="w-6 h-6 rounded-full object-cover flex-shrink-0" />
+                        <span class="truncate">{{ m.name }}<span v-if="m.id === 'all'" class="text-gray-400"> — notify everyone</span></span>
+                    </button>
+                </div>
             </div>
         </div>
 
@@ -268,12 +285,12 @@
 </template>
 
 <script setup>
-import { ref, computed, onMounted, onUnmounted } from 'vue';
+import { ref, computed, nextTick, onMounted, onUnmounted } from 'vue';
 import { Link, router, usePage } from '@inertiajs/vue3';
 import ConfirmModal from '@/Components/ConfirmModal.vue';
 import {
     EllipsisHorizontalIcon, TrashIcon, BookmarkIcon, TrophyIcon, MapPinIcon,
-    HandThumbUpIcon, ChatBubbleOvalLeftIcon, PaperAirplaneIcon, BookOpenIcon,
+    HandThumbUpIcon, ChatBubbleOvalLeftIcon, PaperAirplaneIcon, BookOpenIcon, UsersIcon,
 } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -282,6 +299,7 @@ dayjs.extend(relativeTime);
 const props = defineProps({
     post:         { type: Object, required: true },
     isPrivileged: { type: Boolean, default: false },
+    staffList:    { type: Array,   default: () => [] },
 });
 
 const page = usePage();
@@ -417,13 +435,88 @@ function focusComment() {
     commentInput.value?.focus();
 }
 
+// Highlight @all and @mentions inside a comment body
+function renderComment(c) {
+    let html = escapeHtml(c.body);
+    const span = (t) => `<span class="font-semibold text-[#EF233C]">${t}</span>`;
+    html = html.replace(/@all\b/gi, span('@all'));
+    [...(c.mention_names || [])]
+        .sort((a, b) => b.length - a.length)
+        .forEach((name) => {
+            const esc = escapeHtml(name);
+            const safe = esc.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+            html = html.replace(new RegExp('@' + safe, 'g'), span('@' + esc));
+        });
+    return html;
+}
+
+// ── Comment @mention autocomplete ─────────────────────────────────────────────
+
+const cMentions    = ref([]); // selected { id, name } (excludes "all")
+const cMentionOpen  = ref(false);
+const cMentionIndex = ref(0);
+const cMentionStart = ref(-1);
+const cEveryone = { id: 'all', name: 'all', avatar_url: '' };
+
+const cMentionQuery = computed(() => {
+    if (cMentionStart.value < 0) return '';
+    return commentBody.value.slice(cMentionStart.value + 1, commentInput.value?.selectionStart ?? commentBody.value.length);
+});
+const cMentionMatches = computed(() => {
+    const q = cMentionQuery.value.toLowerCase();
+    return [cEveryone, ...props.staffList]
+        .filter(m => m.name.toLowerCase().includes(q) && m.id !== me.value.id)
+        .slice(0, 6);
+});
+
+function onCommentMentionInput() {
+    const el = commentInput.value;
+    if (!el) return;
+    const upto = commentBody.value.slice(0, el.selectionStart);
+    const match = upto.match(/(?:^|\s)@([^\s@]*)$/);
+    if (match) {
+        cMentionStart.value = el.selectionStart - match[1].length - 1;
+        cMentionOpen.value = true;
+        cMentionIndex.value = 0;
+    } else {
+        cMentionOpen.value = false;
+        cMentionStart.value = -1;
+    }
+}
+
+function onCommentKeydown(e) {
+    if (cMentionOpen.value && cMentionMatches.value.length) {
+        if (e.key === 'ArrowDown') { e.preventDefault(); cMentionIndex.value = (cMentionIndex.value + 1) % cMentionMatches.value.length; return; }
+        if (e.key === 'ArrowUp') { e.preventDefault(); cMentionIndex.value = (cMentionIndex.value - 1 + cMentionMatches.value.length) % cMentionMatches.value.length; return; }
+        if (e.key === 'Enter' || e.key === 'Tab') { e.preventDefault(); pickCommentMention(cMentionMatches.value[cMentionIndex.value]); return; }
+        if (e.key === 'Escape') { cMentionOpen.value = false; return; }
+    }
+    if (e.key === 'Enter') { e.preventDefault(); submitComment(); }
+}
+
+function pickCommentMention(m) {
+    const body = commentBody.value;
+    const before = body.slice(0, cMentionStart.value);
+    const after  = body.slice(commentInput.value?.selectionStart ?? body.length);
+    commentBody.value = `${before}@${m.name} ${after}`;
+    if (m.id !== 'all' && !cMentions.value.some(x => x.id === m.id)) {
+        cMentions.value.push({ id: m.id, name: m.name });
+    }
+    cMentionOpen.value = false;
+    cMentionStart.value = -1;
+    nextTick(() => commentInput.value?.focus());
+}
+
 function submitComment() {
     const body = commentBody.value.trim();
     if (!body || commentSubmitting.value) return;
     commentSubmitting.value = true;
-    router.post(route('feed.comments.store', props.post.id), { body }, {
+    const activeMentions = cMentions.value
+        .filter(m => commentBody.value.includes('@' + m.name))
+        .map(m => m.id);
+    router.post(route('feed.comments.store', props.post.id), { body, mentions: activeMentions }, {
         preserveScroll: true,
-        onSuccess: () => { commentBody.value = ''; commentsOpen.value = true; },
+        onSuccess: () => { commentBody.value = ''; cMentions.value = []; commentsOpen.value = true; },
         onFinish:  () => { commentSubmitting.value = false; },
     });
 }
