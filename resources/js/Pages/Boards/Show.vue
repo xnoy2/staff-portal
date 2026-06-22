@@ -207,6 +207,28 @@
             @close="activeCardId = null"
             @delete="deleteCard"
         />
+
+        <!-- Delete list confirmation -->
+        <ConfirmModal
+            :open="!!listToDelete"
+            title="Delete list?"
+            :message="deleteListMessage"
+            confirmLabel="Delete"
+            danger
+            @confirm="confirmDeleteList"
+            @cancel="listToDelete = null"
+        />
+
+        <!-- Delete board confirmation -->
+        <ConfirmModal
+            :open="boardDeleteOpen"
+            title="Delete board?"
+            :message="`“${board.name}” and all its lists and cards will be permanently deleted.`"
+            confirmLabel="Delete"
+            danger
+            @confirm="confirmDeleteBoard"
+            @cancel="boardDeleteOpen = false"
+        />
     </AppLayout>
 </template>
 
@@ -216,6 +238,7 @@ import { Link, router } from '@inertiajs/vue3';
 import draggable from 'vuedraggable';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import CardModal from '@/Components/Boards/CardModal.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 import WorkspaceNav from '@/Components/Boards/WorkspaceNav.vue';
 import ViewSwitcher from '@/Components/Boards/ViewSwitcher.vue';
 import TableView from '@/Components/Boards/TableView.vue';
@@ -409,11 +432,24 @@ function saveListName(list) {
     router.patch(route('boards.lists.update', list.id), { name }, opts);
 }
 
+const listToDelete = ref(null);
+
+const deleteListMessage = computed(() => {
+    const l = listToDelete.value;
+    if (!l) return '';
+    return l.cards.length
+        ? `"${l.name}" and its ${l.cards.length} card${l.cards.length !== 1 ? 's' : ''} will be permanently deleted.`
+        : `"${l.name}" will be permanently deleted.`;
+});
+
 function deleteList(list) {
-    const msg = list.cards.length
-        ? `Delete "${list.name}" and its ${list.cards.length} card(s)?`
-        : `Delete "${list.name}"?`;
-    if (!confirm(msg)) return;
+    listToDelete.value = list;
+}
+
+function confirmDeleteList() {
+    const list = listToDelete.value;
+    listToDelete.value = null;
+    if (!list) return;
     router.delete(route('boards.lists.destroy', list.id), opts);
 }
 
@@ -435,8 +471,14 @@ function saveBoardName() {
     router.patch(route('boards.update', props.board.id), { name }, opts);
 }
 
+const boardDeleteOpen = ref(false);
+
 function deleteBoard() {
-    if (!confirm(`Delete board "${props.board.name}" and everything in it?`)) return;
+    boardDeleteOpen.value = true;
+}
+
+function confirmDeleteBoard() {
+    boardDeleteOpen.value = false;
     router.delete(route('boards.destroy', props.board.id));
 }
 </script>

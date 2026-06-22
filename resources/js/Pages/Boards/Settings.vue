@@ -50,13 +50,24 @@
                     <div v-if="workspace.can_manage" class="bg-white border border-red-200 rounded-xl p-4">
                         <p class="text-sm font-semibold text-red-600 mb-1">Delete workspace</p>
                         <p class="text-xs text-gray-500 mb-3">This permanently deletes the workspace and all its boards, lists and cards.</p>
-                        <button @click="destroy" class="text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors">
+                        <button @click="confirmOpen = true" class="text-sm font-semibold text-red-600 border border-red-200 hover:bg-red-50 px-4 py-2 rounded-lg transition-colors">
                             Delete this workspace
                         </button>
                     </div>
                 </div>
             </main>
         </div>
+
+        <!-- Delete workspace confirmation -->
+        <ConfirmModal
+            :open="confirmOpen"
+            title="Delete workspace?"
+            :message="`“${workspace.name}” and all its boards, lists and cards will be permanently deleted. This cannot be undone.`"
+            confirmLabel="Delete"
+            danger
+            @confirm="destroy"
+            @cancel="confirmOpen = false"
+        />
     </AppLayout>
 </template>
 
@@ -65,6 +76,7 @@ import { ref } from 'vue';
 import { router } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import WorkspaceNav from '@/Components/Boards/WorkspaceNav.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 
 const props = defineProps({
     nav:       { type: Array,  default: () => [] },
@@ -79,6 +91,7 @@ const SQUARE = {
 function squareColor(c) { return SQUARE[c] ?? 'bg-blue-500'; }
 
 const name = ref(props.workspace.name);
+const confirmOpen = ref(false);
 
 function saveName() {
     router.patch(route('workspaces.update', props.workspace.id), { name: name.value.trim() }, { preserveScroll: true });
@@ -87,7 +100,7 @@ function setColor(c) {
     router.patch(route('workspaces.update', props.workspace.id), { color: c }, { preserveScroll: true });
 }
 function destroy() {
-    if (!confirm(`Delete "${props.workspace.name}" and everything in it? This cannot be undone.`)) return;
+    confirmOpen.value = false;
     router.delete(route('workspaces.destroy', props.workspace.id));
 }
 </script>

@@ -32,6 +32,17 @@
                         <p v-if="candidates.length === 0" class="text-xs text-gray-400 mt-2">All active staff are already members.</p>
                     </div>
 
+                    <!-- Remove / leave confirmation -->
+                    <ConfirmModal
+                        :open="!!memberToRemove"
+                        :title="removeIsSelf ? 'Leave workspace?' : 'Remove member?'"
+                        :message="removeMessage"
+                        :confirmLabel="removeIsSelf ? 'Leave' : 'Remove'"
+                        danger
+                        @confirm="confirmRemoveMember"
+                        @cancel="memberToRemove = null"
+                    />
+
                     <!-- Member list -->
                     <div class="bg-white border border-gray-200 rounded-xl divide-y divide-gray-100">
                         <div v-for="m in members" :key="m.id" class="flex items-center gap-3 p-3">
@@ -68,6 +79,7 @@ import { ref, computed } from 'vue';
 import { router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import WorkspaceNav from '@/Components/Boards/WorkspaceNav.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 import { TrashIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -97,9 +109,24 @@ function addMember() {
 function changeRole(m, role) {
     router.patch(route('workspaces.members.update', [props.workspace.id, m.id]), { role }, { preserveScroll: true });
 }
+const memberToRemove = ref(null);
+const removeIsSelf = computed(() => memberToRemove.value?.id === me.value.id);
+const removeMessage = computed(() => {
+    const m = memberToRemove.value;
+    if (!m) return '';
+    return removeIsSelf.value
+        ? `You'll be removed from "${props.workspace.name}" and lose access to its boards.`
+        : `${m.name} will be removed from "${props.workspace.name}".`;
+});
+
 function removeMember(m) {
-    const self = m.id === me.value.id;
-    if (!confirm(self ? 'Leave this workspace?' : `Remove ${m.name} from this workspace?`)) return;
+    memberToRemove.value = m;
+}
+
+function confirmRemoveMember() {
+    const m = memberToRemove.value;
+    memberToRemove.value = null;
+    if (!m) return;
     router.delete(route('workspaces.members.destroy', [props.workspace.id, m.id]), { preserveScroll: true });
 }
 </script>
