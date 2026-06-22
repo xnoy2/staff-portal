@@ -16,7 +16,7 @@
                         {{ typeBadge.label }}
                     </span>
                 </div>
-                <p class="text-xs text-gray-400">{{ timeAgo(post.created_at) }}</p>
+                <p class="text-xs text-gray-400">{{ timeAgo(post.created_at) }}<span v-if="post.edited"> · edited</span></p>
             </div>
 
             <!-- Kebab menu -->
@@ -33,6 +33,14 @@
                     leave-to-class="opacity-0 scale-95"
                 >
                     <div v-if="menuOpen" class="absolute right-0 mt-1 w-40 bg-white rounded-xl border border-gray-200 shadow-lg py-1 z-20">
+                        <button
+                            v-if="post.can_edit"
+                            @click="startEditPost"
+                            class="w-full text-left px-3 py-2 text-xs text-gray-600 hover:bg-gray-50 flex items-center gap-2"
+                        >
+                            <PencilSquareIcon class="w-3.5 h-3.5" />
+                            Edit post
+                        </button>
                         <button
                             v-if="isPrivileged"
                             @click="togglePin"
@@ -77,14 +85,42 @@
         </div>
 
         <!-- Title (blog) -->
-        <h2 v-if="post.title && post.type === 'blog'" class="px-4 mt-3 text-lg font-bold text-gray-900">{{ post.title }}</h2>
+        <h2 v-if="!editingPost && post.title && post.type === 'blog'" class="px-4 mt-3 text-lg font-bold text-gray-900">{{ post.title }}</h2>
 
-        <!-- Body -->
-        <div class="px-4 mt-2">
+        <!-- Body (view mode) -->
+        <div v-if="!editingPost" class="px-4 mt-2">
             <p class="text-sm text-gray-700 leading-relaxed whitespace-pre-wrap break-words" :class="!expanded && isLong ? 'line-clamp-5' : ''" v-html="renderedBody" />
             <button v-if="isLong" @click="expanded = !expanded" class="text-xs font-medium text-gray-400 hover:text-gray-600 mt-1">
                 {{ expanded ? 'See less' : 'See more' }}
             </button>
+        </div>
+
+        <!-- Body (edit mode) -->
+        <div v-else class="px-4 mt-3 space-y-2">
+            <input
+                v-if="post.type !== 'general'"
+                v-model="editTitle"
+                type="text"
+                placeholder="Title"
+                class="w-full text-sm font-semibold border border-gray-200 rounded-lg px-3 py-2 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20"
+            />
+            <textarea
+                v-model="editBody"
+                rows="4"
+                class="w-full text-sm border border-gray-200 rounded-lg px-3 py-2 resize-none focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20"
+            />
+            <div v-if="post.type === 'event'" class="grid grid-cols-2 gap-2">
+                <input v-model="editEventDate" type="date" class="text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
+                <input v-model="editEventLocation" type="text" placeholder="Location" class="text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
+            </div>
+            <div class="flex gap-2">
+                <button
+                    @click="savePost"
+                    :disabled="!editBody.trim() || savingPost"
+                    class="text-xs font-semibold bg-[#2B2D42] hover:bg-[#EF233C] disabled:opacity-40 text-white px-4 py-1.5 rounded-lg transition-colors"
+                >{{ savingPost ? 'Saving…' : 'Save' }}</button>
+                <button @click="editingPost = false" class="text-xs text-gray-400 hover:text-gray-600 px-2">Cancel</button>
+            </div>
         </div>
 
         <!-- Knowledge Base article references -->
@@ -194,20 +230,42 @@
         <div v-if="commentsOpen || post.comments.length <= 2" class="px-4 pb-3 space-y-2.5">
             <div v-for="c in visibleComments" :key="c.id" class="flex items-start gap-2 group">
                 <img :src="c.user.avatar_url" :alt="c.user.name" class="w-7 h-7 rounded-full object-cover flex-shrink-0 mt-0.5" />
-                <div class="bg-gray-100 rounded-2xl px-3 py-2 min-w-0">
-                    <p class="text-xs font-semibold text-gray-800">{{ c.user.name }}</p>
-                    <p class="text-sm text-gray-700 break-words whitespace-pre-wrap" v-html="renderComment(c)" />
+
+                <!-- Edit mode -->
+                <div v-if="editingCommentId === c.id" class="flex-1 flex items-center gap-1">
+                    <input
+                        v-model="editCommentBody"
+                        @keydown.enter.prevent="saveComment(c)"
+                        @keydown.esc="editingCommentId = null"
+                        class="flex-1 bg-gray-100 border-0 rounded-full text-sm px-3 py-1.5 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20"
+                    />
+                    <button @click="saveComment(c)" :disabled="!editCommentBody.trim()" class="text-xs font-semibold text-[#EF233C] disabled:text-gray-300 px-1">Save</button>
+                    <button @click="editingCommentId = null" class="text-xs text-gray-400 px-1">Cancel</button>
                 </div>
-                <div class="flex flex-col items-center gap-0.5 flex-shrink-0 self-center">
-                    <button
-                        v-if="c.can_delete"
-                        @click="deleteComment(c.id)"
-                        class="p-1 rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
-                        title="Delete comment"
-                    >
-                        <TrashIcon class="w-3.5 h-3.5" />
-                    </button>
-                </div>
+
+                <!-- View mode -->
+                <template v-else>
+                    <div class="min-w-0">
+                        <div class="bg-gray-100 rounded-2xl px-3 py-2">
+                            <p class="text-xs font-semibold text-gray-800">{{ c.user.name }}</p>
+                            <p class="text-sm text-gray-700 break-words whitespace-pre-wrap" v-html="renderComment(c)" />
+                        </div>
+                        <div class="flex items-center gap-2 mt-0.5 pl-2">
+                            <span v-if="c.edited" class="text-[10px] text-gray-400">edited</span>
+                            <button v-if="c.can_edit" @click="startEditComment(c)" class="text-[10px] text-gray-400 hover:text-gray-600 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity">Edit</button>
+                        </div>
+                    </div>
+                    <div class="flex flex-col items-center gap-0.5 flex-shrink-0 self-center">
+                        <button
+                            v-if="c.can_delete"
+                            @click="deleteComment(c.id)"
+                            class="p-1 rounded-full text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all"
+                            title="Delete comment"
+                        >
+                            <TrashIcon class="w-3.5 h-3.5" />
+                        </button>
+                    </div>
+                </template>
             </div>
             <button
                 v-if="!commentsOpen && post.comments.length > 2"
@@ -291,6 +349,7 @@ import ConfirmModal from '@/Components/ConfirmModal.vue';
 import {
     EllipsisHorizontalIcon, TrashIcon, BookmarkIcon, TrophyIcon, MapPinIcon,
     HandThumbUpIcon, ChatBubbleOvalLeftIcon, PaperAirplaneIcon, BookOpenIcon, UsersIcon,
+    PencilSquareIcon,
 } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -533,6 +592,24 @@ function confirmedDeleteComment() {
     router.delete(route('feed.comments.destroy', [props.post.id, id]), { preserveScroll: true });
 }
 
+// ── Edit comment (author only) ────────────────────────────────────────────────
+
+const editingCommentId = ref(null);
+const editCommentBody  = ref('');
+
+function startEditComment(c) {
+    editingCommentId.value = c.id;
+    editCommentBody.value  = c.body;
+}
+
+function saveComment(c) {
+    const body = editCommentBody.value.trim();
+    if (!body) return;
+    editingCommentId.value = null;
+    if (body === c.body) return;
+    router.patch(route('feed.comments.update', [props.post.id, c.id]), { body }, { preserveScroll: true });
+}
+
 // ── Menu / pin / delete ──────────────────────────────────────────────────────
 
 const menuOpen  = ref(false);
@@ -563,6 +640,40 @@ const confirmDeletePost = ref(false);
 function deletePost() {
     menuOpen.value = false;
     confirmDeletePost.value = true;
+}
+
+// ── Edit post (author only) ───────────────────────────────────────────────────
+
+const editingPost       = ref(false);
+const savingPost         = ref(false);
+const editTitle          = ref('');
+const editBody           = ref('');
+const editEventDate      = ref('');
+const editEventLocation  = ref('');
+
+function startEditPost() {
+    menuOpen.value = false;
+    editTitle.value         = props.post.title || '';
+    editBody.value          = props.post.body;
+    editEventDate.value     = props.post.event_date || '';
+    editEventLocation.value = props.post.event_location || '';
+    editingPost.value       = true;
+}
+
+function savePost() {
+    const body = editBody.value.trim();
+    if (!body || savingPost.value) return;
+    savingPost.value = true;
+    const payload = { title: editTitle.value || null, body };
+    if (props.post.type === 'event') {
+        payload.event_date     = editEventDate.value || null;
+        payload.event_location = editEventLocation.value || null;
+    }
+    router.patch(route('feed.update', props.post.id), payload, {
+        preserveScroll: true,
+        onSuccess: () => { editingPost.value = false; },
+        onFinish:  () => { savingPost.value = false; },
+    });
 }
 
 function confirmedDeletePost() {

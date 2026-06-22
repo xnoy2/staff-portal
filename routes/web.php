@@ -261,10 +261,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/',                                  [FeedController::class, 'index'])->name('index');
         Route::post('/',                                 [FeedController::class, 'store'])->name('store');
         Route::post('/upload',                           [FeedController::class, 'upload'])->name('upload');
+        Route::patch('/{post}',                          [FeedController::class, 'update'])->name('update');
         Route::delete('/{post}',                         [FeedController::class, 'destroy'])->name('destroy');
         Route::post('/{post}/pin',                       [FeedController::class, 'pin'])->name('pin');
         Route::post('/{post}/react',                     [FeedController::class, 'react'])->name('react');
         Route::post('/{post}/comments',                  [FeedController::class, 'comment'])->name('comments.store');
+        Route::patch('/{post}/comments/{comment}',       [FeedController::class, 'updateComment'])->name('comments.update');
         Route::delete('/{post}/comments/{comment}',      [FeedController::class, 'destroyComment'])->name('comments.destroy');
     });
 

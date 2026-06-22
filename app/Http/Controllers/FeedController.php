@@ -190,6 +190,34 @@ class FeedController extends Controller
         }
     }
 
+    public function update(Request $request, Post $post): RedirectResponse
+    {
+        // Only the original author may edit a post
+        abort_unless($post->user_id === $request->user()->id, 403);
+
+        $rules = [
+            'title' => ['nullable', 'string', 'max:255'],
+            'body'  => ['required', 'string', 'max:10000'],
+        ];
+        if ($post->type === 'event') {
+            $rules['event_date']     = ['nullable', 'date'];
+            $rules['event_location'] = ['nullable', 'string', 'max:255'];
+        }
+        $data = $request->validate($rules);
+
+        $post->fill([
+            'title' => $data['title'] ?? null,
+            'body'  => $data['body'],
+        ]);
+        if ($post->type === 'event') {
+            $post->event_date     = $data['event_date'] ?? null;
+            $post->event_location = $data['event_location'] ?? null;
+        }
+        $post->save();
+
+        return back()->with('success', 'Post updated.');
+    }
+
     public function destroy(Request $request, Post $post): RedirectResponse
     {
         $user    = $request->user();
@@ -260,6 +288,19 @@ class FeedController extends Controller
         return back();
     }
 
+    public function updateComment(Request $request, Post $post, PostComment $comment): RedirectResponse
+    {
+        abort_unless($comment->post_id === $post->id, 404);
+        // Only the comment author may edit it
+        abort_unless($comment->user_id === $request->user()->id, 403);
+
+        $data = $request->validate(['body' => ['required', 'string', 'max:2000']]);
+
+        $comment->update(['body' => $data['body']]);
+
+        return back();
+    }
+
     public function destroyComment(Request $request, Post $post, PostComment $comment): RedirectResponse
     {
         abort_unless($comment->post_id === $post->id, 404);
@@ -313,6 +354,7 @@ class FeedController extends Controller
             'event_location'  => $post->event_location,
             'is_pinned'       => $post->is_pinned,
             'created_at'      => $post->created_at->toIso8601String(),
+            'edited'          => $post->updated_at->gt($post->created_at->copy()->addMinute()),
             'author'          => [
                 'id'         => $post->author->id,
                 'name'       => $post->author->name,
@@ -335,6 +377,8 @@ class FeedController extends Controller
                 'body'          => $c->body,
                 'created_at'    => $c->created_at->toIso8601String(),
                 'can_delete'    => $c->user_id === $viewer->id || $isPrivileged,
+                'can_edit'      => $c->user_id === $viewer->id,
+                'edited'        => $c->updated_at->gt($c->created_at->copy()->addMinute()),
                 'mention_names' => empty($c->mentions)
                     ? []
                     : User::whereIn('id', $c->mentions)->pluck('name')->values(),
@@ -345,6 +389,7 @@ class FeedController extends Controller
                 ],
             ]),
             'can_delete'      => $post->user_id === $viewer->id || $isPrivileged,
+            'can_edit'        => $post->user_id === $viewer->id,
         ];
     }
 
