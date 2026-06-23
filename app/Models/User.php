@@ -51,6 +51,7 @@ class User extends Authenticatable
         'email',
         'password',
         'is_active',
+        'timezone',
         'must_change_password',
         'hire_date',
         'last_login_at',
@@ -90,6 +91,12 @@ class User extends Authenticatable
             'preferences'    => 'array',
             'contracted_hours' => 'float',
         ];
+    }
+
+    /** The user's IANA timezone, falling back to the UK office zone. */
+    public function getTimezoneAttribute(?string $value): string
+    {
+        return $value ?: 'Europe/London';
     }
 
     public function boards(): \Illuminate\Database\Eloquent\Relations\HasMany

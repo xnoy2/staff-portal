@@ -13,6 +13,11 @@ class TimeEntry extends Model
 {
     use HasUuids, HasFactory;
 
+    /** A completed shift longer than this (hours) is flagged for review (likely a missed clock-out). */
+    public const FLAG_HOURS = 12;
+
+    protected $appends = ['flagged'];
+
     protected $fillable = [
         'user_id',
         'job_id',
@@ -41,6 +46,12 @@ class TimeEntry extends Model
             'is_overtime' => 'boolean',
             'approved_at' => 'datetime',
         ];
+    }
+
+    /** Flag a completed shift that runs unusually long — likely a forgotten clock-out. */
+    public function getFlaggedAttribute(): bool
+    {
+        return $this->clock_out !== null && (float) $this->total_hours > self::FLAG_HOURS;
     }
 
     protected static function booted(): void

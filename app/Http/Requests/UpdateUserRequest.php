@@ -30,6 +30,7 @@ class UpdateUserRequest extends FormRequest
             'notes'                   => ['nullable', 'string', 'max:2000'],
             'avatar'                  => ['nullable', 'image', 'max:2048'],
             'bcf_worker_id'           => ['nullable', 'string', 'max:255'],
+            'timezone'                => ['nullable', 'timezone'],
         ];
     }
 }

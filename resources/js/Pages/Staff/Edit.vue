@@ -42,6 +42,7 @@ const form = useForm({
     annual_leave_days:       props.staffMember.annual_leave_days ?? 28,
     hourly_rate:             props.staffMember.hourly_rate ?? '',
     contracted_hours:        props.staffMember.contracted_hours ?? 40,
+    timezone:                props.staffMember.timezone ?? 'Europe/London',
     avatar:                  null,
     current_avatar_url:      props.staffMember.avatar_url ?? null,
     bcf_worker_id:           props.staffMember.bcf_worker_id ?? null,

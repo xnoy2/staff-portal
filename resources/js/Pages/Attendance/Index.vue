@@ -111,21 +111,22 @@
                     <div class="flex items-center gap-1.5 flex-shrink-0">
                         <span :class="statusClass(entry.status)">{{ entry.status }}</span>
                         <span v-if="entry.is_overtime" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">OT</span>
+                        <span v-if="entry.flagged" class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium" title="Unusually long shift — check for a missed clock-out">⚠</span>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-3 gap-2 mb-3">
                     <div>
                         <p class="text-xs text-gray-400 mb-0.5">Date</p>
-                        <p class="text-sm font-medium text-gray-700">{{ formatDate(entry.clock_in) }}</p>
+                        <p class="text-sm font-medium text-gray-700">{{ formatDate(entry.clock_in, entry.user?.timezone) }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-400 mb-0.5">In</p>
-                        <p class="text-sm font-mono text-gray-700">{{ formatTime(entry.clock_in) }}</p>
+                        <p class="text-sm font-mono text-gray-700">{{ formatTime(entry.clock_in, entry.user?.timezone) }}</p>
                     </div>
                     <div>
                         <p class="text-xs text-gray-400 mb-0.5">Out</p>
-                        <p v-if="entry.clock_out" class="text-sm font-mono text-gray-700">{{ formatTime(entry.clock_out) }}</p>
+                        <p v-if="entry.clock_out" class="text-sm font-mono text-gray-700">{{ formatTime(entry.clock_out, entry.user?.timezone) }}</p>
                         <p v-else class="text-sm text-green-600 font-medium flex items-center gap-1">
                             <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block" />
                             Active
@@ -139,13 +140,14 @@
                         <span v-if="entry.total_hours" class="text-xs text-gray-500">{{ entry.total_hours }}h</span>
                         <span v-if="entry.breaks_sum_duration_minutes" class="text-xs text-gray-400">· {{ entry.breaks_sum_duration_minutes }}m break</span>
                     </div>
-                    <div v-if="isManager && entry.status === 'pending'" class="flex gap-1.5">
-                        <button @click="approve(entry.id)" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1.5 rounded-lg transition-colors font-medium">Approve</button>
-                        <button @click="openReject(entry)" class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors font-medium">Reject</button>
+                    <div v-if="isManager" class="flex items-center gap-1.5">
+                        <button @click="openEdit(entry)" class="text-xs text-gray-500 hover:text-[#2B2D42] bg-gray-100 hover:bg-gray-200 px-3 py-1.5 rounded-lg transition-colors font-medium">Edit</button>
+                        <template v-if="entry.status === 'pending'">
+                            <button @click="approve(entry.id)" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 px-3 py-1.5 rounded-lg transition-colors font-medium">Approve</button>
+                            <button @click="openReject(entry)" class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-3 py-1.5 rounded-lg transition-colors font-medium">Reject</button>
+                        </template>
+                        <span v-else-if="entry.status === 'rejected' && entry.rejection_reason" class="text-xs text-gray-400 cursor-help underline decoration-dotted" :title="entry.rejection_reason">reason</span>
                     </div>
-                    <span v-else-if="isManager && entry.status === 'rejected' && entry.rejection_reason" class="text-xs text-gray-400 cursor-help underline decoration-dotted" :title="entry.rejection_reason">
-                        see reason
-                    </span>
                 </div>
             </div>
         </div>
@@ -188,20 +190,21 @@
                                     <span class="text-gray-700 font-medium">{{ entry.user?.name }}</span>
                                 </div>
                             </td>
-                            <td class="px-4 py-3 text-gray-600">{{ formatDate(entry.clock_in) }}</td>
-                            <td class="px-4 py-3 text-gray-700 font-mono text-xs">{{ formatTime(entry.clock_in) }}</td>
+                            <td class="px-4 py-3 text-gray-600">{{ formatDate(entry.clock_in, entry.user?.timezone) }}</td>
+                            <td class="px-4 py-3 text-gray-700 font-mono text-xs">{{ formatTime(entry.clock_in, entry.user?.timezone) }}</td>
                             <td class="px-4 py-3 text-gray-700 font-mono text-xs">
-                                <span v-if="entry.clock_out">{{ formatTime(entry.clock_out) }}</span>
+                                <span v-if="entry.clock_out">{{ formatTime(entry.clock_out, entry.user?.timezone) }}</span>
                                 <span v-else class="inline-flex items-center gap-1 text-green-600 font-sans font-medium text-xs">
                                     <span class="w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse inline-block" />
                                     {{ clockStateLabel(entry.clock_state) }}
                                 </span>
                             </td>
                             <td class="px-4 py-3 text-gray-600">
-                                <span v-if="entry.total_hours">{{ entry.total_hours }}h</span>
+                                <span v-if="entry.total_hours" :class="entry.flagged ? 'text-red-600 font-semibold' : ''">{{ entry.total_hours }}h</span>
                                 <span v-else-if="!entry.clock_out" class="text-green-600 font-medium text-xs">In progress</span>
                                 <span v-else>—</span>
                                 <span v-if="entry.is_overtime" class="ml-1 text-xs bg-amber-100 text-amber-700 px-1 py-0.5 rounded font-medium">OT</span>
+                                <span v-if="entry.flagged" class="ml-1 text-xs bg-red-100 text-red-700 px-1 py-0.5 rounded font-medium" title="Unusually long shift — check for a missed clock-out">⚠ Review</span>
                             </td>
                             <td class="px-4 py-3">
                                 <span v-if="entry.breaks_sum_duration_minutes" class="text-xs text-gray-500 bg-gray-100 px-2 py-0.5 rounded-full">
@@ -212,12 +215,13 @@
                             <td class="px-4 py-3"><span :class="sourceClass(entry.source)">{{ sourceLabel(entry.source) }}</span></td>
                             <td class="px-4 py-3"><span :class="statusClass(entry.status)">{{ entry.status }}</span></td>
                             <td v-if="isManager" class="px-4 py-3 text-right">
-                                <div v-if="entry.status === 'pending'" class="flex justify-end gap-1.5">
-                                    <button @click="approve(entry.id)" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded transition-colors font-medium">Approve</button>
-                                    <button @click="openReject(entry)" class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded transition-colors font-medium">Reject</button>
-                                </div>
-                                <div v-else-if="entry.status === 'rejected' && entry.rejection_reason">
-                                    <span class="text-xs text-gray-400 cursor-help underline decoration-dotted" :title="entry.rejection_reason">reason</span>
+                                <div class="flex justify-end items-center gap-1.5">
+                                    <button @click="openEdit(entry)" class="text-xs text-gray-500 hover:text-[#2B2D42] hover:bg-gray-100 px-2 py-1 rounded transition-colors font-medium">Edit</button>
+                                    <template v-if="entry.status === 'pending'">
+                                        <button @click="approve(entry.id)" class="text-xs bg-green-100 text-green-700 hover:bg-green-200 px-2 py-1 rounded transition-colors font-medium">Approve</button>
+                                        <button @click="openReject(entry)" class="text-xs bg-red-100 text-red-700 hover:bg-red-200 px-2 py-1 rounded transition-colors font-medium">Reject</button>
+                                    </template>
+                                    <span v-else-if="entry.status === 'rejected' && entry.rejection_reason" class="text-xs text-gray-400 cursor-help underline decoration-dotted" :title="entry.rejection_reason">reason</span>
                                 </div>
                             </td>
                         </tr>
@@ -346,6 +350,42 @@
                 <div class="flex justify-end gap-2 mt-4">
                     <button @click="rejectModal.open = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
                     <button @click="confirmReject" class="px-4 py-2 text-sm bg-red-600 text-white rounded-lg hover:bg-red-700 transition-colors">Reject Entry</button>
+                </div>
+            </div>
+        </BaseModal>
+
+        <!-- Edit entry modal -->
+        <BaseModal :open="editModal.open" @close="editModal.open = false" max-width="sm:max-w-lg">
+            <div class="p-6">
+                <h3 class="text-base font-semibold text-gray-800 mb-1">Edit Attendance Entry</h3>
+                <p class="text-sm text-gray-500 mb-4">Correct the clock-in / clock-out (e.g. a forgotten clock-out). Hours recalculate automatically.</p>
+                <p v-if="editModal.staffName" class="text-xs font-medium text-gray-600 mb-1">{{ editModal.staffName }}</p>
+                <p class="text-xs text-gray-400 mb-4">Times are in the worker's timezone: <span class="font-medium text-gray-600">{{ editModal.tz }}</span></p>
+
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Clock In</label>
+                        <input v-model="editModal.clock_in" type="datetime-local" class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Clock Out <span class="text-gray-400 font-normal">(leave blank if still active)</span></label>
+                        <input v-model="editModal.clock_out" type="datetime-local" class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
+                    </div>
+                    <div>
+                        <label class="block text-xs font-medium text-gray-600 mb-1.5">Note <span class="text-gray-400 font-normal">(optional)</span></label>
+                        <input v-model="editModal.notes" type="text" placeholder="e.g. corrected forgotten clock-out" class="w-full text-sm border-gray-200 rounded-lg focus:ring-[#EF233C] focus:border-[#EF233C]" />
+                    </div>
+                </div>
+
+                <div v-if="editModal.breakMins > 0" class="text-xs text-gray-400 mt-2">Break deducted: {{ editModal.breakMins }} min</div>
+                <p v-if="editPreviewHours !== null" class="text-sm text-gray-600 mt-2">New total: <span class="font-semibold" :class="editPreviewHours > 12 ? 'text-red-600' : 'text-gray-800'">{{ editPreviewHours }}h</span></p>
+                <p v-if="editModal.error" class="text-xs text-red-600 mt-2">{{ editModal.error }}</p>
+
+                <div class="flex justify-end gap-2 mt-5">
+                    <button @click="editModal.open = false" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition-colors">Cancel</button>
+                    <button @click="submitEdit" :disabled="editModal.submitting" class="px-4 py-2 text-sm bg-[#2B2D42] hover:bg-[#EF233C] text-white rounded-lg transition-colors disabled:opacity-60">
+                        {{ editModal.submitting ? 'Saving…' : 'Save changes' }}
+                    </button>
                 </div>
             </div>
         </BaseModal>
@@ -502,6 +542,70 @@ function confirmReject() {
     });
 }
 
+// ── Edit entry modal (manager) ────────────────────────────────────────────────
+
+const editModal = reactive({ open: false, id: null, staffName: '', tz: '', clock_in: '', clock_out: '', notes: '', breakMins: 0, error: '', submitting: false });
+
+// Stored UTC instant -> a datetime-local value showing the wall-clock time in the
+// worker's timezone (so the manager edits in the worker's local time).
+function toZonedInput(iso, tz) {
+    if (! iso) return '';
+    const p = new Intl.DateTimeFormat('en-CA', {
+        timeZone: tz || undefined,
+        year: 'numeric', month: '2-digit', day: '2-digit',
+        hour: '2-digit', minute: '2-digit', hour12: false,
+    }).formatToParts(new Date(iso)).reduce((a, x) => (a[x.type] = x.value, a), {});
+    const hour = p.hour === '24' ? '00' : p.hour; // some engines emit 24 for midnight
+    return `${p.year}-${p.month}-${p.day}T${hour}:${p.minute}`;
+}
+
+function openEdit(entry) {
+    const tz = entry.user?.timezone || 'Europe/London';
+    Object.assign(editModal, {
+        open:       true,
+        id:         entry.id,
+        staffName:  entry.user?.name ?? '',
+        tz,
+        clock_in:   toZonedInput(entry.clock_in, tz),
+        clock_out:  toZonedInput(entry.clock_out, tz),
+        notes:      '',
+        breakMins:  entry.breaks_sum_duration_minutes ?? 0,
+        error:      '',
+        submitting: false,
+    });
+}
+
+const editPreviewHours = computed(() => {
+    if (! editModal.clock_in || ! editModal.clock_out) return null;
+    const a = new Date(editModal.clock_in).getTime();
+    const b = new Date(editModal.clock_out).getTime();
+    if (isNaN(a) || isNaN(b) || b <= a) return null;
+    const hrs = (b - a) / 3600000 - (editModal.breakMins || 0) / 60;
+    return Math.max(0, Math.round(hrs * 100) / 100);
+});
+
+function submitEdit() {
+    editModal.error = '';
+    if (! editModal.clock_in) { editModal.error = 'Clock-in is required.'; return; }
+    if (editModal.clock_out && new Date(editModal.clock_out) <= new Date(editModal.clock_in)) {
+        editModal.error = 'Clock-out must be after clock-in.';
+        return;
+    }
+    editModal.submitting = true;
+    // Send the worker's local wall-clock times; the server converts to UTC using
+    // the worker's timezone.
+    router.patch(`/attendance/${editModal.id}`, {
+        clock_in:  editModal.clock_in,
+        clock_out: editModal.clock_out || null,
+        notes:     editModal.notes || null,
+    }, {
+        preserveScroll: true,
+        onSuccess: () => { editModal.open = false; },
+        onError:   (errs) => { editModal.error = Object.values(errs)[0] ?? 'Something went wrong.'; editModal.submitting = false; },
+        onFinish:  () => { editModal.submitting = false; },
+    });
+}
+
 function bulkApprove() {
     router.post('/attendance/bulk-approve', { ids: selectedIds.value }, {
         preserveScroll: true,
@@ -511,14 +615,16 @@ function bulkApprove() {
 
 // ── Formatters ────────────────────────────────────────────────────────────────
 
-function formatDate(dt) {
+// Attendance times are shown in the worker's own timezone (tz). Falls back to
+// the viewer's browser zone when none is given.
+function formatDate(dt, tz) {
     if (! dt) return '—';
-    return new Date(dt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
+    return new Date(dt).toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric', timeZone: tz || undefined });
 }
 
-function formatTime(dt) {
+function formatTime(dt, tz) {
     if (! dt) return '—';
-    return new Date(dt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    return new Date(dt).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit', timeZone: tz || undefined });
 }
 
 function clockStateLabel(state) {

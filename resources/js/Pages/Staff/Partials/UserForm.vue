@@ -85,6 +85,16 @@
                     <input v-model.number="form.contracted_hours" type="number" min="1" max="168" step="0.5" class="form-input" placeholder="40" />
                     <p v-if="form.errors.contracted_hours" class="mt-1 text-xs text-red-600">{{ form.errors.contracted_hours }}</p>
                 </div>
+
+                <!-- Timezone -->
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Timezone</label>
+                    <select v-model="form.timezone" class="form-input">
+                        <option v-for="tz in timezones" :key="tz.value" :value="tz.value">{{ tz.label }}</option>
+                    </select>
+                    <p class="mt-1 text-xs text-gray-400">Their local timezone — attendance times show in this zone.</p>
+                    <p v-if="form.errors.timezone" class="mt-1 text-xs text-red-600">{{ form.errors.timezone }}</p>
+                </div>
             </div>
 
             <!-- Toggles -->
@@ -213,6 +223,23 @@ const props = defineProps({
     submitLabel: { type: String,  default: 'Save Changes' },
     bcfWorkers:  { type: Array,   default: () => [] },
 });
+
+// Common timezones for staff locations (IANA identifiers).
+const timezones = [
+    { value: 'Europe/London',     label: 'UK — London / Belfast (GMT/BST)' },
+    { value: 'Asia/Manila',       label: 'Philippines — Manila (PHT)' },
+    { value: 'Europe/Dublin',     label: 'Ireland — Dublin' },
+    { value: 'Europe/Paris',      label: 'Central Europe — Paris/Berlin' },
+    { value: 'Asia/Kolkata',      label: 'India — Kolkata (IST)' },
+    { value: 'Asia/Dubai',        label: 'UAE — Dubai (GST)' },
+    { value: 'Asia/Singapore',    label: 'Singapore (SGT)' },
+    { value: 'Asia/Hong_Kong',    label: 'Hong Kong (HKT)' },
+    { value: 'Australia/Sydney',  label: 'Australia — Sydney (AEST)' },
+    { value: 'America/New_York',  label: 'US — Eastern (ET)' },
+    { value: 'America/Chicago',   label: 'US — Central (CT)' },
+    { value: 'America/Los_Angeles', label: 'US — Pacific (PT)' },
+    { value: 'UTC',               label: 'UTC' },
+];
 
 const avatarPreview = ref(null);
 function onAvatarChange(e) {

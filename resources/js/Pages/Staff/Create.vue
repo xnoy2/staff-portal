@@ -34,6 +34,7 @@ const form = useForm({
     annual_leave_days:       28,
     hourly_rate:             '',
     contracted_hours:        40,
+    timezone:                'Europe/London',
     avatar:                  null,
     current_avatar_url:      null,
 });

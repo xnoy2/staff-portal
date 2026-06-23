@@ -100,9 +100,15 @@ class PayrollRun extends Model
      */
     public static function generate(User $staff, Carbon $from, Carbon $to, ?string $generatedBy): self
     {
+        // Attribute shifts to the period by the worker's LOCAL day, then convert the
+        // window to UTC instants for the query (times are stored in UTC).
+        $tz          = $staff->timezone;
+        $periodStart = Carbon::parse($from->toDateString() . ' 00:00:00', $tz)->utc();
+        $periodEnd   = Carbon::parse($to->toDateString() . ' 23:59:59', $tz)->utc();
+
         $entries = TimeEntry::with('breaks')
             ->forUser($staff->id)
-            ->whereBetween('clock_in', [$from, $to])
+            ->whereBetween('clock_in', [$periodStart, $periodEnd])
             ->where('status', 'approved')
             ->withSum('breaks', 'duration_minutes')
             ->orderBy('clock_in')
@@ -124,9 +130,10 @@ class PayrollRun extends Model
         $regularHours  = 0.0;
         $overtimeHours = 0.0;
 
-        $snapshot = $entries->map(function ($entry) use (&$regularHours, &$overtimeHours, &$otPool) {
+        $snapshot = $entries->map(function ($entry) use (&$regularHours, &$overtimeHours, &$otPool, $tz) {
             $hours     = (float) $entry->total_hours;
-            $date      = $entry->clock_in->toDateString();
+            $localIn   = $entry->clock_in->copy()->setTimezone($tz);
+            $date      = $localIn->toDateString();
             $available = $otPool[$date] ?? 0.0;
 
             [$regH, $otH] = static::splitHours($hours, $entry->is_overtime, $entry->ot_type, $available);
@@ -137,9 +144,9 @@ class PayrollRun extends Model
 
             return [
                 'date'           => $date,
-                'day'            => $entry->clock_in->format('D'),
-                'clock_in'       => $entry->clock_in->format('H:i'),
-                'clock_out'      => $entry->clock_out?->format('H:i'),
+                'day'            => $localIn->format('D'),
+                'clock_in'       => $localIn->format('H:i'),
+                'clock_out'      => $entry->clock_out?->copy()->setTimezone($tz)->format('H:i'),
                 'break_mins'     => (int) ($entry->breaks_sum_duration_minutes ?? 0),
                 'total_hours'    => round($hours, 2),
                 'regular_hours'  => round($regH, 2),

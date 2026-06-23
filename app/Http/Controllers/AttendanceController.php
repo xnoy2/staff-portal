@@ -20,7 +20,7 @@ class AttendanceController extends Controller
         $user         = $request->user();
         $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'hr', 'site_head']);
 
-        $query = TimeEntry::with(['user:id,name,avatar', 'enteredBy:id,name', 'approvedBy:id,name'])
+        $query = TimeEntry::with(['user:id,name,avatar,timezone', 'enteredBy:id,name', 'approvedBy:id,name'])
             ->withSum('breaks', 'duration_minutes')
             ->orderBy('clock_in', 'desc');
 
@@ -257,6 +257,42 @@ class AttendanceController extends Controller
         return back()->with('success', 'Entry rejected.');
     }
 
+    /**
+     * Correct an existing entry's times (e.g. a forgotten clock-out) and
+     * recompute the hours. Manager/admin/HR only.
+     */
+    public function update(Request $request, TimeEntry $timeEntry): RedirectResponse
+    {
+        $this->authorizeManagerAction($request);
+
+        $data = $request->validate([
+            'clock_in'  => ['required', 'date'],
+            'clock_out' => ['nullable', 'date', 'after:clock_in'],
+            'notes'     => ['nullable', 'string', 'max:500'],
+        ]);
+
+        // The form sends wall-clock times in the worker's timezone; convert to UTC for storage.
+        $tz = $timeEntry->user->timezone;
+        $timeEntry->clock_in  = \Carbon\Carbon::parse($data['clock_in'], $tz)->utc();
+        $timeEntry->clock_out = $data['clock_out'] ? \Carbon\Carbon::parse($data['clock_out'], $tz)->utc() : null;
+        $timeEntry->notes     = $data['notes'] ?? $timeEntry->notes;
+
+        // Recompute from the corrected times (saving hook only fires when clock_out
+        // is dirty, so do it explicitly to also cover clock_in-only edits).
+        if ($timeEntry->clock_out) {
+            $timeEntry->calculateHours();
+        } else {
+            $timeEntry->total_hours = null;
+            $timeEntry->is_overtime = false;
+        }
+
+        $timeEntry->save();
+
+        activity()->performedOn($timeEntry)->causedBy($request->user())->log('time_entry_edited');
+
+        return back()->with('success', 'Entry updated.');
+    }
+
     public function export(Request $request): \Symfony\Component\HttpFoundation\StreamedResponse
     {
         $this->authorizeManagerAction($request);
@@ -264,7 +300,7 @@ class AttendanceController extends Controller
         $user         = $request->user();
         $isPrivileged = $user->hasAnyRole(['admin', 'manager', 'hr']);
 
-        $query = TimeEntry::with(['user:id,name,employee_id'])
+        $query = TimeEntry::with(['user:id,name,employee_id,timezone'])
             ->withSum('breaks', 'duration_minutes')
             ->orderBy('clock_in', 'desc');
 
@@ -288,20 +324,24 @@ class AttendanceController extends Controller
         return response()->stream(function () use ($entries) {
             $handle = fopen('php://output', 'w');
 
-            fputcsv($handle, ['Employee ID', 'Name', 'Date', 'Clock In', 'Clock Out', 'Total Hours', 'Break (min)', 'Overtime', 'Source', 'Status', 'Notes']);
+            fputcsv($handle, ['Employee ID', 'Name', 'Date', 'Clock In', 'Clock Out', 'Total Hours', 'Break (min)', 'Overtime', 'Source', 'Status', 'Timezone', 'Notes']);
 
             foreach ($entries as $entry) {
+                $tz = $entry->user?->timezone ?? 'Europe/London';
+                $in  = $entry->clock_in?->copy()->setTimezone($tz);
+                $out = $entry->clock_out?->copy()->setTimezone($tz);
                 fputcsv($handle, [
                     $entry->user?->employee_id ?? '',
                     $entry->user?->name ?? '',
-                    $entry->clock_in?->toDateString() ?? '',
-                    $entry->clock_in?->format('H:i') ?? '',
-                    $entry->clock_out?->format('H:i') ?? '',
+                    $in?->toDateString() ?? '',
+                    $in?->format('H:i') ?? '',
+                    $out?->format('H:i') ?? '',
                     $entry->total_hours ?? '',
                     $entry->breaks_sum_duration_minutes ?? 0,
                     $entry->is_overtime ? 'Yes' : 'No',
                     $entry->source ?? '',
                     $entry->status ?? '',
+                    $tz,
                     $entry->notes ?? '',
                 ]);
             }
@@ -326,16 +366,27 @@ class AttendanceController extends Controller
         $manager  = $request->user();
         $source   = count($request->input('user_ids')) > 1 ? 'bulk' : 'manual';
         $date     = $request->input('date');
-        $clockIn  = \Carbon\Carbon::parse("{$date} {$request->input('clock_in')}");
-        $clockOut = $request->filled('clock_out')
-            ? \Carbon\Carbon::parse("{$date} {$request->input('clock_out')}")
-            : null;
+        $clockInStr  = $request->input('clock_in');
+        $clockOutStr = $request->input('clock_out');
         $notes    = $request->input('notes');
+
+        $users = User::whereIn('id', $request->input('user_ids'))->get()->keyBy('id');
 
         $count = 0;
         foreach ($request->input('user_ids') as $userId) {
+            $tz = ($users[$userId] ?? null)?->timezone ?? 'Europe/London';
+
+            // The typed time is the worker's local wall-clock; store as UTC.
+            $clockIn  = \Carbon\Carbon::parse("{$date} {$clockInStr}", $tz)->utc();
+            $clockOut = $clockOutStr
+                ? \Carbon\Carbon::parse("{$date} {$clockOutStr}", $tz)->utc()
+                : null;
+
+            // Skip if the worker already has an entry on that local day.
+            $dayStart = \Carbon\Carbon::parse("{$date} 00:00", $tz)->utc();
+            $dayEnd   = \Carbon\Carbon::parse("{$date} 23:59:59", $tz)->utc();
             if (TimeEntry::where('user_id', $userId)
-                ->whereDate('clock_in', $date)
+                ->whereBetween('clock_in', [$dayStart, $dayEnd])
                 ->exists()) {
                 continue;
             }
