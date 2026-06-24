@@ -225,10 +225,11 @@
 
                 <!-- Shift details -->
                 <div class="px-8 py-5">
-                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-3">
+                    <p class="text-[10px] font-bold text-gray-400 uppercase tracking-widest mb-1">
                         Shift Details
                         <span class="normal-case font-normal ml-1">— {{ entries.length }} approved {{ entries.length === 1 ? 'shift' : 'shifts' }}</span>
                     </p>
+                    <p v-if="entries.length" class="text-[11px] text-gray-400 mb-3">Regular pay is capped at 8h per shift. Hours beyond 8 are paid only when filed and approved as overtime.</p>
 
                     <div v-if="entries.length === 0" class="text-center py-10 border border-dashed border-gray-200 rounded-xl">
                         <p class="text-sm text-gray-500 font-medium">No approved shifts in this period.</p>
@@ -266,7 +267,14 @@
                                         <span v-if="e.overtime_hours > 0" class="text-amber-600 font-semibold">{{ e.overtime_hours }}h</span>
                                         <span v-else class="text-gray-300">—</span>
                                     </td>
-                                    <td class="py-2 px-2 text-right font-bold text-gray-800">{{ e.total_hours }}h</td>
+                                    <td class="py-2 px-2 text-right">
+                                        <span class="font-bold text-gray-800">{{ e.total_hours }}h</span>
+                                        <span
+                                            v-if="unpaidHours(e) > 0"
+                                            class="block text-[10px] font-medium text-red-500"
+                                            title="Worked beyond 8h with no approved overtime — these hours are not paid. File and approve an overtime request to include them."
+                                        >{{ unpaidHours(e) }}h unpaid</span>
+                                    </td>
                                 </tr>
                             </tbody>
                         </table>
@@ -356,6 +364,12 @@ const totalDeductions = computed(() =>
 );
 
 const displayNetPay = computed(() => props.grossPay - totalDeductions.value);
+
+// Hours worked beyond what is paid (over the 8h cap with no approved OT).
+function unpaidHours(e) {
+    const gap = (e.total_hours ?? 0) - (e.regular_hours ?? 0) - (e.overtime_hours ?? 0);
+    return Math.round(gap * 100) / 100;
+}
 
 function localDateStr(d) {
     const y  = d.getFullYear();

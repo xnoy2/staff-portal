@@ -100,61 +100,11 @@ class PayrollRun extends Model
      */
     public static function generate(User $staff, Carbon $from, Carbon $to, ?string $generatedBy): self
     {
-        // Attribute shifts to the period by the worker's LOCAL day, then convert the
-        // window to UTC instants for the query (times are stored in UTC).
-        $tz          = $staff->timezone;
-        $periodStart = Carbon::parse($from->toDateString() . ' 00:00:00', $tz)->utc();
-        $periodEnd   = Carbon::parse($to->toDateString() . ' 23:59:59', $tz)->utc();
-
-        $entries = TimeEntry::with('breaks')
-            ->forUser($staff->id)
-            ->whereBetween('clock_in', [$periodStart, $periodEnd])
-            ->where('status', 'approved')
-            ->withSum('breaks', 'duration_minutes')
-            ->orderBy('clock_in')
-            ->get();
-
-        // ── Approved overtime allowance per day ───────────────────────────────
-        // OT premium is only paid for hours covered by an approved OvertimeRequest.
-        // Build a per-date pool of approved OT hours, consumed as entries claim it.
-        $otPool = [];
-        OvertimeRequest::where('user_id', $staff->id)
-            ->where('status', 'approved')
-            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
-            ->get()
-            ->each(function ($r) use (&$otPool) {
-                $d = $r->date->toDateString();
-                $otPool[$d] = ($otPool[$d] ?? 0.0) + (float) $r->duration_hours;
-            });
-
-        $regularHours  = 0.0;
-        $overtimeHours = 0.0;
-
-        $snapshot = $entries->map(function ($entry) use (&$regularHours, &$overtimeHours, &$otPool, $tz) {
-            $hours     = (float) $entry->total_hours;
-            $localIn   = $entry->clock_in->copy()->setTimezone($tz);
-            $date      = $localIn->toDateString();
-            $available = $otPool[$date] ?? 0.0;
-
-            [$regH, $otH] = static::splitHours($hours, $entry->is_overtime, $entry->ot_type, $available);
-            $otPool[$date] = max(0.0, $available - $otH); // consume approved allowance
-
-            $regularHours  += $regH;
-            $overtimeHours += $otH;
-
-            return [
-                'date'           => $date,
-                'day'            => $localIn->format('D'),
-                'clock_in'       => $localIn->format('H:i'),
-                'clock_out'      => $entry->clock_out?->copy()->setTimezone($tz)->format('H:i'),
-                'break_mins'     => (int) ($entry->breaks_sum_duration_minutes ?? 0),
-                'total_hours'    => round($hours, 2),
-                'regular_hours'  => round($regH, 2),
-                'overtime_hours' => round($otH, 2),
-                'is_overtime'    => $entry->is_overtime,
-                'ot_type'        => $entry->ot_type,
-            ];
-        })->values()->toArray();
+        $computed      = static::computePeriod($staff, $from, $to);
+        $entries       = $computed['entries'];
+        $regularHours  = $computed['regularHours'];
+        $overtimeHours = $computed['overtimeHours'];
+        $snapshot      = $computed['rows'];
 
         // ── Pay rate + leave basis ────────────────────────────────────────────
         $rate       = (float) ($staff->hourly_rate ?? 0);
@@ -224,29 +174,107 @@ class PayrollRun extends Model
     }
 
     /**
-     * Split worked hours into [regularHours, overtimeHours].
+     * Compute worked-hours for a staff member over a period: the approved entries,
+     * the regular/overtime totals (8h cap + approved-OT split), and per-shift rows
+     * formatted in the worker's timezone. Shared by generate() and the live payslip
+     * preview so the two never drift.
      *
-     * All worked hours are always paid; the OT *premium* (1.5×) only applies to
-     * hours that are covered by an approved OvertimeRequest ($approvedOtHours).
-     * Anything beyond the approved allowance is paid at the regular rate.
+     * @return array{entries:\Illuminate\Support\Collection, regularHours:float, overtimeHours:float, rows:array}
+     */
+    public static function computePeriod(User $staff, Carbon $from, Carbon $to): array
+    {
+        // Attribute shifts to the period by the worker's LOCAL day, then convert the
+        // window to UTC instants for the query (times are stored in UTC).
+        $tz          = $staff->timezone;
+        $periodStart = Carbon::parse($from->toDateString() . ' 00:00:00', $tz)->utc();
+        $periodEnd   = Carbon::parse($to->toDateString() . ' 23:59:59', $tz)->utc();
+
+        $entries = TimeEntry::with('breaks')
+            ->forUser($staff->id)
+            ->whereBetween('clock_in', [$periodStart, $periodEnd])
+            ->where('status', 'approved')
+            ->withSum('breaks', 'duration_minutes')
+            ->orderBy('clock_in')
+            ->get();
+
+        // Approved-OT allowance per local date — the OT premium (and any pay beyond
+        // the 8h cap) is only granted for hours covered by an approved request.
+        $otPool = [];
+        OvertimeRequest::where('user_id', $staff->id)
+            ->where('status', 'approved')
+            ->whereBetween('date', [$from->toDateString(), $to->toDateString()])
+            ->get()
+            ->each(function ($r) use (&$otPool) {
+                $d = $r->date->toDateString();
+                $otPool[$d] = ($otPool[$d] ?? 0.0) + (float) $r->duration_hours;
+            });
+
+        $regularHours  = 0.0;
+        $overtimeHours = 0.0;
+
+        $rows = $entries->map(function ($entry) use (&$regularHours, &$overtimeHours, &$otPool, $tz) {
+            $hours     = (float) $entry->total_hours;
+            $localIn   = $entry->clock_in->copy()->setTimezone($tz);
+            $date      = $localIn->toDateString();
+            $available = $otPool[$date] ?? 0.0;
+
+            [$regH, $otH] = static::splitHours($hours, $entry->is_overtime, $entry->ot_type, $available);
+            $otPool[$date] = max(0.0, $available - $otH); // consume approved allowance
+
+            $regularHours  += $regH;
+            $overtimeHours += $otH;
+
+            return [
+                'date'           => $date,
+                'day'            => $localIn->format('D'),
+                'clock_in'       => $localIn->format('H:i'),
+                'clock_out'      => $entry->clock_out?->copy()->setTimezone($tz)->format('H:i'),
+                'break_mins'     => (int) ($entry->breaks_sum_duration_minutes ?? 0),
+                'total_hours'    => round($hours, 2),
+                'regular_hours'  => round($regH, 2),
+                'overtime_hours' => round($otH, 2),
+                'is_overtime'    => $entry->is_overtime,
+                'ot_type'        => $entry->ot_type,
+            ];
+        })->values()->toArray();
+
+        return [
+            'entries'       => $entries,
+            'regularHours'  => $regularHours,
+            'overtimeHours' => $overtimeHours,
+            'rows'          => $rows,
+        ];
+    }
+
+    /** Regular hours are capped at this many per shift; the rest needs approved OT. */
+    public const REGULAR_HOURS_CAP = 8.0;
+
+    /**
+     * Split a shift's worked hours into [regularHours, overtimeHours].
      *
-     * OT-eligible hours per shift:
-     *  - ot_type set (clocked in as OT/RDOT) → the whole shift is eligible
-     *  - is_overtime (>8h, no ot_type)       → only the hours beyond 8 are eligible
-     *  - otherwise                            → none
+     * Policy:
+     *  - A normal shift pays at most REGULAR_HOURS_CAP (8h) at the regular rate.
+     *    Hours beyond 8 are paid (as overtime, 1.5×) ONLY when covered by an
+     *    approved OvertimeRequest ($approvedOtHours). Any unapproved excess is
+     *    NOT paid — it is dropped.
+     *  - An OT/RDOT shift (ot_type set) treats the whole shift as overtime-eligible;
+     *    approved hours pay the premium, the remainder falls back to the regular rate.
      */
     public static function splitHours(float $hours, bool $isOvertime, ?string $otType, float $approvedOtHours = 0.0): array
     {
         if ($otType !== null) {
-            $eligible = $hours;
-        } elseif ($isOvertime) {
-            $eligible = max(0.0, $hours - 8.0);
-        } else {
-            $eligible = 0.0;
+            // OT/RDOT shift: whole shift eligible; unapproved hours fall back to regular.
+            $overtime = min($hours, max(0.0, $approvedOtHours));
+            $regular  = $hours - $overtime;
+
+            return [$regular, $overtime];
         }
 
+        // Normal shift: cap regular at 8h. Excess is paid only if approved as OT,
+        // otherwise it is dropped (not paid at all).
+        $regular  = min($hours, self::REGULAR_HOURS_CAP);
+        $eligible = max(0.0, $hours - self::REGULAR_HOURS_CAP);
         $overtime = min($eligible, max(0.0, $approvedOtHours));
-        $regular  = $hours - $overtime;
 
         return [$regular, $overtime];
     }

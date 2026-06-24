@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\PayrollRun;
-use App\Models\TimeEntry;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Inertia;
@@ -75,36 +74,11 @@ class PayslipController extends Controller
             ? \Carbon\Carbon::parse($request->to)->endOfDay()
             : now()->endOfMonth()->endOfDay();
 
-        $entries = TimeEntry::with('breaks')
-            ->forUser($staff->id)
-            ->whereBetween('clock_in', [$from, $to])
-            ->where('status', 'approved')
-            ->withSum('breaks', 'duration_minutes')
-            ->orderBy('clock_in')
-            ->get();
-
-        $regularHours  = 0.0;
-        $overtimeHours = 0.0;
-
-        $entryRows = $entries->map(function ($entry) use (&$regularHours, &$overtimeHours) {
-            $hours = (float) $entry->total_hours;
-            [$regH, $otH] = PayrollRun::splitHours($hours, $entry->is_overtime, $entry->ot_type);
-            $regularHours  += $regH;
-            $overtimeHours += $otH;
-
-            return [
-                'date'           => $entry->clock_in->toDateString(),
-                'day'            => $entry->clock_in->format('D'),
-                'clock_in'       => $entry->clock_in->format('H:i'),
-                'clock_out'      => $entry->clock_out?->format('H:i'),
-                'break_mins'     => (int) ($entry->breaks_sum_duration_minutes ?? 0),
-                'total_hours'    => round($hours, 2),
-                'regular_hours'  => round($regH, 2),
-                'overtime_hours' => round($otH, 2),
-                'is_overtime'    => $entry->is_overtime,
-                'ot_type'        => $entry->ot_type,
-            ];
-        });
+        // Shared computation: 8h cap, approved-OT split, worker-timezone formatting.
+        $computed      = PayrollRun::computePeriod($staff, $from, $to);
+        $entryRows     = $computed['rows'];
+        $regularHours  = $computed['regularHours'];
+        $overtimeHours = $computed['overtimeHours'];
 
         $rate        = (float) ($staff->hourly_rate ?? 0);
         $regularPay  = round($regularHours * $rate, 2);
