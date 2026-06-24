@@ -139,6 +139,24 @@ class User extends Authenticatable
         return $this->hasAnyRole(['admin', 'manager']);
     }
 
+    /**
+     * Admins have full access to — and can manage — EVERY workspace, regardless
+     * of membership. Managers and staff are limited to workspaces they belong to.
+     */
+    public function canAccessAllWorkspaces(): bool
+    {
+        return $this->hasRole('admin');
+    }
+
+    /** Whether the user may view a workspace's boards (a member, or an admin). */
+    public function canAccessWorkspace(?string $workspaceId): bool
+    {
+        if (! $workspaceId) {
+            return false;
+        }
+        return $this->canAccessAllWorkspaces() || $this->isMemberOfWorkspace($workspaceId);
+    }
+
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
