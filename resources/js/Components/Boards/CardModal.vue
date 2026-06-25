@@ -166,26 +166,41 @@
                                     <PaperClipIcon class="w-4 h-4" /> Attachments
                                 </p>
                                 <div class="space-y-1.5">
-                                    <div v-for="a in card.attachments" :key="a.id" class="group p-2 rounded-lg border border-gray-100 hover:bg-gray-50">
-                                        <div class="flex items-center gap-3">
-                                            <a :href="a.url" target="_blank" class="flex-shrink-0">
-                                                <img v-if="a.is_image" :src="a.url" class="w-12 h-12 rounded-lg object-cover" />
-                                                <div v-else-if="a.is_video" class="w-12 h-12 rounded-lg bg-gray-900 flex items-center justify-center">
-                                                    <FilmIcon class="w-6 h-6 text-gray-300" />
-                                                </div>
-                                                <div v-else class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                                                    <DocumentIcon class="w-6 h-6 text-gray-400" />
-                                                </div>
-                                            </a>
-                                            <div class="flex-1 min-w-0">
+                                    <div v-for="a in card.attachments" :key="a.id" class="group flex items-center gap-3 p-2 rounded-lg border border-gray-100 hover:bg-gray-50">
+                                        <a :href="a.url" target="_blank" class="flex-shrink-0">
+                                            <img v-if="a.is_image" :src="a.url" class="w-12 h-12 rounded-lg object-cover" />
+                                            <div v-else-if="a.is_video" class="w-12 h-12 rounded-lg bg-gray-900 flex items-center justify-center">
+                                                <FilmIcon class="w-6 h-6 text-gray-300" />
+                                            </div>
+                                            <div v-else class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                                                <DocumentIcon class="w-6 h-6 text-gray-400" />
+                                            </div>
+                                        </a>
+                                        <div class="flex-1 min-w-0">
+                                            <div v-if="renamingId === a.id" class="flex items-center gap-1.5">
+                                                <input
+                                                    :ref="el => { if (el) renameInputEl = el }"
+                                                    v-model="renameDraft"
+                                                    @keydown.enter.prevent="saveRename(a)"
+                                                    @keydown.esc="renamingId = null"
+                                                    class="flex-1 min-w-0 text-sm border border-gray-200 rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-[#EF233C]/15 focus:border-[#EF233C]/40"
+                                                />
+                                                <button @click="saveRename(a)" class="text-xs font-semibold text-[#2B2D42] hover:text-[#EF233C]">Save</button>
+                                                <button @click="renamingId = null" class="text-xs text-gray-400">Cancel</button>
+                                            </div>
+                                            <template v-else>
                                                 <a :href="a.url" target="_blank" class="text-sm font-medium text-gray-700 truncate hover:underline block">{{ a.name }}</a>
                                                 <p class="text-[10px] text-gray-400">{{ humanSize(a.size) }}</p>
-                                            </div>
-                                            <button @click="deleteAttachment(a)" class="flex-shrink-0 p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                                            </template>
+                                        </div>
+                                        <div v-if="renamingId !== a.id" class="flex items-center gap-0.5 flex-shrink-0">
+                                            <button @click="startRename(a)" title="Rename" class="p-1 rounded text-gray-300 hover:text-gray-600 hover:bg-gray-100 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                                                <PencilIcon class="w-4 h-4" />
+                                            </button>
+                                            <button @click="deleteAttachment(a)" title="Delete" class="p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
                                                 <TrashIcon class="w-4 h-4" />
                                             </button>
                                         </div>
-                                        <video v-if="a.is_video" :src="a.url" controls preload="metadata" class="mt-2 w-full max-h-64 rounded-lg bg-black"></video>
                                     </div>
                                 </div>
                             </div>
@@ -326,7 +341,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import {
     ViewColumnsIcon, XMarkIcon, CheckCircleIcon, TrashIcon, TagIcon, ClockIcon,
     PaperClipIcon, Bars3BottomLeftIcon, DocumentIcon, ChatBubbleLeftRightIcon, CheckIcon, SwatchIcon,
-    ArrowPathIcon, FilmIcon, ExclamationTriangleIcon,
+    ArrowPathIcon, FilmIcon, ExclamationTriangleIcon, PencilIcon,
 } from '@heroicons/vue/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/vue/24/solid';
 import CardDatePopover from '@/Components/Boards/CardDatePopover.vue';
@@ -481,6 +496,25 @@ function uploadAttachment(e) {
 }
 function deleteAttachment(a) {
     router.delete(route('boards.attachments.destroy', a.id), opts);
+}
+
+// Rename an attachment
+const renamingId  = ref(null);
+const renameDraft = ref('');
+let   renameInputEl = null;
+
+function startRename(a) {
+    renamingId.value  = a.id;
+    renameDraft.value = a.name;
+    nextTick(() => renameInputEl?.focus());
+}
+function saveRename(a) {
+    const name = renameDraft.value.trim();
+    if (!name || name === a.name) { renamingId.value = null; return; }
+    router.patch(route('boards.attachments.update', a.id), { name }, {
+        ...opts,
+        onSuccess: () => { renamingId.value = null; },
+    });
 }
 function humanSize(b) {
     if (!b) return '';

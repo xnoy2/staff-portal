@@ -251,6 +251,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/cards/{card}/labels/{label}/toggle', [CardController::class, 'toggleLabel'])->name('cards.labels.toggle');
         // Attachments
         Route::post('/cards/{card}/attachments', [CardController::class, 'storeAttachment'])->name('cards.attachments.store');
+        Route::patch('/attachments/{attachment}', [CardController::class, 'updateAttachment'])->name('attachments.update');
         Route::delete('/attachments/{attachment}', [CardController::class, 'destroyAttachment'])->name('attachments.destroy');
         // Comments
         Route::post('/cards/{card}/comments',    [CardController::class, 'storeComment'])->name('cards.comments.store');

@@ -185,6 +185,19 @@ class CardController extends Controller
         return back();
     }
 
+    public function updateAttachment(Request $request, CardAttachment $attachment): RedirectResponse
+    {
+        $this->requireMember($request, $attachment->card->list->board->workspace_id);
+
+        $data = $request->validate([
+            'name' => ['required', 'string', 'max:255'],
+        ]);
+
+        $attachment->update(['name' => $data['name']]);
+
+        return back();
+    }
+
     public function destroyAttachment(Request $request, CardAttachment $attachment): RedirectResponse
     {
         $this->requireMember($request, $attachment->card->list->board->workspace_id);
