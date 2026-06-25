@@ -129,10 +129,16 @@
                                     </div>
                                 </template>
                                 <div
+                                    v-else-if="card.description"
+                                    @click="onDescClick"
+                                    class="text-sm rounded-lg px-3 py-2 cursor-text whitespace-pre-wrap break-words text-gray-700 bg-gray-50"
+                                    v-html="renderDescription(card.description)"
+                                ></div>
+                                <div
                                     v-else
                                     @click="startEditDesc"
-                                    :class="['text-sm rounded-lg px-3 py-2 cursor-text whitespace-pre-wrap break-words', card.description ? 'text-gray-700 bg-gray-50' : 'text-gray-400 bg-gray-50 hover:bg-gray-100']"
-                                >{{ card.description || 'Add a more detailed description…' }}</div>
+                                    class="text-sm rounded-lg px-3 py-2 cursor-text whitespace-pre-wrap break-words text-gray-400 bg-gray-50 hover:bg-gray-100"
+                                >Add a more detailed description…</div>
                             </div>
 
                             <!-- Attachments -->
@@ -504,11 +510,35 @@ function addComment() {
 }
 function deleteComment(c) { router.delete(route('boards.comments.destroy', c.id), opts); }
 
-// Render a comment body with @mentions highlighted (HTML-escaped first)
+function escapeHtml(s) {
+    return (s ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+}
+
+// Turn bare http(s) URLs in already-escaped text into clickable links.
+function linkify(html) {
+    return html.replace(/(https?:\/\/[^\s<]+)/g, (url) => {
+        const trail = (url.match(/[.,;:!?)\]]+$/) || [''])[0]; // keep trailing punctuation out of the link
+        const link  = trail ? url.slice(0, -trail.length) : url;
+        return `<a href="${link}" target="_blank" rel="noopener noreferrer" class="text-blue-600 hover:underline break-all">${link}</a>${trail}`;
+    });
+}
+
+// Description: escape, then linkify URLs.
+function renderDescription(text) {
+    return linkify(escapeHtml(text));
+}
+
+// Open links without dropping into edit mode; click elsewhere edits.
+function onDescClick(e) {
+    if (e.target.closest('a')) return;
+    startEditDesc();
+}
+
+// Comment body: escape, linkify URLs, then highlight @mentions.
 function renderComment(c) {
-    let html = (c.body ?? '').replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+    let html = linkify(escapeHtml(c.body ?? ''));
     for (const name of (c.mention_names ?? [])) {
-        const safe = name.replace(/[&<>"]/g, ch => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[ch]));
+        const safe = escapeHtml(name);
         const escaped = safe.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
         html = html.replace(new RegExp('@' + escaped, 'g'),
             `<span class="text-[#EF233C] font-semibold bg-[#EF233C]/8 rounded px-0.5">@${safe}</span>`);
