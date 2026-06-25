@@ -234,6 +234,7 @@ class BoardController extends Controller
                 'mime'     => $a->mime,
                 'size'     => $a->size,
                 'is_image' => $a->isImage(),
+                'is_video' => $a->isVideo(),
             ])->values(),
             'comments'        => $card->comments->map(fn ($c) => [
                 'id'             => $c->id,

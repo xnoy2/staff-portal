@@ -165,8 +165,8 @@ class CardController extends Controller
         $this->authorizeCard($request, $card);
 
         $request->validate([
-            'file' => ['required', 'file', 'max:20480',
-                'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv,txt,zip,ppt,pptx'],
+            'file' => ['required', 'file', 'max:204800', // up to 200 MB (videos)
+                'mimes:jpg,jpeg,png,gif,webp,pdf,doc,docx,xls,xlsx,csv,txt,zip,ppt,pptx,mp4,m4v,mov,webm,ogv,avi,mkv'],
         ]);
 
         $file = $request->file('file');

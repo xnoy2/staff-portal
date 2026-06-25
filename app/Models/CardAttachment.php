@@ -23,4 +23,9 @@ class CardAttachment extends Model
     {
         return str_starts_with((string) $this->mime, 'image/');
     }
+
+    public function isVideo(): bool
+    {
+        return str_starts_with((string) $this->mime, 'video/');
+    }
 }

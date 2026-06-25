@@ -147,20 +147,26 @@
                                     <PaperClipIcon class="w-4 h-4" /> Attachments
                                 </p>
                                 <div class="space-y-1.5">
-                                    <div v-for="a in card.attachments" :key="a.id" class="group flex items-center gap-3 p-2 rounded-lg border border-gray-100 hover:bg-gray-50">
-                                        <a :href="a.url" target="_blank" class="flex-shrink-0">
-                                            <img v-if="a.is_image" :src="a.url" class="w-12 h-12 rounded-lg object-cover" />
-                                            <div v-else class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
-                                                <DocumentIcon class="w-6 h-6 text-gray-400" />
+                                    <div v-for="a in card.attachments" :key="a.id" class="group p-2 rounded-lg border border-gray-100 hover:bg-gray-50">
+                                        <div class="flex items-center gap-3">
+                                            <a :href="a.url" target="_blank" class="flex-shrink-0">
+                                                <img v-if="a.is_image" :src="a.url" class="w-12 h-12 rounded-lg object-cover" />
+                                                <div v-else-if="a.is_video" class="w-12 h-12 rounded-lg bg-gray-900 flex items-center justify-center">
+                                                    <FilmIcon class="w-6 h-6 text-gray-300" />
+                                                </div>
+                                                <div v-else class="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center">
+                                                    <DocumentIcon class="w-6 h-6 text-gray-400" />
+                                                </div>
+                                            </a>
+                                            <div class="flex-1 min-w-0">
+                                                <a :href="a.url" target="_blank" class="text-sm font-medium text-gray-700 truncate hover:underline block">{{ a.name }}</a>
+                                                <p class="text-[10px] text-gray-400">{{ humanSize(a.size) }}</p>
                                             </div>
-                                        </a>
-                                        <div class="flex-1 min-w-0">
-                                            <a :href="a.url" target="_blank" class="text-sm font-medium text-gray-700 truncate hover:underline block">{{ a.name }}</a>
-                                            <p class="text-[10px] text-gray-400">{{ humanSize(a.size) }}</p>
+                                            <button @click="deleteAttachment(a)" class="flex-shrink-0 p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
+                                                <TrashIcon class="w-4 h-4" />
+                                            </button>
                                         </div>
-                                        <button @click="deleteAttachment(a)" class="flex-shrink-0 p-1 rounded text-gray-300 hover:text-red-500 hover:bg-red-50 opacity-100 sm:opacity-0 sm:group-hover:opacity-100 transition-all">
-                                            <TrashIcon class="w-4 h-4" />
-                                        </button>
+                                        <video v-if="a.is_video" :src="a.url" controls preload="metadata" class="mt-2 w-full max-h-64 rounded-lg bg-black"></video>
                                     </div>
                                 </div>
                             </div>
@@ -301,7 +307,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import {
     ViewColumnsIcon, XMarkIcon, CheckCircleIcon, TrashIcon, TagIcon, ClockIcon,
     PaperClipIcon, Bars3BottomLeftIcon, DocumentIcon, ChatBubbleLeftRightIcon, CheckIcon, SwatchIcon,
-    ArrowPathIcon,
+    ArrowPathIcon, FilmIcon,
 } from '@heroicons/vue/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/vue/24/solid';
 import CardDatePopover from '@/Components/Boards/CardDatePopover.vue';
