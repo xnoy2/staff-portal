@@ -31,7 +31,26 @@
                                 <button @click="togglePanel('labels')" :class="actionBtn"><TagIcon class="w-3.5 h-3.5" /> Labels</button>
                                 <button @click="openDates($event)" :class="actionBtn"><ClockIcon class="w-3.5 h-3.5" /> Dates</button>
                                 <button @click="$refs.fileInput.click()" :class="actionBtn"><PaperClipIcon class="w-3.5 h-3.5" /> Attachment</button>
-                                <input ref="fileInput" type="file" class="hidden" @change="uploadAttachment" />
+                                <input ref="fileInput" type="file" class="hidden" accept="image/*,video/*,.pdf,.doc,.docx,.xls,.xlsx,.csv,.txt,.zip,.ppt,.pptx" @change="uploadAttachment" />
+                            </div>
+
+                            <!-- Upload progress / error -->
+                            <div v-if="uploading" class="rounded-lg border border-gray-200 bg-gray-50 p-2.5">
+                                <div class="flex items-center justify-between mb-1.5">
+                                    <span class="text-xs font-medium text-gray-600 truncate flex items-center gap-1.5">
+                                        <ArrowPathIcon class="w-3.5 h-3.5 animate-spin text-gray-400" />
+                                        Uploading {{ uploadName }}…
+                                    </span>
+                                    <span class="text-xs font-semibold text-gray-500 flex-shrink-0">{{ uploadPct }}%</span>
+                                </div>
+                                <div class="h-1.5 w-full rounded-full bg-gray-200 overflow-hidden">
+                                    <div class="h-full rounded-full bg-[#EF233C] transition-all duration-150" :style="{ width: uploadPct + '%' }" />
+                                </div>
+                            </div>
+                            <div v-if="uploadError" class="rounded-lg border border-red-200 bg-red-50 p-2.5 flex items-start gap-2">
+                                <ExclamationTriangleIcon class="w-4 h-4 text-red-500 flex-shrink-0 mt-0.5" />
+                                <p class="text-xs text-red-700 flex-1">{{ uploadError }}</p>
+                                <button @click="uploadError = ''" class="text-red-400 hover:text-red-600 flex-shrink-0"><XMarkIcon class="w-4 h-4" /></button>
                             </div>
 
                             <!-- Labels -->
@@ -307,7 +326,7 @@ import relativeTime from 'dayjs/plugin/relativeTime';
 import {
     ViewColumnsIcon, XMarkIcon, CheckCircleIcon, TrashIcon, TagIcon, ClockIcon,
     PaperClipIcon, Bars3BottomLeftIcon, DocumentIcon, ChatBubbleLeftRightIcon, CheckIcon, SwatchIcon,
-    ArrowPathIcon, FilmIcon,
+    ArrowPathIcon, FilmIcon, ExclamationTriangleIcon,
 } from '@heroicons/vue/24/outline';
 import { CheckCircleIcon as CheckCircleIconSolid } from '@heroicons/vue/24/solid';
 import CardDatePopover from '@/Components/Boards/CardDatePopover.vue';
@@ -420,11 +439,45 @@ const dueChipClass = computed(() => {
 });
 
 // ── Attachments ───────────────────────────────────────────────────────────────
+const ATTACH_MAX_MB = 200;
+const uploading   = ref(false);
+const uploadPct   = ref(0);
+const uploadName  = ref('');
+const uploadError = ref('');
+
 function uploadAttachment(e) {
     const file = e.target.files[0];
     e.target.value = '';
     if (!file) return;
-    router.post(route('boards.cards.attachments.store', props.card.id), { file }, { ...opts, forceFormData: true });
+
+    uploadError.value = '';
+
+    // Instant client-side size check (avoids a slow upload that the server rejects).
+    if (file.size > ATTACH_MAX_MB * 1024 * 1024) {
+        uploadError.value = `"${file.name}" is ${humanSize(file.size)} — the maximum is ${ATTACH_MAX_MB} MB.`;
+        return;
+    }
+
+    uploading.value  = true;
+    uploadPct.value  = 0;
+    uploadName.value = file.name;
+
+    router.post(route('boards.cards.attachments.store', props.card.id), { file }, {
+        ...opts,
+        forceFormData: true,
+        onProgress: (event) => {
+            if (event && event.percentage != null) uploadPct.value = Math.round(event.percentage);
+        },
+        onError: (errors) => {
+            uploadError.value = errors.file || 'Upload failed. Please check the file type and try again.';
+        },
+        onSuccess: () => { uploadError.value = ''; },
+        onFinish: () => {
+            uploading.value  = false;
+            uploadPct.value  = 0;
+            uploadName.value = '';
+        },
+    });
 }
 function deleteAttachment(a) {
     router.delete(route('boards.attachments.destroy', a.id), opts);
