@@ -65,11 +65,14 @@
 
                     <!-- View mode -->
                     <template v-if="!editing">
-                        <h1 class="text-3xl font-bold text-gray-900 mb-3">{{ article.title }}</h1>
-                        <div class="flex items-center gap-3 text-xs text-gray-400 mb-8 pb-6 border-b border-gray-100">
-                            <span v-if="article.author">By {{ article.author }}</span>
-                            <span v-if="article.author">·</span>
+                        <span class="inline-flex items-center text-xs font-semibold text-[#EF233C] bg-[#EF233C]/8 px-2.5 py-1 rounded-full mb-3">{{ category.name }}</span>
+                        <h1 class="text-3xl font-bold text-gray-900 mb-3 leading-tight tracking-tight">{{ article.title }}</h1>
+                        <div class="flex items-center gap-2.5 text-xs text-gray-400 mb-8 pb-6 border-b border-gray-100 flex-wrap">
+                            <span v-if="article.author" class="font-medium text-gray-500">{{ article.author }}</span>
+                            <span v-if="article.author" class="text-gray-300">·</span>
                             <span>Updated {{ formatDate(article.updated_at) }}</span>
+                            <span class="text-gray-300">·</span>
+                            <span>{{ readingTime }} min read</span>
                             <div class="ml-auto flex items-center gap-3">
                                 <span v-if="article.visible_to?.length" class="flex items-center gap-1 text-violet-500 font-medium">
                                     <LockClosedIcon class="w-3 h-3" />
@@ -93,43 +96,52 @@
 
                     <!-- Edit mode -->
                     <template v-else>
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
-                            <input
-                                v-model="editForm.title"
-                                type="text"
-                                required
-                                class="w-full px-3 py-2.5 text-lg font-semibold border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20 focus:border-[#EF233C]/40"
-                            />
+                        <div class="flex items-center gap-2 mb-5">
+                            <PencilSquareIcon class="w-5 h-5 text-[#EF233C]" />
+                            <h2 class="text-lg font-bold text-gray-900">Editing article</h2>
                         </div>
 
-                        <!-- Role visibility -->
-                        <div class="mb-4">
-                            <label class="block text-sm font-medium text-gray-700 mb-2">
-                                Visible to
-                                <span class="text-xs font-normal text-gray-400 ml-1">(leave blank for all staff)</span>
-                            </label>
-                            <div class="flex flex-wrap gap-2">
-                                <label
-                                    v-for="(label, role) in availableRoles"
-                                    :key="role"
-                                    class="flex items-center gap-1.5 cursor-pointer select-none"
-                                >
-                                    <input
-                                        type="checkbox"
-                                        :value="role"
-                                        v-model="editForm.visible_to"
-                                        class="w-3.5 h-3.5 rounded border-gray-300 text-[#EF233C] focus:ring-[#EF233C]/20"
-                                    />
-                                    <span
-                                        :class="[
-                                            'text-xs font-medium px-2 py-0.5 rounded-full border transition-colors',
-                                            editForm.visible_to.includes(role)
-                                                ? 'bg-violet-100 text-violet-700 border-violet-200'
-                                                : 'bg-gray-50 text-gray-500 border-gray-200',
-                                        ]"
-                                    >{{ label }}</span>
+                        <!-- Article settings -->
+                        <div class="bg-gray-50 border border-gray-200 rounded-2xl p-4 sm:p-5 mb-5 space-y-4">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Title</label>
+                                <input
+                                    v-model="editForm.title"
+                                    type="text"
+                                    required
+                                    placeholder="Article title…"
+                                    class="w-full px-3.5 py-2.5 text-lg font-semibold bg-white border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-[#EF233C]/20 focus:border-[#EF233C]/40"
+                                />
+                            </div>
+
+                            <!-- Role visibility -->
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-2">
+                                    Visible to
+                                    <span class="text-xs font-normal text-gray-400 ml-1">(leave blank for all staff)</span>
                                 </label>
+                                <div class="flex flex-wrap gap-2">
+                                    <label
+                                        v-for="(label, role) in availableRoles"
+                                        :key="role"
+                                        class="flex items-center gap-1.5 cursor-pointer select-none"
+                                    >
+                                        <input
+                                            type="checkbox"
+                                            :value="role"
+                                            v-model="editForm.visible_to"
+                                            class="w-3.5 h-3.5 rounded border-gray-300 text-[#EF233C] focus:ring-[#EF233C]/20"
+                                        />
+                                        <span
+                                            :class="[
+                                                'text-xs font-medium px-2 py-0.5 rounded-full border transition-colors',
+                                                editForm.visible_to.includes(role)
+                                                    ? 'bg-violet-100 text-violet-700 border-violet-200'
+                                                    : 'bg-white text-gray-500 border-gray-200',
+                                            ]"
+                                        >{{ label }}</span>
+                                    </label>
+                                </div>
                             </div>
                         </div>
 
@@ -173,7 +185,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TiptapEditor from '@/Components/TiptapEditor.vue';
-import { ArrowLeftIcon, ChevronRightIcon, LockClosedIcon, LinkIcon, CheckIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, ChevronRightIcon, LockClosedIcon, LinkIcon, CheckIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 dayjs.extend(relativeTime);
@@ -184,6 +196,13 @@ const props = defineProps({
     siblings:       { type: Array,  default: () => [] },
     isPrivileged:   { type: Boolean, default: false },
     availableRoles: { type: Object,  default: () => ({}) },
+});
+
+// Estimated reading time (~200 words/min) from the article body.
+const readingTime = computed(() => {
+    const text  = (props.article.content || '').replace(/<[^>]+>/g, ' ');
+    const words = text.trim().split(/\s+/).filter(Boolean).length;
+    return Math.max(1, Math.round(words / 200));
 });
 
 // Copy a shareable link to this article
@@ -289,12 +308,27 @@ watch(() => props.article.content, (val) => {
 <style>
 /* Article rendered content styling */
 .kb-content > * + * { margin-top: 0.85em; }
+.kb-content > *:first-child { margin-top: 0; }
 
-.kb-content h1 { font-size: 1.6rem; font-weight: 700; color: #111827; line-height: 1.25; scroll-margin-top: 4rem; }
-.kb-content h2 { font-size: 1.25rem; font-weight: 600; color: #1f2937; line-height: 1.35; scroll-margin-top: 4rem; padding-top: 0.5em; }
-.kb-content h3 { font-size: 1.05rem; font-weight: 600; color: #374151; line-height: 1.4; scroll-margin-top: 4rem; }
+.kb-content h1 { font-size: 1.6rem; font-weight: 700; color: #111827; line-height: 1.25; scroll-margin-top: 4rem; margin-top: 1.6em; }
+.kb-content h2 { font-size: 1.25rem; font-weight: 600; color: #1f2937; line-height: 1.35; scroll-margin-top: 4rem; margin-top: 1.5em; padding-top: 0.5em; border-top: 1px solid #f3f4f6; }
+.kb-content h3 { font-size: 1.05rem; font-weight: 600; color: #374151; line-height: 1.4; scroll-margin-top: 4rem; margin-top: 1.2em; }
+.kb-content h1:first-child, .kb-content h2:first-child, .kb-content h3:first-child { margin-top: 0; border-top: none; }
 
 .kb-content p { color: #374151; line-height: 1.75; }
+
+/* Images & video (e.g. pasted screenshots) */
+.kb-content img,
+.kb-content video {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    border-radius: 0.75rem;
+    border: 1px solid #e5e7eb;
+    margin: 1.25rem 0;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+}
+.kb-content video { background: #000; }
 
 .kb-content ul { list-style: disc; padding-left: 1.5rem; color: #374151; }
 .kb-content ol { list-style: decimal; padding-left: 1.5rem; color: #374151; }
