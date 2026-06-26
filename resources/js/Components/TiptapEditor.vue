@@ -368,6 +368,13 @@ async function uploadFile(file) {
 .tiptap-content .ProseMirror {
     outline: none;
     min-height: 280px;
+    /* Make the blinking text cursor easy to spot while editing */
+    caret-color: #EF233C;
+}
+
+/* Clearer text selection so it's obvious what's highlighted */
+.tiptap-content .ProseMirror ::selection {
+    background: rgba(239, 35, 60, 0.18);
 }
 
 .tiptap-content .ProseMirror > * + * {
