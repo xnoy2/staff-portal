@@ -296,8 +296,8 @@ async function uploadFile(file) {
 .tiptap-wrapper {
     border: 1px solid #e5e7eb;
     border-radius: 0.5rem;
-    overflow: hidden;
     background: #fff;
+    /* No overflow:hidden — it would break the sticky toolbar below. */
 }
 
 .tiptap-toolbar {
@@ -308,6 +308,12 @@ async function uploadFile(file) {
     background: #f9fafb;
     border-bottom: 1px solid #e5e7eb;
     align-items: center;
+    /* Keep the formatting/image buttons in view while editing long articles. */
+    position: sticky;
+    top: 0;
+    z-index: 20;
+    border-top-left-radius: 0.5rem;
+    border-top-right-radius: 0.5rem;
 }
 
 .toolbar-group {
