@@ -637,7 +637,7 @@
 </template>
 
 <script setup>
-import { ref, computed, watch } from 'vue';
+import { ref, computed, watch, onMounted } from 'vue';
 import { useForm, router, usePage } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
@@ -893,6 +893,14 @@ function selectBgrSubstage(stage, sub) {
     form.bgr_substage_id   = String(sub.id);
     form.bgr_substage_label= sub.name;
 }
+
+// Open the Schedule Job modal automatically when arriving with ?add=1
+// (e.g. the "Add Job" button on the All Jobs list).
+onMounted(() => {
+    if (props.isPrivileged && new URLSearchParams(window.location.search).get('add') === '1') {
+        openCreate();
+    }
+});
 
 function openCreate() {
     form.reset();

@@ -33,6 +33,16 @@
                     >{{ p.label }}</button>
                 </div>
 
+                <!-- Add Job (admin/manager only) — opens the same Schedule Job form as the Daily Job Board -->
+                <Link
+                    v-if="isManager"
+                    :href="route('jobs.index', { add: 1 })"
+                    class="flex items-center gap-1.5 text-xs font-bold text-white bg-[#EF233C] hover:bg-[#d91e34] px-3 py-1.5 rounded-xl transition-colors whitespace-nowrap"
+                >
+                    <PlusIcon class="w-4 h-4" />
+                    Add Job
+                </Link>
+
                 <!-- Daily Job Board shortcut (admin/manager only) -->
                 <Link
                     v-if="isManager"
@@ -288,6 +298,7 @@ import {
     ClockIcon,
     TruckIcon,
     XMarkIcon,
+    PlusIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
