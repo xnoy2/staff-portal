@@ -137,7 +137,9 @@
                             <label class="block text-sm font-medium text-gray-700 mb-1.5">Content</label>
                             <TiptapEditor v-model="editForm.content" />
                         </div>
-                        <div class="flex justify-end gap-2">
+                        <!-- Sticky action bar — stays in view so you never scroll to save -->
+                        <div class="sticky bottom-0 z-10 -mx-8 mt-6 px-8 py-3 bg-white/95 backdrop-blur border-t border-gray-200 flex items-center justify-end gap-2">
+                            <span v-if="saving" class="mr-auto text-xs text-gray-400">Saving…</span>
                             <button @click="cancelEditing" class="px-4 py-2 text-sm border border-gray-200 rounded-lg hover:bg-gray-50 transition-colors">Cancel</button>
                             <button @click="saveEdits" :disabled="saving" class="px-4 py-2 text-sm font-medium bg-[#2B2D42] text-white rounded-lg hover:bg-[#EF233C] transition-colors disabled:opacity-60">
                                 {{ saving ? 'Saving…' : 'Save changes' }}
