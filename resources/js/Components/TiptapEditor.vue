@@ -207,6 +207,11 @@ const ResizableImage = Image.extend({
                 parseHTML: el => el.getAttribute('width'),
                 renderHTML: attrs => (attrs.width ? { width: attrs.width } : {}),
             },
+            align: {
+                default: 'center',
+                parseHTML: el => el.getAttribute('data-align') || 'center',
+                renderHTML: attrs => (attrs.align && attrs.align !== 'center' ? { 'data-align': attrs.align } : {}),
+            },
         };
     },
 
@@ -224,10 +229,47 @@ const ResizableImage = Image.extend({
             applyWidth(node.attrs.width);
             wrap.appendChild(img);
 
+            // Alignment / text-wrap toolbar (shown when the image is selected/hovered)
+            const setAttr = (patch) => {
+                const pos = typeof getPos === 'function' ? getPos() : null;
+                if (pos == null) return;
+                const cur = editor.view.state.doc.nodeAt(pos);
+                if (! cur) return;
+                editor.view.dispatch(editor.view.state.tr.setNodeMarkup(pos, undefined, { ...cur.attrs, ...patch }));
+            };
+            const ICONS = {
+                left:   '<svg viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5"><rect x="2" y="3" width="8" height="6" rx="1"/><rect x="2" y="11" width="16" height="1.6"/><rect x="2" y="14.5" width="16" height="1.6"/></svg>',
+                center: '<svg viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5"><rect x="6" y="3" width="8" height="6" rx="1"/><rect x="2" y="11" width="16" height="1.6"/><rect x="2" y="14.5" width="16" height="1.6"/></svg>',
+                right:  '<svg viewBox="0 0 20 20" fill="currentColor" class="w-3.5 h-3.5"><rect x="10" y="3" width="8" height="6" rx="1"/><rect x="2" y="11" width="16" height="1.6"/><rect x="2" y="14.5" width="16" height="1.6"/></svg>',
+            };
+            const bar = document.createElement('div');
+            bar.className = 'kb-img-bar';
+            const btns = {};
+            ['left', 'center', 'right'].forEach((a) => {
+                const b = document.createElement('button');
+                b.type = 'button';
+                b.className = 'kb-img-btn';
+                b.title = a === 'center' ? 'Center' : `Wrap text (${a})`;
+                b.innerHTML = ICONS[a];
+                b.addEventListener('mousedown', (e) => { e.preventDefault(); e.stopPropagation(); });
+                b.addEventListener('click', (e) => { e.preventDefault(); e.stopPropagation(); setAttr({ align: a }); });
+                bar.appendChild(b);
+                btns[a] = b;
+            });
+            wrap.appendChild(bar);
+
             const handle = document.createElement('span');
             handle.className = 'kb-img-handle';
             handle.title = 'Drag to resize';
             wrap.appendChild(handle);
+
+            const applyAlign = (a) => {
+                const al = a || 'center';
+                wrap.classList.remove('align-left', 'align-center', 'align-right');
+                wrap.classList.add('align-' + al);
+                Object.entries(btns).forEach(([k, b]) => b.classList.toggle('active', k === al));
+            };
+            applyAlign(node.attrs.align);
 
             let startX = 0, startW = 0, resizing = false;
             const onMove = (e) => {
@@ -264,6 +306,7 @@ const ResizableImage = Image.extend({
                     if (updatedNode.type.name !== node.type.name) return false;
                     if (updatedNode.attrs.src !== img.getAttribute('src')) img.src = updatedNode.attrs.src;
                     applyWidth(updatedNode.attrs.width);
+                    applyAlign(updatedNode.attrs.align);
                     return true;
                 },
                 selectNode() { wrap.classList.add('kb-img-selected'); },
@@ -565,15 +608,51 @@ async function uploadFile(file) {
     display: block;
     width: fit-content;
     max-width: 100%;
-    margin: 0.75rem auto;
     line-height: 0;
 }
+.tiptap-content .ProseMirror .kb-img-wrap.align-center { margin: 0.75rem auto; float: none; clear: both; }
+.tiptap-content .ProseMirror .kb-img-wrap.align-left   { float: left;  margin: 0.4rem 1.1rem 0.6rem 0; }
+.tiptap-content .ProseMirror .kb-img-wrap.align-right  { float: right; margin: 0.4rem 0 0.6rem 1.1rem; }
+/* contain the floats so they don't spill out of the editor */
+.tiptap-content .ProseMirror::after { content: ''; display: block; clear: both; }
+
 .tiptap-content .ProseMirror .kb-img-wrap img {
     margin: 0;
     max-width: 100%;
     height: auto;
     border: 1px solid #e5e7eb;
 }
+
+/* Alignment / wrap toolbar */
+.tiptap-content .ProseMirror .kb-img-bar {
+    position: absolute;
+    top: 5px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: none;
+    gap: 1px;
+    background: rgba(43,45,66,0.92);
+    border-radius: 7px;
+    padding: 2px;
+    z-index: 6;
+    line-height: 0;
+}
+.tiptap-content .ProseMirror .kb-img-wrap:hover .kb-img-bar,
+.tiptap-content .ProseMirror .kb-img-wrap.kb-img-selected .kb-img-bar { display: flex; }
+.tiptap-content .ProseMirror .kb-img-btn {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 24px;
+    height: 22px;
+    border: none;
+    border-radius: 5px;
+    background: transparent;
+    color: #fff;
+    cursor: pointer;
+}
+.tiptap-content .ProseMirror .kb-img-btn:hover { background: rgba(255,255,255,0.15); }
+.tiptap-content .ProseMirror .kb-img-btn.active { background: #EF233C; }
 .tiptap-content .ProseMirror .kb-img-handle {
     position: absolute;
     right: -6px;

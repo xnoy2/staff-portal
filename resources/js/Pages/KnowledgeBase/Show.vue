@@ -328,6 +328,19 @@ watch(() => props.article.content, (val) => {
     margin: 1.25rem auto;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
+
+/* Text-wrap alignment for images */
+.kb-content img[data-align="left"] {
+    float: left;
+    margin: 0.4rem 1.5rem 0.85rem 0;
+}
+.kb-content img[data-align="right"] {
+    float: right;
+    margin: 0.4rem 0 0.85rem 1.5rem;
+}
+/* keep section headings below wrapped images, and contain floats */
+.kb-content h1, .kb-content h2 { clear: both; }
+.kb-content::after { content: ''; display: block; clear: both; }
 .kb-content video { background: #000; }
 
 .kb-content ul { list-style: disc; padding-left: 1.5rem; color: #374151; }
