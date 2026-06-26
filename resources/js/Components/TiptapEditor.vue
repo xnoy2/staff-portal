@@ -207,6 +207,25 @@ const editor = useEditor({
         Image.configure({ inline: false, allowBase64: false }),
         Video,
     ],
+    editorProps: {
+        // Paste an image/screenshot straight into the article at the cursor.
+        handlePaste(view, event) {
+            const files = mediaFilesFrom(event.clipboardData);
+            if (! files.length) return false;
+            event.preventDefault();
+            files.forEach(f => insertMediaFile(f));
+            return true;
+        },
+        // Drop an image/video file anywhere in the article — inserts where you drop it.
+        handleDrop(view, event) {
+            const files = mediaFilesFrom(event.dataTransfer);
+            if (! files.length) return false;
+            event.preventDefault();
+            const coords = view.posAtCoords({ left: event.clientX, top: event.clientY });
+            files.forEach(f => insertMediaFile(f, coords ? coords.pos : null));
+            return true;
+        },
+    },
     onUpdate({ editor }) {
         emit('update:modelValue', editor.getHTML());
     },
@@ -249,34 +268,52 @@ function triggerVideoUpload() {
 
 async function handleImageUpload(event) {
     const file = event.target.files?.[0];
-    if (! file) return;
     event.target.value = '';
-
-    uploading.value = true;
-    try {
-        const { url } = await uploadFile(file);
-        editor.value.chain().focus().setImage({ src: url }).run();
-    } catch (e) {
-        alert('Image upload failed. Please try again.');
-    } finally {
-        uploading.value = false;
-    }
+    await insertMediaFile(file);
 }
 
 async function handleVideoUpload(event) {
     const file = event.target.files?.[0];
-    if (! file) return;
     event.target.value = '';
+    await insertMediaFile(file);
+}
+
+// Pull image/video files out of a clipboard or drag-drop data transfer.
+function mediaFilesFrom(dataTransfer) {
+    if (! dataTransfer) return [];
+    let files = [];
+    if (dataTransfer.files && dataTransfer.files.length) {
+        files = Array.from(dataTransfer.files);
+    } else if (dataTransfer.items) {
+        for (const item of dataTransfer.items) {
+            if (item.kind === 'file') {
+                const f = item.getAsFile();
+                if (f) files.push(f);
+            }
+        }
+    }
+    return files.filter(f => f.type.startsWith('image/') || f.type.startsWith('video/'));
+}
+
+// Upload a file and insert it at the cursor (or at `pos`, for drops).
+async function insertMediaFile(file, pos = null) {
+    if (! file) return;
+    const isImage = file.type.startsWith('image/');
+    const isVideo = file.type.startsWith('video/');
+    if (! isImage && ! isVideo) return;
 
     uploading.value = true;
     try {
         const { url } = await uploadFile(file);
-        editor.value.chain().focus().insertContent({
-            type: 'kbVideo',
-            attrs: { src: url },
-        }).run();
+        let chain = editor.value.chain().focus();
+        if (pos != null) chain = chain.setTextSelection(pos);
+        if (isImage) {
+            chain.setImage({ src: url }).run();
+        } else {
+            chain.insertContent({ type: 'kbVideo', attrs: { src: url } }).run();
+        }
     } catch (e) {
-        alert('Video upload failed. Please try again.');
+        alert('Upload failed. Please try again.');
     } finally {
         uploading.value = false;
     }
