@@ -325,7 +325,7 @@ watch(() => props.article.content, (val) => {
     height: auto;
     border-radius: 0.75rem;
     border: 1px solid #e5e7eb;
-    margin: 1.25rem 0;
+    margin: 1.25rem auto;
     box-shadow: 0 1px 3px rgba(0,0,0,0.05);
 }
 .kb-content video { background: #000; }

@@ -194,6 +194,85 @@ const Video = Node.create({
     },
 });
 
+// ── Resizable image node ──────────────────────────────────────────────────────
+// Extends the standard Image with a width attribute and a corner drag handle so
+// the author can adjust how big an inserted image appears. The width is saved on
+// the <img> tag, so the article view renders it at the chosen size.
+const ResizableImage = Image.extend({
+    addAttributes() {
+        return {
+            ...this.parent?.(),
+            width: {
+                default: null,
+                parseHTML: el => el.getAttribute('width'),
+                renderHTML: attrs => (attrs.width ? { width: attrs.width } : {}),
+            },
+        };
+    },
+
+    addNodeView() {
+        return ({ node, editor, getPos }) => {
+            const wrap = document.createElement('div');
+            wrap.className = 'kb-img-wrap';
+
+            const img = document.createElement('img');
+            img.src = node.attrs.src;
+            if (node.attrs.alt) img.alt = node.attrs.alt;
+            const applyWidth = (w) => {
+                img.style.width = w ? (/[%a-z]/i.test(String(w)) ? w : w + 'px') : '';
+            };
+            applyWidth(node.attrs.width);
+            wrap.appendChild(img);
+
+            const handle = document.createElement('span');
+            handle.className = 'kb-img-handle';
+            handle.title = 'Drag to resize';
+            wrap.appendChild(handle);
+
+            let startX = 0, startW = 0, resizing = false;
+            const onMove = (e) => {
+                if (! resizing) return;
+                img.style.width = Math.max(60, Math.round(startW + (e.clientX - startX))) + 'px';
+            };
+            const onUp = () => {
+                if (! resizing) return;
+                resizing = false;
+                document.removeEventListener('pointermove', onMove);
+                document.removeEventListener('pointerup', onUp);
+                const pos = typeof getPos === 'function' ? getPos() : null;
+                if (pos == null) return;
+                const cur = editor.view.state.doc.nodeAt(pos);
+                if (! cur) return;
+                const w = Math.round(img.getBoundingClientRect().width);
+                editor.view.dispatch(
+                    editor.view.state.tr.setNodeMarkup(pos, undefined, { ...cur.attrs, width: w })
+                );
+            };
+            handle.addEventListener('pointerdown', (e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                resizing = true;
+                startX = e.clientX;
+                startW = img.getBoundingClientRect().width;
+                document.addEventListener('pointermove', onMove);
+                document.addEventListener('pointerup', onUp);
+            });
+
+            return {
+                dom: wrap,
+                update(updatedNode) {
+                    if (updatedNode.type.name !== node.type.name) return false;
+                    if (updatedNode.attrs.src !== img.getAttribute('src')) img.src = updatedNode.attrs.src;
+                    applyWidth(updatedNode.attrs.width);
+                    return true;
+                },
+                selectNode() { wrap.classList.add('kb-img-selected'); },
+                deselectNode() { wrap.classList.remove('kb-img-selected'); },
+            };
+        };
+    },
+});
+
 // ── Editor ────────────────────────────────────────────────────────────────────
 
 const editor = useEditor({
@@ -204,7 +283,7 @@ const editor = useEditor({
         TextAlign.configure({ types: ['heading', 'paragraph'] }),
         Link.configure({ openOnClick: false }),
         Placeholder.configure({ placeholder: props.placeholder }),
-        Image.configure({ inline: false, allowBase64: false }),
+        ResizableImage.configure({ inline: false, allowBase64: false }),
         Video,
     ],
     editorProps: {
@@ -478,6 +557,45 @@ async function uploadFile(file) {
     border-radius: 0.5rem;
     display: block;
     margin: 0.5rem auto;
+}
+
+/* Resizable image: wrapper shrinks to the image, handle sits at the corner */
+.tiptap-content .ProseMirror .kb-img-wrap {
+    position: relative;
+    display: block;
+    width: fit-content;
+    max-width: 100%;
+    margin: 0.75rem auto;
+    line-height: 0;
+}
+.tiptap-content .ProseMirror .kb-img-wrap img {
+    margin: 0;
+    max-width: 100%;
+    height: auto;
+    border: 1px solid #e5e7eb;
+}
+.tiptap-content .ProseMirror .kb-img-handle {
+    position: absolute;
+    right: -6px;
+    bottom: -6px;
+    width: 14px;
+    height: 14px;
+    border-radius: 3px;
+    background: #EF233C;
+    border: 2px solid #fff;
+    box-shadow: 0 1px 2px rgba(0,0,0,0.25);
+    cursor: nwse-resize;
+    opacity: 0;
+    transition: opacity 0.15s;
+    touch-action: none;
+}
+.tiptap-content .ProseMirror .kb-img-wrap:hover .kb-img-handle,
+.tiptap-content .ProseMirror .kb-img-wrap.kb-img-selected .kb-img-handle {
+    opacity: 1;
+}
+.tiptap-content .ProseMirror .kb-img-wrap.kb-img-selected img {
+    outline: 2px solid #EF233C;
+    outline-offset: 1px;
 }
 
 .tiptap-content .ProseMirror .kb-video,
