@@ -177,6 +177,16 @@
                 </nav>
             </aside>
         </div>
+
+        <ConfirmModal
+            :open="confirmDelete"
+            title="Delete article?"
+            :message="`“${article.title}” will be permanently deleted. This cannot be undone.`"
+            confirmLabel="Delete"
+            danger
+            @confirm="performDelete"
+            @cancel="confirmDelete = false"
+        />
     </AppLayout>
 </template>
 
@@ -185,6 +195,7 @@ import { ref, computed, onMounted, watch } from 'vue';
 import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TiptapEditor from '@/Components/TiptapEditor.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 import { ArrowLeftIcon, ChevronRightIcon, LockClosedIcon, LinkIcon, CheckIcon, PencilSquareIcon } from '@heroicons/vue/24/outline';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
@@ -257,8 +268,14 @@ function togglePublish() {
     });
 }
 
+const confirmDelete = ref(false);
+
 function deleteArticle() {
-    if (! confirm('Delete this article permanently?')) return;
+    confirmDelete.value = true;
+}
+
+function performDelete() {
+    confirmDelete.value = false;
     router.delete(route('kb.articles.destroy', [props.category.id, props.article.id]));
 }
 

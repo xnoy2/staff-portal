@@ -262,6 +262,15 @@
                 </div>
             </Transition>
         </Teleport>
+        <ConfirmModal
+            :open="confirmCategoryDelete"
+            title="Delete category?"
+            :message="`“${editingCategory?.name}” and all of its articles will be permanently deleted. This cannot be undone.`"
+            confirmLabel="Delete"
+            danger
+            @confirm="performCategoryDelete"
+            @cancel="confirmCategoryDelete = false"
+        />
     </AppLayout>
 </template>
 
@@ -271,6 +280,7 @@ import { router, Link } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import TiptapEditor from '@/Components/TiptapEditor.vue';
 import EmojiPicker from '@/Components/EmojiPicker.vue';
+import ConfirmModal from '@/Components/ConfirmModal.vue';
 import {
     BookOpenIcon, PlusIcon, MagnifyingGlassIcon, XMarkIcon, LockClosedIcon,
 } from '@heroicons/vue/24/outline';
@@ -369,10 +379,15 @@ function submitCategory() {
     }
 }
 
+const confirmCategoryDelete = ref(false);
+
 function deleteCategory() {
-    if (! confirm('Delete this category and all its articles?')) return;
+    confirmCategoryDelete.value = true;
+}
+
+function performCategoryDelete() {
     router.delete(route('kb.categories.destroy', editingCategory.value.id), {
-        onFinish: () => closeCategoryModal(),
+        onFinish: () => { confirmCategoryDelete.value = false; closeCategoryModal(); },
     });
 }
 
