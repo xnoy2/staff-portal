@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Events\AttendanceUpdated;
+use App\Models\OvertimeRequest;
 use App\Models\TimeEntry;
 use App\Models\TimeEntryBreak;
 use App\Models\User;
@@ -38,6 +39,10 @@ class AttendanceController extends Controller
 
         $entries = $query->paginate(25)->withQueryString();
 
+        // Flag which entries have APPROVED overtime so the UI only badges genuine
+        // OT (a filed + approved request), not just any shift over 8 hours.
+        $this->markApprovedOvertime($entries->getCollection());
+
         $pendingCount = TimeEntry::pending()->count();
 
         $staffList = $isPrivileged
@@ -58,6 +63,44 @@ class AttendanceController extends Controller
             'filters'      => $request->only(['user_id', 'status', 'from', 'to']),
             'activeEntry'  => $activeEntry ? $this->entryPayload($activeEntry) : null,
         ]);
+    }
+
+    /**
+     * Set an `ot_approved` flag on each entry: true when the shift is covered by an
+     * approved OvertimeRequest — linked directly to the entry, or matching the
+     * worker's local date. Used so the UI only shows an "OT" badge for real,
+     * approved overtime rather than any shift over 8 hours.
+     */
+    private function markApprovedOvertime($entries): void
+    {
+        if ($entries->isEmpty()) {
+            return;
+        }
+
+        $entryIds = $entries->pluck('id')->all();
+        $userIds  = $entries->pluck('user_id')->unique()->values()->all();
+
+        $approved = OvertimeRequest::where('status', 'approved')
+            ->where(function ($q) use ($entryIds, $userIds) {
+                $q->whereIn('time_entry_id', $entryIds)
+                  ->orWhere(function ($q2) use ($userIds) {
+                      $q2->whereNull('time_entry_id')->whereIn('user_id', $userIds);
+                  });
+            })
+            ->get(['time_entry_id', 'user_id', 'date']);
+
+        $byEntry    = $approved->whereNotNull('time_entry_id')->pluck('time_entry_id')->flip();
+        $byUserDate = $approved->whereNull('time_entry_id')
+            ->map(fn ($r) => $r->user_id . '|' . $r->date->toDateString())
+            ->flip();
+
+        foreach ($entries as $e) {
+            $tz        = $e->user?->timezone ?? 'Europe/London';
+            $localDate = $e->clock_in?->copy()->setTimezone($tz)->toDateString();
+            $e->setAttribute('ot_approved',
+                isset($byEntry[$e->id]) || ($localDate && isset($byUserDate[$e->user_id . '|' . $localDate]))
+            );
+        }
     }
 
     public function clockIn(Request $request): RedirectResponse

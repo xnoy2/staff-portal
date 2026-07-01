@@ -90,7 +90,7 @@
             <div
                 v-for="entry in entries.data"
                 :key="entry.id"
-                :class="['bg-white rounded-xl border border-gray-200 p-4', entry.is_overtime && 'border-l-4 border-l-amber-400']"
+                :class="['bg-white rounded-xl border border-gray-200 p-4', entry.ot_approved && 'border-l-4 border-l-amber-400']"
             >
                 <div class="flex items-start justify-between gap-2 mb-3">
                     <div class="flex items-center gap-2 min-w-0">
@@ -110,7 +110,7 @@
                     </div>
                     <div class="flex items-center gap-1.5 flex-shrink-0">
                         <span :class="statusClass(entry.status)">{{ entry.status }}</span>
-                        <span v-if="entry.is_overtime" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">OT</span>
+                        <span v-if="entry.ot_approved" class="text-xs bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-medium">OT</span>
                         <span v-if="entry.flagged" class="text-xs bg-red-100 text-red-700 px-1.5 py-0.5 rounded font-medium" title="Unusually long shift — check for a missed clock-out">⚠</span>
                     </div>
                 </div>
@@ -179,7 +179,7 @@
                         <tr
                             v-for="entry in entries.data"
                             :key="entry.id"
-                            :class="['hover:bg-gray-50 transition-colors', entry.is_overtime ? 'bg-amber-50/40' : '']"
+                            :class="['hover:bg-gray-50 transition-colors', entry.ot_approved ? 'bg-amber-50/40' : '']"
                         >
                             <td v-if="isManager" class="px-4 py-3">
                                 <input v-if="entry.status === 'pending'" type="checkbox" :value="entry.id" v-model="selectedIds" class="rounded border-gray-300 text-[#EF233C] focus:ring-[#EF233C]" />
@@ -203,7 +203,7 @@
                                 <span v-if="entry.total_hours" :class="entry.flagged ? 'text-red-600 font-semibold' : ''">{{ entry.total_hours }}h</span>
                                 <span v-else-if="!entry.clock_out" class="text-green-600 font-medium text-xs">In progress</span>
                                 <span v-else>—</span>
-                                <span v-if="entry.is_overtime" class="ml-1 text-xs bg-amber-100 text-amber-700 px-1 py-0.5 rounded font-medium">OT</span>
+                                <span v-if="entry.ot_approved" class="ml-1 text-xs bg-amber-100 text-amber-700 px-1 py-0.5 rounded font-medium">OT</span>
                                 <span v-if="entry.flagged" class="ml-1 text-xs bg-red-100 text-red-700 px-1 py-0.5 rounded font-medium" title="Unusually long shift — check for a missed clock-out">⚠ Review</span>
                             </td>
                             <td class="px-4 py-3">
