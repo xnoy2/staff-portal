@@ -8,6 +8,7 @@ use App\Models\TimeEntry;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Carbon\CarbonInterface;
 use Illuminate\Support\Carbon;
 
 class PayrollRun extends Model
@@ -98,7 +99,7 @@ class PayrollRun extends Model
     /**
      * Generate a payroll run for a staff member and period, then save it.
      */
-    public static function generate(User $staff, Carbon $from, Carbon $to, ?string $generatedBy): self
+    public static function generate(User $staff, CarbonInterface $from, CarbonInterface $to, ?string $generatedBy): self
     {
         $computed      = static::computePeriod($staff, $from, $to);
         $entries       = $computed['entries'];
@@ -181,7 +182,7 @@ class PayrollRun extends Model
      *
      * @return array{entries:\Illuminate\Support\Collection, regularHours:float, overtimeHours:float, rows:array}
      */
-    public static function computePeriod(User $staff, Carbon $from, Carbon $to): array
+    public static function computePeriod(User $staff, CarbonInterface $from, CarbonInterface $to): array
     {
         // Attribute shifts to the period by the worker's LOCAL day, then convert the
         // window to UTC instants for the query (times are stored in UTC).
