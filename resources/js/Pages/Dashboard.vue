@@ -165,6 +165,21 @@
                         </div>
                         <p class="mt-2 text-xs text-gray-400">Present this to your site head for scanning</p>
                     </div>
+
+                    <!-- Today's activity log -->
+                    <Link v-if="todayLog" href="/my-day" class="block bg-white rounded-xl border border-gray-200 p-4 hover:border-[#EF233C]/40 transition-colors">
+                        <div class="flex items-center gap-3">
+                            <div class="w-9 h-9 rounded-lg bg-amber-50 flex items-center justify-center flex-shrink-0">
+                                <SunIcon class="w-5 h-5 text-amber-500" />
+                            </div>
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-semibold text-gray-800">Today's Log</p>
+                                <p class="text-xs text-gray-400">{{ todayLog.activities }} {{ todayLog.activities === 1 ? 'activity' : 'activities' }} logged</p>
+                            </div>
+                            <span v-if="todayLog.status === 'submitted'" class="text-xs font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">Submitted</span>
+                            <span v-else class="text-xs font-medium bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">Log now</span>
+                        </div>
+                    </Link>
                 </div>
 
                 <!-- Right: Weekly hours + recent entries + leave + upcoming jobs -->
@@ -283,7 +298,7 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import Chart from 'primevue/chart';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import ClockWidget from '@/Components/ClockWidget.vue';
-import { ArrowRightOnRectangleIcon } from '@heroicons/vue/24/outline';
+import { ArrowRightOnRectangleIcon, SunIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     isManager:        { type: Boolean, default: false },
@@ -299,6 +314,7 @@ const props = defineProps({
     leaveBalance:     { type: Object, default: () => ({ entitlement: 28, used: 0, pending: 0, remaining: 28 }) },
     upcomingJobs:     { type: Array,  default: () => [] },
     todayApprovedOt:  { type: String, default: null },
+    todayLog:         { type: Object, default: null },
 });
 
 const page = usePage();

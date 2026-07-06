@@ -13,6 +13,7 @@ use App\Http\Controllers\ReportsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\BusinessController;
 use App\Http\Controllers\JobController;
+use App\Http\Controllers\DailyLogController;
 use App\Http\Controllers\LeaveController;
 use App\Http\Controllers\VanAllocationController;
 use App\Http\Controllers\VanController;
@@ -93,6 +94,26 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::post('/{leave}/approve',          [LeaveController::class, 'approve'])->name('approve');
         Route::post('/{leave}/reject',           [LeaveController::class, 'reject'])->name('reject');
         Route::delete('/{leave}',                [LeaveController::class, 'destroy'])->name('destroy');
+    });
+
+    // Daily activity log (staff "My Day")
+    Route::get('/my-day', [DailyLogController::class, 'myDay'])->name('my-day');
+    Route::prefix('daily-log')->name('daily-log.')->group(function () {
+        Route::post('/activities',                  [DailyLogController::class, 'storeActivity'])->name('activities.store');
+        Route::post('/activities/reorder',          [DailyLogController::class, 'reorderActivities'])->name('activities.reorder');
+        Route::patch('/activities/{activity}',      [DailyLogController::class, 'updateActivity'])->name('activities.update');
+        Route::delete('/activities/{activity}',     [DailyLogController::class, 'destroyActivity'])->name('activities.destroy');
+        Route::post('/photo',                       [DailyLogController::class, 'uploadPhoto'])->name('photo');
+        Route::post('/save',                        [DailyLogController::class, 'saveLog'])->name('save');
+        Route::post('/{dailyLog}/reopen',           [DailyLogController::class, 'reopenLog'])->name('reopen');
+    });
+
+    // Manager: team activity logs
+    Route::prefix('activity-logs')->name('activity-logs.')->group(function () {
+        Route::get('/',                    [DailyLogController::class, 'managerIndex'])->name('index');
+        Route::get('/export',              [DailyLogController::class, 'export'])->name('export');
+        Route::get('/{dailyLog}',          [DailyLogController::class, 'managerShow'])->name('show');
+        Route::post('/{dailyLog}/acknowledge', [DailyLogController::class, 'acknowledge'])->name('acknowledge');
     });
 
     // Vans

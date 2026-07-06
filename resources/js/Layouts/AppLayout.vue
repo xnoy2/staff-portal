@@ -47,6 +47,7 @@
                     <NavItem href="/schedule"                                  icon="CalendarIcon"              label="Schedule"   :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/calendar"                                  icon="CalendarDaysIcon"          label="Calendar"   :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/attendance"                                icon="ClockIcon"                 label="Attendance" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('my-day')"                      routeName="my-day"               icon="SunIcon"                   label="My Day"     :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem :href="route('overtime.index')"              routeName="overtime.index" icon="BriefcaseIcon"             label="Overtime"   :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/leave"                                     icon="CalendarDaysIcon"          label="Leave"      :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/my-qr"                                    icon="QrCodeIcon"                label="My QR Code" :collapsed="!sidebarOpen && !isMobile" />
@@ -112,6 +113,7 @@
                     <NavItem href="/staff"             icon="UsersIcon"    label="Staff"           :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/vans"              icon="TruckIcon"    label="Vans"            :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/subcontractors"    icon="WrenchIcon"   label="Subcontractors"  :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('activity-logs.index')" routeName="activity-logs.*" icon="ClipboardDocumentCheckIcon" label="Activity Logs" :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
 
                 <NavGroup v-if="isAdmin || isManager" label="Admin" :collapsed="!sidebarOpen && !isMobile">

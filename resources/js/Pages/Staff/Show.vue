@@ -303,6 +303,30 @@
                     </div>
                 </div>
 
+                <!-- ── EOD / Daily logs tab ──────────────────────────────── -->
+                <div v-show="activeTab === 'eod'" class="p-5">
+                    <div class="flex items-center justify-between mb-3">
+                        <h3 class="text-sm font-semibold text-gray-800">Daily Logs</h3>
+                        <Link :href="route('activity-logs.index', { user_id: staffMember.id })" class="text-xs text-[#EF233C] hover:underline">View all</Link>
+                    </div>
+                    <div v-if="!dailyLogs.length" class="text-center py-10 text-gray-400 text-sm">No daily logs yet.</div>
+                    <div v-else class="space-y-2">
+                        <Link
+                            v-for="l in dailyLogs"
+                            :key="l.id"
+                            :href="route('activity-logs.show', l.id)"
+                            class="flex items-center gap-3 px-3 py-2.5 rounded-xl border border-gray-100 hover:bg-gray-50 transition-colors"
+                        >
+                            <div class="flex-1 min-w-0">
+                                <p class="text-sm font-medium text-gray-800">{{ formatDate(l.log_date) }}</p>
+                                <p class="text-xs text-gray-400">{{ l.activities }} {{ l.activities === 1 ? 'activity' : 'activities' }} · {{ formatMins(l.minutes) }}</p>
+                            </div>
+                            <span v-if="l.acknowledged" class="text-xs text-emerald-600 inline-flex items-center gap-1"><CheckCircleIcon class="w-4 h-4" /></span>
+                            <span :class="l.status === 'submitted' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'" class="text-xs font-medium px-2 py-0.5 rounded-full capitalize">{{ l.status }}</span>
+                        </Link>
+                    </div>
+                </div>
+
             </div><!-- end tab container -->
         </div>
     </AppLayout>
@@ -328,17 +352,31 @@ const props = defineProps({
     recentJobs:        { type: Array,  default: () => [] },
     canEdit:           { type: Boolean, default: false },
     hasOnboarding:     { type: Boolean, default: false },
+    dailyLogs:         { type: Array,  default: () => [] },
 });
 
 const activeTab = ref('overview');
 
-const tabs = computed(() => [
-    { id: 'overview',    label: 'Overview',    icon: UserCircleIcon,      count: null },
-    { id: 'jobs',        label: 'Jobs',        icon: BriefcaseIcon,       count: props.jobStats.total },
-    { id: 'projects',    label: 'Projects',    icon: FolderIcon,          count: props.projects.length },
-    { id: 'attendance',  label: 'Attendance',  icon: ClockIcon,           count: props.recentEntries.length },
-    { id: 'payroll',     label: 'Payroll',     icon: CurrencyPoundIcon,   count: props.recentPayrollRuns.length },
-]);
+const tabs = computed(() => {
+    const list = [
+        { id: 'overview',    label: 'Overview',    icon: UserCircleIcon,      count: null },
+        { id: 'jobs',        label: 'Jobs',        icon: BriefcaseIcon,       count: props.jobStats.total },
+        { id: 'projects',    label: 'Projects',    icon: FolderIcon,          count: props.projects.length },
+        { id: 'attendance',  label: 'Attendance',  icon: ClockIcon,           count: props.recentEntries.length },
+        { id: 'payroll',     label: 'Payroll',     icon: CurrencyPoundIcon,   count: props.recentPayrollRuns.length },
+    ];
+    // EOD links to the manager-only detail page, so only show it to managers/HR.
+    if (props.canEdit) {
+        list.push({ id: 'eod', label: 'EOD', icon: ClipboardDocumentCheckIcon, count: props.dailyLogs.length });
+    }
+    return list;
+});
+
+function formatMins(m) {
+    if (!m) return '0m';
+    const h = Math.floor(m / 60), min = m % 60;
+    return (h ? `${h}h ` : '') + (min ? `${min}m` : (h ? '' : '0m'));
+}
 
 function toggleActive() {
     router.post(route('staff.toggle-active', props.staffMember.id), {}, { preserveScroll: true });

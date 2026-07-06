@@ -15,3 +15,6 @@ Schedule::command('payroll:generate')->dailyAt('00:05');
 // Board card due-date reminders and recurring-card spawning.
 Schedule::command('cards:due-reminders')->everyMinute()->withoutOverlapping();
 Schedule::command('cards:recur')->everyFiveMinutes()->withoutOverlapping();
+
+// End-of-day activity-log reminders (fires at each worker's local ~6pm).
+Schedule::command('daily-log:remind')->hourly()->withoutOverlapping();
