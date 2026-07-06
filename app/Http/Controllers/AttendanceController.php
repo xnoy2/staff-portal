@@ -103,6 +103,19 @@ class AttendanceController extends Controller
         }
     }
 
+    /**
+     * Broadcast the live attendance update, but never let a broadcasting failure
+     * (e.g. Reverb unreachable) break the attendance action itself.
+     */
+    private function safeBroadcast(): void
+    {
+        try {
+            broadcast(new AttendanceUpdated());
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('Attendance broadcast failed: ' . $e->getMessage());
+        }
+    }
+
     public function clockIn(Request $request): RedirectResponse
     {
         $user = $request->user();
@@ -135,7 +148,7 @@ class AttendanceController extends Controller
             default => 'Clocked in',
         };
 
-        broadcast(new AttendanceUpdated());
+        $this->safeBroadcast();
 
         return back()->with('success', $label . ' at ' . $entry->clock_in->format('H:i'));
     }
@@ -159,7 +172,7 @@ class AttendanceController extends Controller
         $entry->calculateHours();
         $entry->save();
 
-        broadcast(new AttendanceUpdated());
+        $this->safeBroadcast();
 
         $response = back()->with('success', 'Clocked out. Duration: ' . $entry->duration_label);
 
@@ -199,7 +212,7 @@ class AttendanceController extends Controller
         $entry->calculateHours();
         $entry->save();
 
-        broadcast(new AttendanceUpdated());
+        $this->safeBroadcast();
 
         return back()->with('success', "{$user->name} has been clocked out successfully.");
     }
@@ -228,7 +241,7 @@ class AttendanceController extends Controller
             'started_at'    => now(),
         ]);
 
-        broadcast(new AttendanceUpdated());
+        $this->safeBroadcast();
 
         $label = $type === 'lunch' ? 'Lunch break started' : 'Break started';
         return back()->with('success', $label . ' at ' . now()->format('H:i'));
@@ -252,7 +265,7 @@ class AttendanceController extends Controller
         $break->end();
         $entry->update(['clock_state' => 'working']);
 
-        broadcast(new AttendanceUpdated());
+        $this->safeBroadcast();
 
         $label = $break->type === 'lunch' ? 'Back from lunch' : 'Break ended';
         return back()->with('success', $label . ' · ' . $break->duration_minutes . ' min');
