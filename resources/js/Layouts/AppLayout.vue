@@ -113,7 +113,7 @@
                     <NavItem href="/staff"             icon="UsersIcon"    label="Staff"           :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/vans"              icon="TruckIcon"    label="Vans"            :collapsed="!sidebarOpen && !isMobile" />
                     <NavItem href="/subcontractors"    icon="WrenchIcon"   label="Subcontractors"  :collapsed="!sidebarOpen && !isMobile" />
-                    <NavItem :href="route('activity-logs.index')" routeName="activity-logs.*" icon="ClipboardDocumentCheckIcon" label="Activity Logs" :collapsed="!sidebarOpen && !isMobile" />
+                    <NavItem :href="route('activity-logs.index')" routeName="activity-logs.*" icon="ClipboardDocumentCheckIcon" label="Daily Logs" :collapsed="!sidebarOpen && !isMobile" />
                 </NavGroup>
 
                 <NavGroup v-if="isAdmin || isManager" label="Admin" :collapsed="!sidebarOpen && !isMobile">

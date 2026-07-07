@@ -1,10 +1,10 @@
 <template>
-    <AppLayout title="Activity Logs">
+    <AppLayout title="Daily Logs">
         <div class="max-w-6xl mx-auto space-y-4">
 
             <div class="flex flex-wrap items-center justify-between gap-3">
                 <div>
-                    <h1 class="text-lg font-semibold text-gray-800">Activity Logs</h1>
+                    <h1 class="text-lg font-semibold text-gray-800">Daily Logs</h1>
                     <p class="text-xs text-gray-500 mt-0.5">
                         <span v-if="pendingToday > 0" class="text-amber-600 font-medium">{{ pendingToday }} not submitted today</span>
                         <span v-else>Team end-of-day logs</span>
@@ -64,7 +64,11 @@
                     <img :src="l.user.avatar_url" :alt="l.user.name" class="w-9 h-9 rounded-full object-cover flex-shrink-0" />
                     <div class="flex-1 min-w-0">
                         <p class="text-sm font-semibold text-gray-800 truncate">{{ l.user.name }}</p>
-                        <p class="text-xs text-gray-400">{{ prettyDate(l.log_date) }} · {{ l.activities_count }} activities · {{ formatMins(l.minutes) }}</p>
+                        <p class="text-xs text-gray-400">
+                            {{ prettyDate(l.log_date) }}
+                            <span v-if="l.jobs"> · {{ l.jobs }} job{{ l.jobs === 1 ? '' : 's' }}</span>
+                            <span v-if="l.photos"> · {{ l.photos }} photo{{ l.photos === 1 ? '' : 's' }}</span>
+                        </p>
                     </div>
                     <span v-if="l.acknowledged" class="text-xs text-emerald-600 inline-flex items-center gap-1"><CheckBadgeIcon class="w-4 h-4" /></span>
                     <span :class="l.status === 'submitted' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'" class="text-xs font-medium px-2 py-0.5 rounded-full capitalize">{{ l.status }}</span>
@@ -114,5 +118,4 @@ const exportUrl = computed(() => {
 });
 
 function prettyDate(d) { return new Date(d + 'T00:00:00').toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' }); }
-function formatMins(m) { if (!m) return '0m'; const h = Math.floor(m / 60); const min = m % 60; return (h ? `${h}h ` : '') + (min ? `${min}m` : (h ? '' : '0m')); }
 </script>

@@ -319,7 +319,12 @@
                         >
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-medium text-gray-800">{{ formatDate(l.log_date) }}</p>
-                                <p class="text-xs text-gray-400">{{ l.activities }} {{ l.activities === 1 ? 'activity' : 'activities' }} · {{ formatMins(l.minutes) }}</p>
+                                <p class="text-xs text-gray-400">
+                                    <span v-if="l.jobs">{{ l.jobs }} job{{ l.jobs === 1 ? '' : 's' }}</span>
+                                    <span v-if="l.jobs && l.photos"> · </span>
+                                    <span v-if="l.photos">{{ l.photos }} photo{{ l.photos === 1 ? '' : 's' }}</span>
+                                    <span v-if="!l.jobs && !l.photos">EOD log</span>
+                                </p>
                             </div>
                             <span v-if="l.acknowledged" class="text-xs text-emerald-600 inline-flex items-center gap-1"><CheckCircleIcon class="w-4 h-4" /></span>
                             <span :class="l.status === 'submitted' ? 'bg-emerald-50 text-emerald-700' : 'bg-amber-50 text-amber-700'" class="text-xs font-medium px-2 py-0.5 rounded-full capitalize">{{ l.status }}</span>
@@ -372,11 +377,6 @@ const tabs = computed(() => {
     return list;
 });
 
-function formatMins(m) {
-    if (!m) return '0m';
-    const h = Math.floor(m / 60), min = m % 60;
-    return (h ? `${h}h ` : '') + (min ? `${min}m` : (h ? '' : '0m'));
-}
 
 function toggleActive() {
     router.post(route('staff.toggle-active', props.staffMember.id), {}, { preserveScroll: true });

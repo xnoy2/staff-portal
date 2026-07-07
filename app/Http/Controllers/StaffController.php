@@ -179,17 +179,15 @@ class StaffController extends Controller
             'canEdit'          => $canEdit,
             'hasOnboarding'    => $hasOnboarding,
             'dailyLogs'        => \App\Models\DailyLog::where('user_id', $staff->id)
-                ->withCount('activities')
-                ->withSum('activities', 'duration_minutes')
                 ->orderBy('log_date', 'desc')
                 ->limit(20)
-                ->get()
+                ->get(['id', 'log_date', 'status', 'photos', 'jobs', 'acknowledged_at'])
                 ->map(fn ($l) => [
                     'id'           => $l->id,
                     'log_date'     => $l->log_date->toDateString(),
                     'status'       => $l->status,
-                    'activities'   => $l->activities_count,
-                    'minutes'      => $l->total_minutes,
+                    'photos'       => count($l->photos ?? []),
+                    'jobs'         => count($l->jobs ?? []),
                     'acknowledged' => ! is_null($l->acknowledged_at),
                 ]),
             'recentEntries'    => $recentEntries,

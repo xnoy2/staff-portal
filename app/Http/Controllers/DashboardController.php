@@ -240,11 +240,10 @@ class DashboardController extends Controller
             ->where('status', 'approved')
             ->first();
 
-        // Today's activity log (dashboard nudge)
+        // Today's log (dashboard nudge)
         $logDate  = \Illuminate\Support\Carbon::now($user->timezone)->toDateString();
         $todayLog = \App\Models\DailyLog::where('user_id', $user->id)
             ->where('log_date', $logDate)
-            ->withCount('activities')
             ->first();
 
         return [
@@ -253,9 +252,9 @@ class DashboardController extends Controller
             'recentEntries' => $recentEntries,
             'todayApprovedOt' => $todayOt ? $todayOt->type : null,
             'todayLog'      => [
-                'date'       => $logDate,
-                'activities' => $todayLog?->activities_count ?? 0,
-                'status'     => $todayLog?->status ?? 'none',
+                'date'   => $logDate,
+                'status' => $todayLog?->status ?? 'none',
+                'photos' => count($todayLog?->photos ?? []),
             ],
             'leaveBalance'  => [
                 'entitlement' => $entitlement,

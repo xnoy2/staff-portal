@@ -96,16 +96,12 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::delete('/{leave}',                [LeaveController::class, 'destroy'])->name('destroy');
     });
 
-    // Daily activity log (staff "My Day")
+    // Daily log — staff "My Day" (EOD summary + day photos + job tags)
     Route::get('/my-day', [DailyLogController::class, 'myDay'])->name('my-day');
     Route::prefix('daily-log')->name('daily-log.')->group(function () {
-        Route::post('/activities',                  [DailyLogController::class, 'storeActivity'])->name('activities.store');
-        Route::post('/activities/reorder',          [DailyLogController::class, 'reorderActivities'])->name('activities.reorder');
-        Route::patch('/activities/{activity}',      [DailyLogController::class, 'updateActivity'])->name('activities.update');
-        Route::delete('/activities/{activity}',     [DailyLogController::class, 'destroyActivity'])->name('activities.destroy');
-        Route::post('/photo',                       [DailyLogController::class, 'uploadPhoto'])->name('photo');
-        Route::post('/save',                        [DailyLogController::class, 'saveLog'])->name('save');
-        Route::post('/{dailyLog}/reopen',           [DailyLogController::class, 'reopenLog'])->name('reopen');
+        Route::post('/photo',              [DailyLogController::class, 'uploadPhoto'])->name('photo');
+        Route::post('/save',               [DailyLogController::class, 'saveLog'])->name('save');
+        Route::post('/{dailyLog}/reopen',  [DailyLogController::class, 'reopenLog'])->name('reopen');
     });
 
     // Manager: team activity logs

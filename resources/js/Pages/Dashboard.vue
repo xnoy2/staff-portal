@@ -174,7 +174,7 @@
                             </div>
                             <div class="flex-1 min-w-0">
                                 <p class="text-sm font-semibold text-gray-800">Today's Log</p>
-                                <p class="text-xs text-gray-400">{{ todayLog.activities }} {{ todayLog.activities === 1 ? 'activity' : 'activities' }} logged</p>
+                                <p class="text-xs text-gray-400">{{ todayLog.status === 'submitted' ? 'Submitted for today' : 'Write your end-of-day summary' }}</p>
                             </div>
                             <span v-if="todayLog.status === 'submitted'" class="text-xs font-medium bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-full">Submitted</span>
                             <span v-else class="text-xs font-medium bg-amber-50 text-amber-700 px-2 py-0.5 rounded-full">Log now</span>
