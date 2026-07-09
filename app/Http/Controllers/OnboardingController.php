@@ -112,7 +112,9 @@ class OnboardingController extends Controller
 
         $file       = $request->file('document');
         $storedName = Str::uuid() . '.' . $file->getClientOriginalExtension();
-        $path       = $file->storeAs("medical-documents/{$staff->id}", $storedName, 'private');
+        // Stored on r2 (durable) under an unguessable key; only ever streamed
+        // back through the authenticated download() route, never a public URL.
+        $path       = $file->storeAs("medical-documents/{$staff->id}", $storedName, 'r2');
 
         StaffMedicalDocument::create([
             'user_id'       => $staff->id,
@@ -132,9 +134,9 @@ class OnboardingController extends Controller
         abort_unless($this->canAccess($staff), 403);
         abort_if($document->user_id !== $staff->id, 404);
 
-        abort_unless(Storage::disk('private')->exists($document->path), 404);
+        abort_unless(Storage::disk('r2')->exists($document->path), 404);
 
-        return Storage::disk('private')->download($document->path, $document->original_name);
+        return Storage::disk('r2')->download($document->path, $document->original_name);
     }
 
     public function deleteDocument(Request $request, User $staff, StaffMedicalDocument $document): RedirectResponse
@@ -142,7 +144,7 @@ class OnboardingController extends Controller
         abort_unless($request->user()->hasAnyRole(['admin', 'manager', 'hr']), 403);
         abort_if($document->user_id !== $staff->id, 404);
 
-        Storage::disk('private')->delete($document->path);
+        Storage::disk('r2')->delete($document->path);
         $document->delete();
 
         return back()->with('success', 'Document deleted.');
