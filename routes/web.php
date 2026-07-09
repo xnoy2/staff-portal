@@ -194,6 +194,7 @@ Route::middleware(['auth', 'verified'])->group(function () {
         Route::get('/',                                          [TrainingController::class, 'index'])->name('index');
         Route::get('/stream/{lesson}',                           [TrainingController::class, 'stream'])->name('stream');
         Route::get('/{module}',                                  [TrainingController::class, 'module'])->name('module');
+        Route::get('/{module}/certificate',                      [TrainingController::class, 'certificate'])->name('certificate');
         Route::get('/{module}/{lesson}',                         [TrainingController::class, 'watch'])->name('watch');
         Route::post('/{lesson}/progress',                        [TrainingController::class, 'updateProgress'])->name('progress');
         // Admin / Manager

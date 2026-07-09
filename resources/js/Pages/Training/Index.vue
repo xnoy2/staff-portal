@@ -89,6 +89,14 @@
                                 Manage
                             </Link>
                             <span v-else class="flex-1 text-center text-xs text-gray-400 py-2">No lessons yet</span>
+                            <Link
+                                v-if="mod.lesson_count > 0 && mod.completed === mod.lesson_count"
+                                :href="route('training.certificate', mod.id)"
+                                class="flex-shrink-0 inline-flex items-center gap-1 text-xs font-semibold bg-emerald-50 hover:bg-emerald-100 text-emerald-700 border border-emerald-200 px-3 py-2 rounded-lg transition-colors"
+                                title="View your certificate"
+                            >
+                                <AcademicCapIcon class="w-3.5 h-3.5" /> Certificate
+                            </Link>
 
                             <!-- Admin controls -->
                             <template v-if="isPrivileged">

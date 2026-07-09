@@ -44,6 +44,15 @@ class ProfileController extends Controller
                 'status'   => $p->status,
                 'role'     => $p->pivot->role,
             ]),
+            'trainingCertificates' => \App\Models\TrainingCertificate::where('user_id', $user->id)
+                ->orderBy('issued_at', 'desc')
+                ->get()
+                ->map(fn ($c) => [
+                    'module_id' => $c->module_id,
+                    'title'     => $c->module_title,
+                    'reference' => $c->reference,
+                    'issued_at' => $c->issued_at?->copy()->setTimezone($user->timezone)->format('j M Y'),
+                ]),
         ]);
     }
 

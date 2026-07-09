@@ -127,6 +127,22 @@
                         </div>
                     </div>
 
+                    <!-- Training certificates -->
+                    <div>
+                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Training Certificates</p>
+                        <div v-if="trainingCertificates.length" class="space-y-1.5">
+                            <div v-for="c in trainingCertificates" :key="c.reference"
+                                class="flex items-center gap-3 bg-gray-50 rounded-lg px-4 py-2.5">
+                                <AcademicCapIcon class="w-5 h-5 text-green-600 shrink-0" />
+                                <div class="min-w-0">
+                                    <p class="text-sm font-medium text-gray-800 truncate">{{ c.title }}</p>
+                                    <p class="text-xs text-gray-500">Issued {{ c.issued_at }} · No. {{ c.reference }}</p>
+                                </div>
+                            </div>
+                        </div>
+                        <p v-else class="text-sm text-gray-400">No certificates earned yet.</p>
+                    </div>
+
                     <!-- Notes -->
                     <div v-if="staffMember.notes">
                         <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">Notes</p>
@@ -344,20 +360,21 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import {
     PencilIcon, NoSymbolIcon, CheckCircleIcon, FolderIcon,
     DocumentTextIcon, ClipboardDocumentCheckIcon, BriefcaseIcon,
-    UserCircleIcon, ClockIcon, CurrencyPoundIcon,
+    UserCircleIcon, ClockIcon, CurrencyPoundIcon, AcademicCapIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    staffMember:       { type: Object, required: true },
-    recentEntries:     { type: Array,  default: () => [] },
-    totalHours:        { type: Number, default: 0 },
-    projects:          { type: Array,  default: () => [] },
-    recentPayrollRuns: { type: Array,  default: () => [] },
-    jobStats:          { type: Object, default: () => ({ total: 0, thisMonth: 0, completed: 0, completionRate: 0 }) },
-    recentJobs:        { type: Array,  default: () => [] },
-    canEdit:           { type: Boolean, default: false },
-    hasOnboarding:     { type: Boolean, default: false },
-    dailyLogs:         { type: Array,  default: () => [] },
+    staffMember:          { type: Object, required: true },
+    recentEntries:        { type: Array,  default: () => [] },
+    totalHours:           { type: Number, default: 0 },
+    projects:             { type: Array,  default: () => [] },
+    recentPayrollRuns:    { type: Array,  default: () => [] },
+    jobStats:             { type: Object, default: () => ({ total: 0, thisMonth: 0, completed: 0, completionRate: 0 }) },
+    recentJobs:           { type: Array,  default: () => [] },
+    canEdit:              { type: Boolean, default: false },
+    hasOnboarding:        { type: Boolean, default: false },
+    dailyLogs:            { type: Array,  default: () => [] },
+    trainingCertificates: { type: Array,  default: () => [] },
 });
 
 const activeTab = ref('overview');

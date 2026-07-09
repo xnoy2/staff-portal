@@ -139,6 +139,19 @@
                             </Link>
                         </div>
                     </div>
+
+                    <!-- Certificate CTA (all lessons complete) -->
+                    <Link
+                        v-if="curriculum.length > 0 && completedCount === curriculum.length"
+                        :href="route('training.certificate', module.id)"
+                        class="mt-3 flex items-center gap-3 px-4 py-3 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-700 hover:bg-emerald-100 transition-colors"
+                    >
+                        <AcademicCapIcon class="w-6 h-6 flex-shrink-0" />
+                        <div class="min-w-0">
+                            <p class="text-sm font-semibold">Module complete</p>
+                            <p class="text-xs text-emerald-600">View your certificate</p>
+                        </div>
+                    </Link>
                 </div>
 
             </div>
@@ -260,7 +273,7 @@ import ConfirmModal from '@/Components/ConfirmModal.vue';
 import {
     CheckCircleIcon, CheckIcon, PencilIcon, TrashIcon, PlusIcon,
     EyeIcon, EyeSlashIcon, VideoCameraIcon, VideoCameraSlashIcon,
-    ArrowUpTrayIcon,
+    ArrowUpTrayIcon, AcademicCapIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({

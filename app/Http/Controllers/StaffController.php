@@ -190,6 +190,14 @@ class StaffController extends Controller
                     'jobs'         => count($l->jobs ?? []),
                     'acknowledged' => ! is_null($l->acknowledged_at),
                 ]),
+            'trainingCertificates' => \App\Models\TrainingCertificate::where('user_id', $staff->id)
+                ->orderBy('issued_at', 'desc')
+                ->get()
+                ->map(fn ($c) => [
+                    'title'     => $c->module_title,
+                    'reference' => $c->reference,
+                    'issued_at' => $c->issued_at?->copy()->setTimezone($staff->timezone)->format('j M Y'),
+                ]),
             'recentEntries'    => $recentEntries,
             'totalHours'       => round($totalHours, 2),
             'recentPayrollRuns'=> PayrollRun::where('user_id', $staff->id)

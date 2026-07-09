@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\TrainingCertificate;
 use App\Models\TrainingLesson;
 use App\Models\TrainingModule;
 use App\Models\TrainingProgress;
@@ -91,6 +92,42 @@ class TrainingController extends Controller
             'curriculum'   => [],
             'isCompleted'  => false,
             'isPrivileged' => true,
+        ]);
+    }
+
+    /**
+     * Certificate of completion — only issued once the user has completed every
+     * published lesson in the module.
+     */
+    public function certificate(TrainingModule $module): Response|RedirectResponse
+    {
+        $user         = auth()->user();
+        $isPrivileged = $user->hasAnyRole(['admin', 'manager']);
+
+        if (! $isPrivileged) {
+            abort_unless($module->is_published, 404);
+            abort_unless($module->enrolledUsers()->where('user_id', $user->id)->exists(), 403);
+        }
+
+        $cert = TrainingCertificate::issueIfComplete($user, $module);
+
+        if (! $cert) {
+            $first = $module->publishedLessons()->first();
+            return $first
+                ? redirect()->route('training.watch', [$module->id, $first->id])
+                    ->with('error', 'Complete all lessons to earn your certificate.')
+                : redirect()->route('training.index')->with('error', 'This module has no lessons yet.');
+        }
+
+        return Inertia::render('Training/Certificate', [
+            'certificate' => [
+                'name'         => $user->name,
+                'employee_id'  => $user->employee_id,
+                'module'       => $cert->module_title,
+                'lesson_count' => $module->publishedLessons()->count(),
+                'completed_at' => $cert->issued_at?->copy()->setTimezone($user->timezone)->format('j F Y'),
+                'reference'    => $cert->reference,
+            ],
         ]);
     }
 
@@ -246,10 +283,17 @@ class TrainingController extends Controller
 
     public function updateProgress(Request $request, TrainingLesson $lesson): RedirectResponse
     {
+        $user = auth()->user();
+
         TrainingProgress::updateOrCreate(
-            ['user_id' => auth()->id(), 'lesson_id' => $lesson->id],
+            ['user_id' => $user->id, 'lesson_id' => $lesson->id],
             ['completed_at' => $request->boolean('completed') ? now() : null],
         );
+
+        // Issue a certificate once every lesson in the module is complete.
+        if ($request->boolean('completed') && $lesson->module) {
+            TrainingCertificate::issueIfComplete($user, $lesson->module);
+        }
 
         return back()->with('success', $request->boolean('completed') ? 'Lesson marked as complete.' : 'Lesson marked as incomplete.');
     }

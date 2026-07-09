@@ -185,6 +185,32 @@
                 </div>
             </div>
 
+            <!-- Training certificates -->
+            <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                        <AcademicCapIcon class="w-4 h-4 text-emerald-600" />
+                    </div>
+                    <h2 class="text-base font-semibold text-gray-800">Training Certificates</h2>
+                    <span class="text-xs text-gray-400 ml-auto">{{ trainingCertificates.length }}</span>
+                </div>
+                <div v-if="!trainingCertificates.length" class="text-center py-6">
+                    <p class="text-sm text-gray-400">No certificates yet. Complete a training module to earn one.</p>
+                </div>
+                <div v-else class="space-y-2">
+                    <div v-for="c in trainingCertificates" :key="c.reference" class="flex items-center gap-3 p-3 rounded-lg border border-gray-100">
+                        <div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                            <AcademicCapIcon class="w-5 h-5 text-emerald-600" />
+                        </div>
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-800 truncate">{{ c.title }}</p>
+                            <p class="text-xs text-gray-400">Issued {{ c.issued_at }} · No. {{ c.reference }}</p>
+                        </div>
+                        <a v-if="c.module_id" :href="route('training.certificate', c.module_id)" target="_blank" class="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors shrink-0">View</a>
+                    </div>
+                </div>
+            </div>
+
             <!-- Change password -->
             <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
                 <div class="flex items-center gap-3 mb-5">
@@ -230,13 +256,14 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import { ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline';
 import {
     CameraIcon, UserIcon, LockClosedIcon,
-    XMarkIcon, FolderIcon,
+    XMarkIcon, FolderIcon, AcademicCapIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    profileUser:    { type: Object,  required: true },
-    projects:       { type: Array,   default: () => [] },
-    hasOnboarding:  { type: Boolean, default: false },
+    profileUser:          { type: Object,  required: true },
+    projects:             { type: Array,   default: () => [] },
+    trainingCertificates: { type: Array,   default: () => [] },
+    hasOnboarding:        { type: Boolean, default: false },
 });
 
 const qrCodeUrl = computed(() => {
