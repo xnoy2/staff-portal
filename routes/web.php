@@ -23,6 +23,7 @@ use App\Http\Controllers\Auth\ChangePasswordController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\OnboardingController;
+use App\Http\Controllers\HrController;
 use App\Http\Controllers\OvertimeController;
 use App\Http\Controllers\ScheduleController;
 use App\Http\Controllers\BoardController;
@@ -141,6 +142,16 @@ Route::middleware(['auth', 'verified'])->group(function () {
     Route::post('/staff/{staff}/onboarding/documents',                         [OnboardingController::class, 'uploadDocument'])->name('staff.onboarding.documents.upload');
     Route::get('/staff/{staff}/onboarding/documents/{document}/download',      [OnboardingController::class, 'downloadDocument'])->name('staff.onboarding.documents.download');
     Route::delete('/staff/{staff}/onboarding/documents/{document}',            [OnboardingController::class, 'deleteDocument'])->name('staff.onboarding.documents.delete');
+
+    // HR: contracts / legal documents + restrictive-covenant agreements
+    Route::post('/staff/{staff}/documents',                       [HrController::class, 'uploadDocument'])->name('staff.documents.upload');
+    Route::get('/staff/{staff}/documents/{document}/download',    [HrController::class, 'downloadDocument'])->name('staff.documents.download');
+    Route::delete('/staff/{staff}/documents/{document}',          [HrController::class, 'deleteDocument'])->name('staff.documents.delete');
+    Route::post('/staff/{staff}/agreements',                      [HrController::class, 'issueAgreement'])->name('staff.agreements.issue');
+    Route::get('/agreements/{agreement}',                         [HrController::class, 'showAgreement'])->name('agreements.show');
+    Route::post('/agreements/{agreement}/acknowledge',            [HrController::class, 'acknowledgeAgreement'])->name('agreements.acknowledge');
+    Route::delete('/agreements/{agreement}',                      [HrController::class, 'deleteAgreement'])->name('agreements.delete');
+
     Route::get('/my-payslip',                          [PayslipController::class, 'mine'])->name('my-payslip');
     Route::get('/staff/{staff}/payslip',              [PayslipController::class, 'show'])->name('staff.payslip');
 

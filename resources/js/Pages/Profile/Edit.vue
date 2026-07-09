@@ -211,6 +211,51 @@
                 </div>
             </div>
 
+            <!-- Contracts & agreements -->
+            <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
+                <div class="flex items-center gap-3 mb-4">
+                    <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
+                        <ShieldCheckIcon class="w-4 h-4 text-slate-600" />
+                    </div>
+                    <h2 class="text-base font-semibold text-gray-800">Contracts &amp; Agreements</h2>
+                    <span class="text-xs text-gray-400 ml-auto">{{ documents.length + agreements.length }}</span>
+                </div>
+
+                <!-- Empty state -->
+                <div v-if="!documents.length && !agreements.length" class="text-center py-6">
+                    <p class="text-sm text-gray-400">No contracts or agreements on file yet. Any documents or agreements your employer issues will appear here.</p>
+                </div>
+
+                <!-- Agreements first (may need action) -->
+                <div v-if="agreements.length" class="space-y-2 mb-4">
+                    <div v-for="a in agreements" :key="a.id" class="flex items-center gap-3 p-3 rounded-lg border"
+                        :class="a.status === 'pending' ? 'border-amber-200 bg-amber-50' : 'border-gray-100'">
+                        <ShieldCheckIcon class="w-5 h-5 shrink-0" :class="a.status === 'acknowledged' ? 'text-emerald-500' : 'text-amber-500'" />
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-800 truncate">{{ a.title }}</p>
+                            <p class="text-xs text-gray-400">{{ a.type_label }} · Issued {{ a.issued_at }}</p>
+                        </div>
+                        <Link :href="route('agreements.show', a.id)"
+                            class="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 transition-colors"
+                            :class="a.status === 'pending' ? 'text-white bg-[#EF233C] hover:bg-red-600' : 'text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200'">
+                            {{ a.status === 'pending' ? 'Review & sign' : 'View' }}
+                        </Link>
+                    </div>
+                </div>
+
+                <!-- Documents -->
+                <div v-if="documents.length" class="space-y-2">
+                    <div v-for="d in documents" :key="d.id" class="flex items-center gap-3 p-3 rounded-lg border border-gray-100">
+                        <DocumentTextIcon class="w-5 h-5 text-gray-400 shrink-0" />
+                        <div class="flex-1 min-w-0">
+                            <p class="text-sm font-medium text-gray-800 truncate">{{ d.title || d.original_name }}</p>
+                            <p class="text-xs text-gray-400">{{ d.category_label }} · {{ d.uploaded_at }}</p>
+                        </div>
+                        <a :href="route('staff.documents.download', [userId, d.id])" class="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors shrink-0">Download</a>
+                    </div>
+                </div>
+            </div>
+
             <!-- Change password -->
             <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
                 <div class="flex items-center gap-3 mb-5">
@@ -257,12 +302,16 @@ import { ClipboardDocumentCheckIcon } from '@heroicons/vue/24/outline';
 import {
     CameraIcon, UserIcon, LockClosedIcon,
     XMarkIcon, FolderIcon, AcademicCapIcon,
+    ShieldCheckIcon, DocumentTextIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     profileUser:          { type: Object,  required: true },
     projects:             { type: Array,   default: () => [] },
     trainingCertificates: { type: Array,   default: () => [] },
+    documents:            { type: Array,   default: () => [] },
+    agreements:           { type: Array,   default: () => [] },
+    userId:               { type: String,  default: '' },
     hasOnboarding:        { type: Boolean, default: false },
 });
 

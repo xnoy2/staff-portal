@@ -348,6 +348,126 @@
                     </div>
                 </div>
 
+                <!-- ── Contracts / Legal tab ─────────────────────────────── -->
+                <div v-show="activeTab === 'contracts'" class="p-5 space-y-8">
+
+                    <!-- Documents -->
+                    <section>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-gray-800">Documents</h3>
+                            <span class="text-xs text-gray-400">{{ documents.length }} on file</span>
+                        </div>
+
+                        <!-- Upload -->
+                        <form v-if="canEdit" @submit.prevent="submitDoc" class="bg-gray-50 rounded-xl p-3 mb-4 flex flex-col sm:flex-row gap-2 sm:items-end">
+                            <div class="sm:w-48">
+                                <label class="block text-[11px] font-medium text-gray-500 mb-1">Type</label>
+                                <select v-model="docForm.category" class="w-full text-sm rounded-lg border-gray-200 focus:border-[#EF233C] focus:ring-[#EF233C]">
+                                    <option v-for="(label, key) in documentCategories" :key="key" :value="key">{{ label }}</option>
+                                </select>
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-[11px] font-medium text-gray-500 mb-1">Label (optional)</label>
+                                <input v-model="docForm.title" type="text" placeholder="e.g. Signed 2026 contract" class="w-full text-sm rounded-lg border-gray-200 focus:border-[#EF233C] focus:ring-[#EF233C]" />
+                            </div>
+                            <div class="flex-1">
+                                <label class="block text-[11px] font-medium text-gray-500 mb-1">File (PDF / image / doc)</label>
+                                <input ref="docFileInput" type="file" accept=".pdf,.jpg,.jpeg,.png,.webp,.doc,.docx" @change="onDocFile" class="w-full text-xs text-gray-600 file:mr-2 file:py-1.5 file:px-3 file:rounded-lg file:border-0 file:bg-gray-800 file:text-white" />
+                            </div>
+                            <button type="submit" :disabled="!docForm.document || docForm.processing"
+                                class="text-sm bg-[#EF233C] text-white px-4 py-2 rounded-lg font-medium disabled:opacity-40 whitespace-nowrap">
+                                {{ docForm.processing ? 'Uploading…' : 'Upload' }}
+                            </button>
+                        </form>
+                        <p v-if="docForm.errors.document" class="text-xs text-red-600 -mt-2 mb-3">{{ docForm.errors.document }}</p>
+
+                        <div v-if="!documents.length" class="text-center py-8 text-gray-400 text-sm">No documents uploaded.</div>
+                        <div v-else class="space-y-1.5">
+                            <div v-for="d in documents" :key="d.id" class="flex items-center gap-3 bg-white border border-gray-100 rounded-lg px-3 py-2.5">
+                                <DocumentTextIcon class="w-5 h-5 text-gray-400 shrink-0" />
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium text-gray-800 truncate">{{ d.title || d.original_name }}</p>
+                                    <p class="text-xs text-gray-400">
+                                        <span class="inline-block bg-gray-100 text-gray-600 px-1.5 rounded mr-1">{{ d.category_label }}</span>
+                                        {{ formatBytes(d.size) }} · {{ d.uploaded_at }}<span v-if="d.uploaded_by"> · {{ d.uploaded_by }}</span>
+                                    </p>
+                                </div>
+                                <a :href="route('staff.documents.download', [staffMember.id, d.id])" class="text-xs text-[#EF233C] hover:underline shrink-0">Download</a>
+                                <button v-if="canEdit" @click="deleteDoc(d)" class="text-gray-300 hover:text-red-500 shrink-0"><XMarkIcon class="w-4 h-4" /></button>
+                            </div>
+                        </div>
+                    </section>
+
+                    <!-- Agreements -->
+                    <section>
+                        <div class="flex items-center justify-between mb-3">
+                            <h3 class="text-sm font-semibold text-gray-800">Agreements &amp; Restrictive Covenants</h3>
+                            <button v-if="canEdit" @click="showIssue = !showIssue" class="text-xs text-[#EF233C] hover:underline">
+                                {{ showIssue ? 'Cancel' : '+ Issue agreement' }}
+                            </button>
+                        </div>
+
+                        <!-- Issue form -->
+                        <form v-if="canEdit && showIssue" @submit.prevent="submitAgreement" class="bg-gray-50 rounded-xl p-4 mb-4 space-y-3">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                                <div>
+                                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Type</label>
+                                    <select v-model="agForm.type" class="w-full text-sm rounded-lg border-gray-200">
+                                        <option v-for="(label, key) in agreementTypes" :key="key" :value="key">{{ label }}</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Company (legal entity)</label>
+                                    <input v-model="agForm.company" type="text" class="w-full text-sm rounded-lg border-gray-200" />
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Duration (years)</label>
+                                    <input v-model.number="agForm.duration_years" type="number" min="0" max="99" class="w-full text-sm rounded-lg border-gray-200" />
+                                </div>
+                                <div>
+                                    <label class="block text-[11px] font-medium text-gray-500 mb-1">Radius (miles)</label>
+                                    <input v-model.number="agForm.radius_miles" type="number" min="0" max="9999" class="w-full text-sm rounded-lg border-gray-200" />
+                                </div>
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-500 mb-1">Title (optional)</label>
+                                <input v-model="agForm.title" type="text" placeholder="Defaults to the type name" class="w-full text-sm rounded-lg border-gray-200" />
+                            </div>
+                            <div>
+                                <label class="block text-[11px] font-medium text-gray-500 mb-1">Terms (leave blank to use the standard non-compete template)</label>
+                                <textarea v-model="agForm.body" rows="4" placeholder="Leave blank to auto-generate from the fields above." class="w-full text-sm rounded-lg border-gray-200 font-mono"></textarea>
+                            </div>
+                            <p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                                ⚠ This stores and tracks the employee's acknowledgement. It is not legal advice — a 4-year / 50-mile covenant is broad; have the wording reviewed by an employment solicitor to ensure it is enforceable.
+                            </p>
+                            <div class="flex justify-end">
+                                <button type="submit" :disabled="agForm.processing" class="text-sm bg-[#EF233C] text-white px-4 py-2 rounded-lg font-medium disabled:opacity-40">
+                                    {{ agForm.processing ? 'Issuing…' : 'Issue for signature' }}
+                                </button>
+                            </div>
+                        </form>
+
+                        <div v-if="!agreements.length" class="text-center py-8 text-gray-400 text-sm">No agreements issued.</div>
+                        <div v-else class="space-y-1.5">
+                            <div v-for="a in agreements" :key="a.id" class="flex items-center gap-3 bg-white border border-gray-100 rounded-lg px-3 py-2.5">
+                                <ShieldCheckIcon class="w-5 h-5 shrink-0" :class="a.status === 'acknowledged' ? 'text-emerald-500' : 'text-amber-400'" />
+                                <div class="min-w-0 flex-1">
+                                    <p class="text-sm font-medium text-gray-800 truncate">{{ a.title }} <span class="text-xs text-gray-400 font-normal">v{{ a.version }}</span></p>
+                                    <p class="text-xs text-gray-400">
+                                        <span v-if="a.duration_years">{{ a.duration_years }}yr</span><span v-if="a.duration_years && a.radius_miles"> · </span><span v-if="a.radius_miles">{{ a.radius_miles }}mi</span>
+                                        <span v-if="a.duration_years || a.radius_miles"> · </span>Issued {{ a.issued_at }}
+                                    </p>
+                                </div>
+                                <span v-if="a.status === 'acknowledged'" class="text-xs font-medium px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 whitespace-nowrap">Signed {{ a.acknowledged_at }}</span>
+                                <span v-else class="text-xs font-medium px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 whitespace-nowrap">Pending</span>
+                                <Link :href="route('agreements.show', a.id)" class="text-xs text-[#EF233C] hover:underline shrink-0">View</Link>
+                                <button v-if="canEdit && a.status === 'pending'" @click="deleteAgreement(a)" class="text-gray-300 hover:text-red-500 shrink-0"><XMarkIcon class="w-4 h-4" /></button>
+                            </div>
+                        </div>
+                    </section>
+
+                </div>
+
             </div><!-- end tab container -->
         </div>
     </AppLayout>
@@ -355,12 +475,13 @@
 
 <script setup>
 import { ref, computed } from 'vue';
-import { Link, router } from '@inertiajs/vue3';
+import { Link, router, useForm } from '@inertiajs/vue3';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
     PencilIcon, NoSymbolIcon, CheckCircleIcon, FolderIcon,
     DocumentTextIcon, ClipboardDocumentCheckIcon, BriefcaseIcon,
     UserCircleIcon, ClockIcon, CurrencyPoundIcon, AcademicCapIcon,
+    ShieldCheckIcon, XMarkIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
@@ -375,6 +496,10 @@ const props = defineProps({
     hasOnboarding:        { type: Boolean, default: false },
     dailyLogs:            { type: Array,  default: () => [] },
     trainingCertificates: { type: Array,  default: () => [] },
+    documents:            { type: Array,  default: () => [] },
+    agreements:           { type: Array,  default: () => [] },
+    documentCategories:   { type: Object, default: () => ({}) },
+    agreementTypes:       { type: Object, default: () => ({}) },
 });
 
 const activeTab = ref('overview');
@@ -386,6 +511,7 @@ const tabs = computed(() => {
         { id: 'projects',    label: 'Projects',    icon: FolderIcon,          count: props.projects.length },
         { id: 'attendance',  label: 'Attendance',  icon: ClockIcon,           count: props.recentEntries.length },
         { id: 'payroll',     label: 'Payroll',     icon: CurrencyPoundIcon,   count: props.recentPayrollRuns.length },
+        { id: 'contracts',   label: 'Contracts',   icon: DocumentTextIcon,    count: props.documents.length + props.agreements.length },
     ];
     // EOD links to the manager-only detail page, so only show it to managers/HR.
     if (props.canEdit) {
@@ -393,6 +519,52 @@ const tabs = computed(() => {
     }
     return list;
 });
+
+// ── Contracts / legal ──────────────────────────────────────────────────
+const docFileInput = ref(null);
+const docForm = useForm({ category: 'contract', title: '', document: null });
+function onDocFile(e) { docForm.document = e.target.files[0] ?? null; }
+function submitDoc() {
+    docForm.post(route('staff.documents.upload', props.staffMember.id), {
+        forceFormData: true,
+        preserveScroll: true,
+        onSuccess: () => {
+            docForm.reset('title', 'document');
+            if (docFileInput.value) docFileInput.value.value = '';
+        },
+    });
+}
+function deleteDoc(d) {
+    if (!confirm(`Delete "${d.title || d.original_name}"? This cannot be undone.`)) return;
+    router.delete(route('staff.documents.delete', [props.staffMember.id, d.id]), { preserveScroll: true });
+}
+
+const showIssue = ref(false);
+const agForm = useForm({
+    type: 'non_compete',
+    company: 'Bespoke Garden Rooms Ballycastle',
+    title: '',
+    duration_years: 4,
+    radius_miles: 50,
+    body: '',
+});
+function submitAgreement() {
+    agForm.post(route('staff.agreements.issue', props.staffMember.id), {
+        preserveScroll: true,
+        onSuccess: () => { showIssue.value = false; agForm.reset('title', 'body'); },
+    });
+}
+function deleteAgreement(a) {
+    if (!confirm('Remove this pending agreement?')) return;
+    router.delete(route('agreements.delete', a.id), { preserveScroll: true });
+}
+
+function formatBytes(bytes) {
+    if (!bytes) return '0 B';
+    const k = 1024, sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return `${parseFloat((bytes / Math.pow(k, i)).toFixed(1))} ${sizes[i]}`;
+}
 
 
 function toggleActive() {

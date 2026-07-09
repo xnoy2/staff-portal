@@ -228,6 +228,36 @@ class StaffController extends Controller
                 'status'   => $p->status,
                 'role'     => $p->pivot->role,
             ]),
+            'documents'        => \App\Models\StaffDocument::where('user_id', $staff->id)
+                ->with('uploadedBy:id,name')
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(fn ($d) => [
+                    'id'             => $d->id,
+                    'category'       => $d->category,
+                    'category_label' => $d->category_label,
+                    'title'          => $d->title,
+                    'original_name'  => $d->original_name,
+                    'size'           => $d->size,
+                    'uploaded_by'    => $d->uploadedBy?->name,
+                    'uploaded_at'    => $d->created_at?->copy()->setTimezone($staff->timezone)->format('j M Y'),
+                ]),
+            'agreements'       => \App\Models\StaffAgreement::where('user_id', $staff->id)
+                ->orderBy('issued_at', 'desc')
+                ->get()
+                ->map(fn ($a) => [
+                    'id'              => $a->id,
+                    'type_label'      => \App\Models\StaffAgreement::TYPES[$a->type] ?? 'Agreement',
+                    'title'           => $a->title,
+                    'version'         => $a->version,
+                    'duration_years'  => $a->duration_years,
+                    'radius_miles'    => $a->radius_miles,
+                    'status'          => $a->status,
+                    'issued_at'       => $a->issued_at?->copy()->setTimezone($staff->timezone)->format('j M Y'),
+                    'acknowledged_at' => $a->acknowledged_at?->copy()->setTimezone($staff->timezone)->format('j M Y'),
+                ]),
+            'documentCategories' => \App\Models\StaffDocument::CATEGORIES,
+            'agreementTypes'     => \App\Models\StaffAgreement::TYPES,
         ]);
     }
 

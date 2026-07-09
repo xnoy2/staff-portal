@@ -1,5 +1,16 @@
 <template>
     <AppLayout title="Dashboard">
+        <!-- Pending agreement to sign -->
+        <Link v-if="pendingAgreement" :href="route('agreements.show', pendingAgreement.id)"
+            class="flex items-center gap-3 mb-6 rounded-xl border border-amber-300 bg-amber-50 px-4 py-3 hover:bg-amber-100 transition-colors">
+            <ShieldExclamationIcon class="w-6 h-6 text-amber-600 shrink-0" />
+            <div class="flex-1 min-w-0">
+                <p class="text-sm font-semibold text-amber-900">Action required: sign your agreement</p>
+                <p class="text-xs text-amber-700 truncate">“{{ pendingAgreement.title }}” is awaiting your signature.</p>
+            </div>
+            <span class="text-xs font-semibold text-white bg-amber-600 px-3 py-1.5 rounded-lg shrink-0">Review &amp; sign</span>
+        </Link>
+
         <!-- ===== MANAGER / ADMIN VIEW ===== -->
         <template v-if="isManager">
             <!-- Stat cards -->
@@ -298,10 +309,11 @@ import AppLayout from '@/Layouts/AppLayout.vue';
 import Chart from 'primevue/chart';
 import StatCard from '@/Components/Dashboard/StatCard.vue';
 import ClockWidget from '@/Components/ClockWidget.vue';
-import { ArrowRightOnRectangleIcon, SunIcon } from '@heroicons/vue/24/outline';
+import { ArrowRightOnRectangleIcon, SunIcon, ShieldExclamationIcon } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
     isManager:        { type: Boolean, default: false },
+    pendingAgreement: { type: Object, default: null },
     stats:            { type: Object, default: () => ({ todaysJobs: 0, clockedInStaff: 0, pendingLeave: 0, pendingOt: 0 }) },
     todaysJobs:       { type: Array,  default: () => [] },
     projectsByStatus: { type: Object, default: () => ({ labels: [], data: [] }) },

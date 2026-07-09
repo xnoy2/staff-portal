@@ -53,6 +53,27 @@ class ProfileController extends Controller
                     'reference' => $c->reference,
                     'issued_at' => $c->issued_at?->copy()->setTimezone($user->timezone)->format('j M Y'),
                 ]),
+            'documents' => \App\Models\StaffDocument::where('user_id', $user->id)
+                ->orderBy('created_at', 'desc')
+                ->get()
+                ->map(fn ($d) => [
+                    'id'             => $d->id,
+                    'category_label' => $d->category_label,
+                    'title'          => $d->title,
+                    'original_name'  => $d->original_name,
+                    'uploaded_at'    => $d->created_at?->copy()->setTimezone($user->timezone)->format('j M Y'),
+                ]),
+            'agreements' => \App\Models\StaffAgreement::where('user_id', $user->id)
+                ->orderBy('issued_at', 'desc')
+                ->get()
+                ->map(fn ($a) => [
+                    'id'         => $a->id,
+                    'title'      => $a->title,
+                    'type_label' => \App\Models\StaffAgreement::TYPES[$a->type] ?? 'Agreement',
+                    'status'     => $a->status,
+                    'issued_at'  => $a->issued_at?->copy()->setTimezone($user->timezone)->format('j M Y'),
+                ]),
+            'userId' => $user->id,
         ]);
     }
 

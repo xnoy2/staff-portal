@@ -20,7 +20,17 @@ class DashboardController extends Controller
         $user      = $request->user()->load('roles');
         $isManager = $user->hasAnyRole(['admin', 'manager']);
 
-        $data = ['isManager' => $isManager];
+        $pendingAgreement = \App\Models\StaffAgreement::where('user_id', $user->id)
+            ->where('status', 'pending')
+            ->orderBy('issued_at')
+            ->first();
+
+        $data = [
+            'isManager'        => $isManager,
+            'pendingAgreement' => $pendingAgreement
+                ? ['id' => $pendingAgreement->id, 'title' => $pendingAgreement->title]
+                : null,
+        ];
 
         $data = array_merge(
             $data,
