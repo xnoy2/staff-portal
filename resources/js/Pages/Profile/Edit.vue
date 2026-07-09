@@ -65,229 +65,232 @@
                 </div>
             </div>
 
-            <!-- Personal details -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
-                <div class="flex items-center gap-3 mb-5">
-                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-                        <UserIcon class="w-4 h-4 text-[#EF233C]" />
-                    </div>
-                    <h2 class="text-base font-semibold text-gray-800">Personal Details</h2>
-                </div>
-                <form @submit.prevent="submitProfile" class="space-y-4">
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
-                            <input v-model="profileForm.name" type="text" class="form-input" autocomplete="name" />
-                            <p v-if="profileForm.errors.name" class="mt-1 text-xs text-red-600">{{ profileForm.errors.name }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
-                            <input v-model="profileForm.email" type="email" class="form-input" autocomplete="email" />
-                            <p v-if="profileForm.errors.email" class="mt-1 text-xs text-red-600">{{ profileForm.errors.email }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Hire Date</label>
-                            <input v-model="profileForm.hire_date" type="date" class="form-input" />
-                            <p v-if="profileForm.errors.hire_date" class="mt-1 text-xs text-red-600">{{ profileForm.errors.hire_date }}</p>
-                        </div>
-                    </div>
-
-                    <!-- Emergency contact -->
-                    <div class="pt-3 border-t border-gray-100">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Emergency Contact</p>
-                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Contact Name</label>
-                                <input v-model="profileForm.emergency_contact_name" type="text" class="form-input" placeholder="e.g. Jane Doe" />
-                                <p v-if="profileForm.errors.emergency_contact_name" class="mt-1 text-xs text-red-600">{{ profileForm.errors.emergency_contact_name }}</p>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Contact Phone</label>
-                                <input v-model="profileForm.emergency_contact_phone" type="tel" class="form-input" placeholder="e.g. +44 7700 900000" />
-                                <p v-if="profileForm.errors.emergency_contact_phone" class="mt-1 text-xs text-red-600">{{ profileForm.errors.emergency_contact_phone }}</p>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- Certifications -->
-                    <div class="pt-3 border-t border-gray-100">
-                        <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Certifications</p>
-                        <div class="flex flex-wrap gap-2 mb-2">
-                            <span
-                                v-for="(cert, i) in profileForm.certifications"
-                                :key="i"
-                                class="inline-flex items-center gap-1 bg-green-50 border border-green-200 text-green-800 text-xs px-2.5 py-1 rounded-full"
-                            >
-                                {{ cert }}
-                                <button type="button" @click="removeCert(i)" class="hover:text-red-500 transition-colors ml-0.5">
-                                    <XMarkIcon class="w-3 h-3" />
-                                </button>
-                            </span>
-                            <span v-if="profileForm.certifications.length === 0" class="text-xs text-gray-400">No certifications added yet.</span>
-                        </div>
-                        <div class="flex gap-2">
-                            <input v-model="newCert" type="text" placeholder="Add certification…" class="form-input flex-1 text-sm" @keydown.enter.prevent="addCert" />
-                            <button type="button" @click="addCert" :disabled="!newCert.trim()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm transition-colors disabled:opacity-40">Add</button>
-                        </div>
-                    </div>
-
-                    <!-- Notes -->
-                    <div class="pt-3 border-t border-gray-100">
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
-                        <textarea v-model="profileForm.notes" rows="3" class="form-input resize-none" placeholder="Any additional notes…" />
-                        <p v-if="profileForm.errors.notes" class="mt-1 text-xs text-red-600">{{ profileForm.errors.notes }}</p>
-                    </div>
-
-                    <div class="flex justify-end pt-2">
-                        <button type="submit" :disabled="profileForm.processing" class="btn-primary">
-                            {{ profileForm.processing ? 'Saving…' : 'Save Changes' }}
-                        </button>
-                    </div>
-                </form>
-            </div>
-
-            <!-- Projects -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center shrink-0">
-                        <FolderIcon class="w-4 h-4 text-[#EF233C]" />
-                    </div>
-                    <h2 class="text-base font-semibold text-gray-800">My Projects</h2>
-                    <span class="text-xs text-gray-400 ml-auto">{{ projects.length }} project{{ projects.length !== 1 ? 's' : '' }}</span>
-                </div>
-                <div v-if="!projects.length" class="text-center py-6">
-                    <p class="text-sm text-gray-400">You are not assigned to any projects yet.</p>
-                </div>
-                <div v-else class="space-y-2">
-                    <Link
-                        v-for="project in projects"
-                        :key="project.id"
-                        :href="route('projects.show', project.id)"
-                        class="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all group"
+            <!-- Tabbed sections -->
+            <div class="bg-white rounded-xl border border-gray-200 overflow-hidden">
+                <!-- Tab bar -->
+                <div class="flex gap-1 border-b border-gray-100 px-2 overflow-x-auto scrollbar-none">
+                    <button
+                        v-for="tab in tabs"
+                        :key="tab.id"
+                        @click="activeTab = tab.id"
+                        :class="[
+                            'relative flex items-center gap-1.5 px-4 py-3.5 text-sm font-medium border-b-2 whitespace-nowrap transition-colors',
+                            activeTab === tab.id ? 'border-[#EF233C] text-[#EF233C]' : 'border-transparent text-gray-500 hover:text-gray-700',
+                        ]"
                     >
-                        <div :class="['w-1 h-8 rounded-full shrink-0', statusBarClass(project.status)]" />
-                        <div class="flex-1 min-w-0">
-                            <div class="flex items-center gap-1.5 mb-0.5">
-                                <span :class="businessClass(project.business)">{{ project.business?.toUpperCase() }}</span>
-                                <span class="text-sm font-medium text-gray-800 truncate group-hover:text-[#EF233C] transition-colors">{{ project.name }}</span>
+                        <component :is="tab.icon" class="w-4 h-4" />
+                        {{ tab.label }}
+                        <span
+                            v-if="tab.count !== null && tab.count > 0"
+                            :class="['text-xs px-1.5 py-0.5 rounded-full', activeTab === tab.id ? 'bg-[#EF233C]/10 text-[#EF233C]' : 'bg-gray-100 text-gray-500']"
+                        >{{ tab.count }}</span>
+                        <span v-if="tab.dot" class="absolute top-2.5 right-1.5 w-2 h-2 rounded-full bg-[#EF233C]" />
+                    </button>
+                </div>
+
+                <div class="p-5 sm:p-6">
+
+                    <!-- ── Personal ─────────────────────────────────────────── -->
+                    <div v-show="activeTab === 'personal'">
+                        <form @submit.prevent="submitProfile" class="space-y-4">
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Full Name</label>
+                                    <input v-model="profileForm.name" type="text" class="form-input" autocomplete="name" />
+                                    <p v-if="profileForm.errors.name" class="mt-1 text-xs text-red-600">{{ profileForm.errors.name }}</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Email Address</label>
+                                    <input v-model="profileForm.email" type="email" class="form-input" autocomplete="email" />
+                                    <p v-if="profileForm.errors.email" class="mt-1 text-xs text-red-600">{{ profileForm.errors.email }}</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Hire Date</label>
+                                    <input v-model="profileForm.hire_date" type="date" class="form-input" />
+                                    <p v-if="profileForm.errors.hire_date" class="mt-1 text-xs text-red-600">{{ profileForm.errors.hire_date }}</p>
+                                </div>
                             </div>
-                            <p class="text-xs text-gray-400 truncate">{{ project.customer }}</p>
-                        </div>
-                        <div class="flex items-center gap-2 shrink-0">
-                            <span :class="project.role === 'lead'
-                                ? 'text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700'
-                                : 'text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600'">
-                                {{ project.role === 'lead' ? 'Lead' : 'Support' }}
-                            </span>
-                            <span :class="statusClass(project.status)">{{ statusLabel(project.status) }}</span>
-                        </div>
-                    </Link>
-                </div>
-            </div>
 
-            <!-- Training certificates -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-8 h-8 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                        <AcademicCapIcon class="w-4 h-4 text-emerald-600" />
-                    </div>
-                    <h2 class="text-base font-semibold text-gray-800">Training Certificates</h2>
-                    <span class="text-xs text-gray-400 ml-auto">{{ trainingCertificates.length }}</span>
-                </div>
-                <div v-if="!trainingCertificates.length" class="text-center py-6">
-                    <p class="text-sm text-gray-400">No certificates yet. Complete a training module to earn one.</p>
-                </div>
-                <div v-else class="space-y-2">
-                    <div v-for="c in trainingCertificates" :key="c.reference" class="flex items-center gap-3 p-3 rounded-lg border border-gray-100">
-                        <div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
-                            <AcademicCapIcon class="w-5 h-5 text-emerald-600" />
-                        </div>
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-800 truncate">{{ c.title }}</p>
-                            <p class="text-xs text-gray-400">Issued {{ c.issued_at }} · No. {{ c.reference }}</p>
-                        </div>
-                        <a v-if="c.module_id" :href="route('training.certificate', c.module_id)" target="_blank" class="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors shrink-0">View</a>
-                    </div>
-                </div>
-            </div>
+                            <!-- Emergency contact -->
+                            <div class="pt-3 border-t border-gray-100">
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Emergency Contact</p>
+                                <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Contact Name</label>
+                                        <input v-model="profileForm.emergency_contact_name" type="text" class="form-input" placeholder="e.g. Jane Doe" />
+                                        <p v-if="profileForm.errors.emergency_contact_name" class="mt-1 text-xs text-red-600">{{ profileForm.errors.emergency_contact_name }}</p>
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Contact Phone</label>
+                                        <input v-model="profileForm.emergency_contact_phone" type="tel" class="form-input" placeholder="e.g. +44 7700 900000" />
+                                        <p v-if="profileForm.errors.emergency_contact_phone" class="mt-1 text-xs text-red-600">{{ profileForm.errors.emergency_contact_phone }}</p>
+                                    </div>
+                                </div>
+                            </div>
 
-            <!-- Contracts & agreements -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
-                <div class="flex items-center gap-3 mb-4">
-                    <div class="w-8 h-8 rounded-lg bg-slate-100 flex items-center justify-center shrink-0">
-                        <ShieldCheckIcon class="w-4 h-4 text-slate-600" />
+                            <!-- Certifications -->
+                            <div class="pt-3 border-t border-gray-100">
+                                <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Certifications</p>
+                                <div class="flex flex-wrap gap-2 mb-2">
+                                    <span
+                                        v-for="(cert, i) in profileForm.certifications"
+                                        :key="i"
+                                        class="inline-flex items-center gap-1 bg-green-50 border border-green-200 text-green-800 text-xs px-2.5 py-1 rounded-full"
+                                    >
+                                        {{ cert }}
+                                        <button type="button" @click="removeCert(i)" class="hover:text-red-500 transition-colors ml-0.5">
+                                            <XMarkIcon class="w-3 h-3" />
+                                        </button>
+                                    </span>
+                                    <span v-if="profileForm.certifications.length === 0" class="text-xs text-gray-400">No certifications added yet.</span>
+                                </div>
+                                <div class="flex gap-2">
+                                    <input v-model="newCert" type="text" placeholder="Add certification…" class="form-input flex-1 text-sm" @keydown.enter.prevent="addCert" />
+                                    <button type="button" @click="addCert" :disabled="!newCert.trim()" class="bg-gray-100 hover:bg-gray-200 text-gray-700 px-3 py-2 rounded-lg text-sm transition-colors disabled:opacity-40">Add</button>
+                                </div>
+                            </div>
+
+                            <!-- Notes -->
+                            <div class="pt-3 border-t border-gray-100">
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Notes</label>
+                                <textarea v-model="profileForm.notes" rows="3" class="form-input resize-none" placeholder="Any additional notes…" />
+                                <p v-if="profileForm.errors.notes" class="mt-1 text-xs text-red-600">{{ profileForm.errors.notes }}</p>
+                            </div>
+
+                            <div class="flex justify-end pt-2">
+                                <button type="submit" :disabled="profileForm.processing" class="btn-primary">
+                                    {{ profileForm.processing ? 'Saving…' : 'Save Changes' }}
+                                </button>
+                            </div>
+                        </form>
                     </div>
-                    <h2 class="text-base font-semibold text-gray-800">Contracts &amp; Agreements</h2>
-                    <span class="text-xs text-gray-400 ml-auto">{{ documents.length + agreements.length }}</span>
-                </div>
 
-                <!-- Empty state -->
-                <div v-if="!documents.length && !agreements.length" class="text-center py-6">
-                    <p class="text-sm text-gray-400">No contracts or agreements on file yet. Any documents or agreements your employer issues will appear here.</p>
-                </div>
-
-                <!-- Agreements first (may need action) -->
-                <div v-if="agreements.length" class="space-y-2 mb-4">
-                    <div v-for="a in agreements" :key="a.id" class="flex items-center gap-3 p-3 rounded-lg border"
-                        :class="a.status === 'pending' ? 'border-amber-200 bg-amber-50' : 'border-gray-100'">
-                        <ShieldCheckIcon class="w-5 h-5 shrink-0" :class="a.status === 'acknowledged' ? 'text-emerald-500' : 'text-amber-500'" />
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-800 truncate">{{ a.title }}</p>
-                            <p class="text-xs text-gray-400">{{ a.type_label }} · Issued {{ a.issued_at }}</p>
+                    <!-- ── Projects ─────────────────────────────────────────── -->
+                    <div v-show="activeTab === 'projects'">
+                        <div v-if="!projects.length" class="text-center py-10">
+                            <FolderIcon class="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                            <p class="text-sm text-gray-400">You are not assigned to any projects yet.</p>
                         </div>
-                        <Link :href="route('agreements.show', a.id)"
-                            class="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 transition-colors"
-                            :class="a.status === 'pending' ? 'text-white bg-[#EF233C] hover:bg-red-600' : 'text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200'">
-                            {{ a.status === 'pending' ? 'Review & sign' : 'View' }}
-                        </Link>
-                    </div>
-                </div>
-
-                <!-- Documents -->
-                <div v-if="documents.length" class="space-y-2">
-                    <div v-for="d in documents" :key="d.id" class="flex items-center gap-3 p-3 rounded-lg border border-gray-100">
-                        <DocumentTextIcon class="w-5 h-5 text-gray-400 shrink-0" />
-                        <div class="flex-1 min-w-0">
-                            <p class="text-sm font-medium text-gray-800 truncate">{{ d.title || d.original_name }}</p>
-                            <p class="text-xs text-gray-400">{{ d.category_label }} · {{ d.uploaded_at }}</p>
-                        </div>
-                        <a :href="route('staff.documents.download', [userId, d.id])" class="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors shrink-0">Download</a>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Change password -->
-            <div class="bg-white rounded-xl border border-gray-200 p-5 sm:p-6">
-                <div class="flex items-center gap-3 mb-5">
-                    <div class="w-8 h-8 rounded-lg bg-red-50 flex items-center justify-center flex-shrink-0">
-                        <LockClosedIcon class="w-4 h-4 text-[#EF233C]" />
-                    </div>
-                    <h2 class="text-base font-semibold text-gray-800">Change Password</h2>
-                </div>
-                <form @submit.prevent="submitPassword" class="space-y-4">
-                    <div>
-                        <label class="block text-sm font-medium text-gray-700 mb-1.5">Current Password</label>
-                        <input v-model="passwordForm.current_password" type="password" autocomplete="current-password" class="form-input" />
-                        <p v-if="passwordForm.errors.current_password" class="mt-1 text-xs text-red-600">{{ passwordForm.errors.current_password }}</p>
-                    </div>
-                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
-                            <input v-model="passwordForm.password" type="password" autocomplete="new-password" class="form-input" placeholder="Min. 8 chars, mixed case + numbers" />
-                            <p v-if="passwordForm.errors.password" class="mt-1 text-xs text-red-600">{{ passwordForm.errors.password }}</p>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-gray-700 mb-1.5">Confirm New Password</label>
-                            <input v-model="passwordForm.password_confirmation" type="password" autocomplete="new-password" class="form-input" />
-                            <p v-if="passwordForm.errors.password_confirmation" class="mt-1 text-xs text-red-600">{{ passwordForm.errors.password_confirmation }}</p>
+                        <div v-else class="space-y-2">
+                            <Link
+                                v-for="project in projects"
+                                :key="project.id"
+                                :href="route('projects.show', project.id)"
+                                class="flex items-center gap-3 p-3 rounded-lg border border-gray-100 hover:border-gray-200 hover:bg-gray-50 transition-all group"
+                            >
+                                <div :class="['w-1 h-8 rounded-full shrink-0', statusBarClass(project.status)]" />
+                                <div class="flex-1 min-w-0">
+                                    <div class="flex items-center gap-1.5 mb-0.5">
+                                        <span :class="businessClass(project.business)">{{ project.business?.toUpperCase() }}</span>
+                                        <span class="text-sm font-medium text-gray-800 truncate group-hover:text-[#EF233C] transition-colors">{{ project.name }}</span>
+                                    </div>
+                                    <p class="text-xs text-gray-400 truncate">{{ project.customer }}</p>
+                                </div>
+                                <div class="flex items-center gap-2 shrink-0">
+                                    <span :class="project.role === 'lead'
+                                        ? 'text-xs font-medium px-2 py-0.5 rounded-full bg-amber-100 text-amber-700'
+                                        : 'text-xs font-medium px-2 py-0.5 rounded-full bg-blue-50 text-blue-600'">
+                                        {{ project.role === 'lead' ? 'Lead' : 'Support' }}
+                                    </span>
+                                    <span :class="statusClass(project.status)">{{ statusLabel(project.status) }}</span>
+                                </div>
+                            </Link>
                         </div>
                     </div>
-                    <div class="flex justify-end">
-                        <button type="submit" :disabled="passwordForm.processing" class="btn-primary">
-                            {{ passwordForm.processing ? 'Updating…' : 'Update Password' }}
-                        </button>
+
+                    <!-- ── Certificates ─────────────────────────────────────── -->
+                    <div v-show="activeTab === 'certificates'">
+                        <div v-if="!trainingCertificates.length" class="text-center py-10">
+                            <AcademicCapIcon class="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                            <p class="text-sm text-gray-400">No certificates yet. Complete a training module to earn one.</p>
+                        </div>
+                        <div v-else class="space-y-2">
+                            <div v-for="c in trainingCertificates" :key="c.reference" class="flex items-center gap-3 p-3 rounded-lg border border-gray-100">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-50 flex items-center justify-center shrink-0">
+                                    <AcademicCapIcon class="w-5 h-5 text-emerald-600" />
+                                </div>
+                                <div class="flex-1 min-w-0">
+                                    <p class="text-sm font-medium text-gray-800 truncate">{{ c.title }}</p>
+                                    <p class="text-xs text-gray-400">Issued {{ c.issued_at }} · No. {{ c.reference }}</p>
+                                </div>
+                                <a v-if="c.module_id" :href="route('training.certificate', c.module_id)" target="_blank" class="text-xs font-semibold text-emerald-700 bg-emerald-50 hover:bg-emerald-100 border border-emerald-200 px-3 py-1.5 rounded-lg transition-colors shrink-0">View</a>
+                            </div>
+                        </div>
                     </div>
-                </form>
+
+                    <!-- ── Contracts & agreements ───────────────────────────── -->
+                    <div v-show="activeTab === 'contracts'">
+                        <!-- Empty state -->
+                        <div v-if="!documents.length && !agreements.length" class="text-center py-10">
+                            <ShieldCheckIcon class="w-10 h-10 text-gray-200 mx-auto mb-2" />
+                            <p class="text-sm text-gray-400">No contracts or agreements on file yet.<br />Anything your employer issues will appear here.</p>
+                        </div>
+
+                        <!-- Agreements first (may need action) -->
+                        <div v-if="agreements.length" class="mb-5">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Agreements</p>
+                            <div class="space-y-2">
+                                <div v-for="a in agreements" :key="a.id" class="flex items-center gap-3 p-3 rounded-lg border"
+                                    :class="a.status === 'pending' ? 'border-amber-200 bg-amber-50' : 'border-gray-100'">
+                                    <ShieldCheckIcon class="w-5 h-5 shrink-0" :class="a.status === 'acknowledged' ? 'text-emerald-500' : 'text-amber-500'" />
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-800 truncate">{{ a.title }}</p>
+                                        <p class="text-xs text-gray-400">{{ a.type_label }} · Issued {{ a.issued_at }}</p>
+                                    </div>
+                                    <Link :href="route('agreements.show', a.id)"
+                                        class="text-xs font-semibold px-3 py-1.5 rounded-lg shrink-0 transition-colors"
+                                        :class="a.status === 'pending' ? 'text-white bg-[#EF233C] hover:bg-red-600' : 'text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200'">
+                                        {{ a.status === 'pending' ? 'Review & sign' : 'View' }}
+                                    </Link>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Documents -->
+                        <div v-if="documents.length">
+                            <p class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">Documents</p>
+                            <div class="space-y-2">
+                                <div v-for="d in documents" :key="d.id" class="flex items-center gap-3 p-3 rounded-lg border border-gray-100">
+                                    <DocumentTextIcon class="w-5 h-5 text-gray-400 shrink-0" />
+                                    <div class="flex-1 min-w-0">
+                                        <p class="text-sm font-medium text-gray-800 truncate">{{ d.title || d.original_name }}</p>
+                                        <p class="text-xs text-gray-400">{{ d.category_label }} · {{ d.uploaded_at }}</p>
+                                    </div>
+                                    <a :href="route('staff.documents.download', [userId, d.id])" class="text-xs font-semibold text-slate-700 bg-slate-100 hover:bg-slate-200 border border-slate-200 px-3 py-1.5 rounded-lg transition-colors shrink-0">Download</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- ── Security ─────────────────────────────────────────── -->
+                    <div v-show="activeTab === 'security'">
+                        <form @submit.prevent="submitPassword" class="space-y-4 max-w-lg">
+                            <div>
+                                <label class="block text-sm font-medium text-gray-700 mb-1.5">Current Password</label>
+                                <input v-model="passwordForm.current_password" type="password" autocomplete="current-password" class="form-input" />
+                                <p v-if="passwordForm.errors.current_password" class="mt-1 text-xs text-red-600">{{ passwordForm.errors.current_password }}</p>
+                            </div>
+                            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">New Password</label>
+                                    <input v-model="passwordForm.password" type="password" autocomplete="new-password" class="form-input" placeholder="Min. 8 chars, mixed case + numbers" />
+                                    <p v-if="passwordForm.errors.password" class="mt-1 text-xs text-red-600">{{ passwordForm.errors.password }}</p>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-gray-700 mb-1.5">Confirm New Password</label>
+                                    <input v-model="passwordForm.password_confirmation" type="password" autocomplete="new-password" class="form-input" />
+                                    <p v-if="passwordForm.errors.password_confirmation" class="mt-1 text-xs text-red-600">{{ passwordForm.errors.password_confirmation }}</p>
+                                </div>
+                            </div>
+                            <div class="flex justify-end">
+                                <button type="submit" :disabled="passwordForm.processing" class="btn-primary">
+                                    {{ passwordForm.processing ? 'Updating…' : 'Update Password' }}
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+
+                </div>
             </div>
 
         </div>
@@ -314,6 +317,19 @@ const props = defineProps({
     userId:               { type: String,  default: '' },
     hasOnboarding:        { type: Boolean, default: false },
 });
+
+const pendingAgreements = computed(() => props.agreements.filter((a) => a.status === 'pending').length);
+
+const tabs = computed(() => [
+    { id: 'personal',     label: 'Personal',     icon: UserIcon,        count: null },
+    { id: 'projects',     label: 'Projects',     icon: FolderIcon,      count: props.projects.length },
+    { id: 'certificates', label: 'Certificates', icon: AcademicCapIcon, count: props.trainingCertificates.length },
+    { id: 'contracts',    label: 'Contracts',    icon: ShieldCheckIcon, count: props.documents.length + props.agreements.length, dot: pendingAgreements.value > 0 },
+    { id: 'security',     label: 'Security',     icon: LockClosedIcon,  count: null },
+]);
+
+// Open on the Contracts tab when something needs signing, otherwise Personal.
+const activeTab = ref(pendingAgreements.value > 0 ? 'contracts' : 'personal');
 
 const qrCodeUrl = computed(() => {
     const payload = encodeURIComponent(btoa(String(props.profileUser.id)));
@@ -405,4 +421,6 @@ function businessClass(b) { return businessClasses[b] ?? businessClasses.bcf; }
 .btn-primary {
     @apply bg-[#EF233C] hover:bg-[#D90429] text-white text-sm font-medium px-5 py-2 rounded-lg transition-colors disabled:opacity-60;
 }
+.scrollbar-none { scrollbar-width: none; }
+.scrollbar-none::-webkit-scrollbar { display: none; }
 </style>
