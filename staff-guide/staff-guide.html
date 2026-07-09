@@ -1,0 +1,393 @@
+<title>Staff Portal — How-To Guide</title>
+<style>
+  :root{
+    --navy:#2b2d42; --navy-2:#22242f; --ink:#1f2230; --muted:#5b6172;
+    --line:#e4e7ef; --soft:#f4f6fa; --red:#ef233c; --red-soft:#fdecee;
+    --blue:#2563eb; --amber:#b45309; --green:#047857;
+    --page:#ffffff; --sans:"Segoe UI","Helvetica Neue",Helvetica,Arial,sans-serif;
+  }
+  *{ box-sizing:border-box; }
+  html{ -webkit-text-size-adjust:100%; }
+  body{ margin:0; background:#e9ecf2; color:var(--ink); font-family:var(--sans); line-height:1.6; }
+
+  /* Page frame (screen preview mimics paper) */
+  .doc{ max-width:820px; margin:0 auto; padding:28px 16px 64px; }
+  .sheet{ background:var(--page); border:1px solid var(--line); border-radius:14px; box-shadow:0 18px 50px rgba(20,22,34,.12); overflow:hidden; margin-bottom:26px; }
+  .pad{ padding:40px 48px; }
+
+  /* Cover */
+  .cover{ background:linear-gradient(160deg,#2e3140,#22242f); color:#f5f6fa; padding:64px 48px; position:relative; overflow:hidden; }
+  .cover .hexwrap{ position:absolute; inset:0; opacity:.5; }
+  .cover .eyebrow{ font-size:12.5px; letter-spacing:.28em; text-transform:uppercase; color:#9aa3b8; font-weight:600; margin:0 0 20px; }
+  .cover h1{ font-size:44px; line-height:1.08; font-weight:800; letter-spacing:-1px; margin:0; text-wrap:balance; }
+  .cover .sub{ color:var(--red); font-weight:700; letter-spacing:.14em; text-transform:uppercase; font-size:14px; margin:14px 0 0; }
+  .cover .foot{ margin-top:46px; padding-top:18px; border-top:1px solid rgba(255,255,255,.14); font-size:12.5px; color:#9aa3b8; display:flex; justify-content:space-between; gap:12px; flex-wrap:wrap; }
+  .cover .logo{ width:96px; height:96px; margin-bottom:26px; }
+
+  /* Typography */
+  h2{ font-size:22px; font-weight:800; letter-spacing:-.3px; margin:0 0 4px; color:var(--navy); text-wrap:balance; }
+  .doc{ counter-reset:section; }
+  .section{ counter-increment:section; }
+  .section h2::before{ content:counter(section) "  "; color:var(--red); font-variant-numeric:tabular-nums; }
+  h3{ font-size:15px; font-weight:700; margin:22px 0 6px; color:var(--ink); }
+  .lead{ color:var(--muted); font-size:14.5px; margin:0 0 18px; }
+  p{ margin:0 0 12px; }
+  a{ color:var(--red); }
+  strong{ color:var(--ink); }
+  code,.k{ font-family:"SF Mono",Consolas,monospace; font-size:.86em; background:var(--soft); border:1px solid var(--line); padding:1px 6px; border-radius:5px; color:var(--navy); }
+
+  .eyebrow-s{ font-size:11px; font-weight:700; letter-spacing:.16em; text-transform:uppercase; color:var(--red); margin:0 0 6px; }
+
+  /* Steps */
+  ol.steps{ list-style:none; counter-reset:s; margin:0; padding:0; }
+  ol.steps > li{ counter-increment:s; position:relative; padding:0 0 12px 40px; margin:0; break-inside:avoid; }
+  ol.steps > li::before{ content:counter(s); position:absolute; left:0; top:-1px; width:26px; height:26px; background:var(--navy); color:#fff; border-radius:50%; font-size:13px; font-weight:700; display:flex; align-items:center; justify-content:center; }
+  ul.plain{ margin:6px 0 14px; padding-left:20px; }
+  ul.plain li{ margin:3px 0; }
+
+  /* Screenshot placeholder */
+  figure.shot{ margin:14px 0 6px; break-inside:avoid; }
+  .shotbox{ border:2px dashed #c7ccda; border-radius:10px; background:repeating-linear-gradient(45deg,#fafbfd,#fafbfd 12px,#f3f5f9 12px,#f3f5f9 24px); height:210px; display:flex; align-items:center; justify-content:center; color:#9aa3b8; font-size:13px; text-align:center; padding:16px; }
+  .shotbox b{ display:block; color:var(--muted); font-weight:700; margin-bottom:2px; }
+  .shot-img{ display:block; width:100%; height:auto; border:1px solid var(--line); border-radius:10px; }
+  figure.shot figcaption{ font-size:12px; color:var(--muted); margin-top:6px; }
+
+  /* Callouts */
+  .tip,.note{ border-radius:10px; padding:12px 14px 12px 16px; margin:14px 0; font-size:13.5px; break-inside:avoid; }
+  .tip{ background:var(--red-soft); border-left:3px solid var(--red); }
+  .note{ background:var(--soft); border-left:3px solid #9aa3b8; }
+  .tip .lbl,.note .lbl{ font-weight:800; letter-spacing:.04em; text-transform:uppercase; font-size:11px; margin-right:6px; }
+  .tip .lbl{ color:var(--red); } .note .lbl{ color:var(--muted); }
+
+  /* Pills for statuses */
+  .pill{ display:inline-block; font-size:11.5px; font-weight:700; padding:1px 8px; border-radius:999px; vertical-align:middle; }
+  .p-amber{ background:#fef3c7; color:var(--amber); } .p-green{ background:#d1fae5; color:var(--green); }
+  .p-red{ background:#fee2e2; color:#b91c1c; } .p-blue{ background:#dbeafe; color:var(--blue); }
+
+  /* TOC */
+  ol.toc{ list-style:none; counter-reset:t; margin:8px 0 0; padding:0; columns:2; column-gap:36px; }
+  ol.toc li{ counter-increment:t; break-inside:avoid; padding:6px 0; border-bottom:1px solid var(--line); font-size:14px; display:flex; gap:10px; }
+  ol.toc li::before{ content:counter(t); color:var(--red); font-weight:700; width:20px; font-variant-numeric:tabular-nums; }
+
+  hr.div{ border:none; border-top:1px solid var(--line); margin:34px 0; }
+
+  /* Print */
+  @media print{
+    body{ background:#fff; }
+    .doc{ max-width:none; margin:0; padding:0; }
+    .sheet{ border:none; border-radius:0; box-shadow:none; margin:0; }
+    .pad{ padding:14mm 16mm; }
+    .cover{ padding:40mm 16mm; min-height:calc(100vh - 2px); }
+    .section{ page-break-before:always; }
+    h2,h3{ page-break-after:avoid; }
+    figure.shot,.tip,.note,ol.steps > li{ page-break-inside:avoid; }
+    a{ color:var(--ink); text-decoration:none; }
+  }
+  @page{ size:A4; margin:0; }
+</style>
+
+<div class="doc">
+
+  <!-- ══ COVER ══ -->
+  <div class="sheet">
+    <div class="cover">
+      <svg class="logo" viewBox="195 57 290 290" xmlns="http://www.w3.org/2000/svg" aria-label="Staff Portal">
+        <polygon points="340,68 459,135 459,269 340,336 221,269 221,135" fill="#c0182a" stroke="#e8203a" stroke-width="6" stroke-linejoin="round"/>
+        <circle cx="340" cy="155" r="26" fill="#e8182e"/><circle cx="340" cy="155" r="22" fill="#f03048"/>
+        <path d="M260,248 Q252,210 290,196 Q308,190 325,200" fill="none" stroke="#f03048" stroke-width="14" stroke-linecap="round"/>
+        <path d="M420,248 Q428,210 390,196 Q372,190 355,200" fill="none" stroke="#f03048" stroke-width="14" stroke-linecap="round"/>
+        <path d="M325,200 Q340,210 355,200 L358,240 Q340,252 322,240 Z" fill="#e8182e"/>
+        <path d="M265,248 Q340,210 415,248" fill="none" stroke="#c8d0e0" stroke-width="3" opacity="0.9"/>
+        <circle cx="265" cy="248" r="10" fill="#fff"/><circle cx="265" cy="248" r="6" fill="#e8182e"/>
+        <circle cx="340" cy="218" r="10" fill="#fff"/><circle cx="340" cy="218" r="6" fill="#e8182e"/>
+        <circle cx="415" cy="248" r="10" fill="#fff"/><circle cx="415" cy="248" r="6" fill="#e8182e"/>
+      </svg>
+      <p class="eyebrow">Ballycastle Climbing Frames</p>
+      <h1>Staff Portal<br>How-To Guide</h1>
+      <p class="sub">For staff users</p>
+      <div class="foot"><span>Bespoke Garden Rooms · Ballycastle Climbing Frames</span><span>2026 · Internal use only</span></div>
+    </div>
+  </div>
+
+  <!-- ══ INTRO + TOC ══ -->
+  <div class="sheet"><div class="pad">
+    <p class="eyebrow-s">Start here</p>
+    <h2>How to use this guide</h2>
+    <p class="lead">This guide walks through the Staff Portal one page at a time — how to log in, what each page is for, and how to do the everyday things you'll need. Follow the numbered steps for each section.</p>
+    <div class="note"><span class="lbl">Screenshots</span> Each section has a placeholder box — drop in a screenshot of that screen to make the guide your own.</div>
+
+    <h3>Contents</h3>
+    <ol class="toc">
+      <li>Logging in</li>
+      <li>The Dashboard</li>
+      <li>Attendance</li>
+      <li>My Day (End of day)</li>
+      <li>My Jobs</li>
+      <li>Schedule</li>
+      <li>Calendar</li>
+      <li>Overtime</li>
+      <li>Leave</li>
+      <li>News Feed</li>
+      <li>Workspaces &amp; Boards</li>
+      <li>My QR Code</li>
+      <li>My Payslip</li>
+      <li>Knowledge Base &amp; Training</li>
+      <li>Client Projects</li>
+      <li>Your Profile</li>
+      <li>Notifications</li>
+    </ol>
+  </div></div>
+
+  <!-- ══ 1. LOGIN ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Getting started</p>
+    <h2>Logging in</h2>
+    <p class="lead">Sign in to reach your portal. Your manager creates your account and gives you a temporary password.</p>
+    <ol class="steps">
+      <li>Open the portal in your browser: <span class="k">staff.bespokegardenroomsballycastle.co.uk</span>.</li>
+      <li>Enter your <strong>email</strong> and <strong>password</strong>, then press <strong>Log in</strong>.</li>
+      <li>If it's your first time, you'll be asked to <strong>set your own password</strong> — choose a strong one and confirm it.</li>
+      <li>You'll land on your <strong>Dashboard</strong>.</li>
+    </ol>
+    <div class="tip"><span class="lbl">Tip</span> Forgot your password or can't get in? Contact your manager — they can reset it for you.</div>
+    <figure class="shot"><img class="shot-img" src="images/login.png" alt="The login page" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The login page</span></div><figcaption>images/login.png &mdash; Capture: the sign-in screen.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 2. DASHBOARD ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Your home base</p>
+    <h2>The Dashboard</h2>
+    <p class="lead">The first page after logging in. It's your daily hub — clock in/out, see your hours, leave, jobs, and today's log at a glance.</p>
+    <h3>What's on the page</h3>
+    <ul class="plain">
+      <li><strong>The Clock</strong> — your live clock-in status and the big Clock In / Clock Out button.</li>
+      <li><strong>My QR Code</strong> — present to a site head to be scanned in/out on site.</li>
+      <li><strong>Today's Log</strong> — a shortcut to write your end-of-day summary.</li>
+      <li><strong>This Week's Hours</strong> — a chart of hours worked each day.</li>
+      <li><strong>Annual Leave</strong> — days remaining, with a link to book time off.</li>
+      <li><strong>Upcoming Jobs</strong> — jobs assigned to you for the coming days.</li>
+      <li><strong>Recent Entries</strong> — your latest clock records and their status.</li>
+    </ul>
+    <div class="note"><span class="lbl">Navigation</span> The menu on the left opens every page. On a phone, tap the ☰ button to open it.</div>
+    <figure class="shot"><img class="shot-img" src="images/dashboard.png" alt="The Dashboard" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The Dashboard</span></div><figcaption>images/dashboard.png &mdash; Capture: the full dashboard after logging in.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 3. ATTENDANCE ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Time &amp; attendance</p>
+    <h2>Attendance</h2>
+    <p class="lead">Record your working time so it counts towards your pay, and review your entries.</p>
+    <h3>Clocking in &amp; out</h3>
+    <ol class="steps">
+      <li>On the <strong>Dashboard</strong>, press the big red <strong>Clock In</strong> button when you start. (Leave the type on <strong>Regular</strong> for a normal shift.)</li>
+      <li>While working, the button turns green and shows your running worked time.</li>
+      <li>Taking a break? Use <strong>Start Break</strong> or <strong>Lunch Break</strong> — the timer pauses so breaks aren't counted. Press <strong>Resume Work</strong> when you're back.</li>
+      <li>Press <strong>Clock Out</strong> at the end of your shift.</li>
+    </ol>
+    <p>On site, your site head can scan your <strong>QR code</strong> to clock you in or out instead — no typing needed.</p>
+    <div class="tip"><span class="lbl">Important</span> Always clock out — an open entry can't be approved or paid.</div>
+    <h3>On the Attendance page</h3>
+    <p>Open <strong>Attendance</strong> from the sidebar to see all your time entries — date, clock in/out, total hours, and status: <span class="pill p-amber">pending</span> <span class="pill p-green">approved</span> <span class="pill p-red">rejected</span>. Use the <strong>date</strong> and <strong>status</strong> filters to find a specific entry.</p>
+    <figure class="shot"><img class="shot-img" src="images/attendance.png" alt="The clock card &amp;amp; Attendance page" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The clock card &amp; Attendance page</span></div><figcaption>images/attendance.png &mdash; Capture: the dashboard clock, and the Attendance list.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 4. MY DAY ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">End of day</p>
+    <h2>My Day (End-of-day log)</h2>
+    <p class="lead">Write a short summary of your day, tag the jobs you worked on, and add photos.</p>
+    <ol class="steps">
+      <li>Open <strong>My Day</strong> from the sidebar.</li>
+      <li>Under <strong>What did you accomplish?</strong> type an item and press <strong>Enter</strong> to add it to the list. Add as many as you like.</li>
+      <li>Add <strong>Blockers</strong> and <strong>Plan for tomorrow</strong> if relevant.</li>
+      <li>Tag the <strong>Jobs worked on</strong> from the dropdown, and add <strong>Photos</strong> of your work.</li>
+      <li>Press <strong>Submit EOD</strong> when your day is done (or <strong>Save draft</strong> to keep editing).</li>
+    </ol>
+    <div class="tip"><span class="lbl">Tip</span> Jot accomplishments down as you go — it's quicker than remembering everything at 5pm. You'll get a reminder if you haven't submitted by end of day.</div>
+    <figure class="shot"><img class="shot-img" src="images/my-day.png" alt="The My Day page" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The My Day page</span></div><figcaption>images/my-day.png &mdash; Capture: My Day with a few accomplishments, a tagged job, and a photo.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 5. MY JOBS ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Your work</p>
+    <h2>My Jobs</h2>
+    <p class="lead">See the jobs assigned to you and move them along as you work.</p>
+    <ol class="steps">
+      <li>Open <strong>My Jobs</strong> from the sidebar. Jobs are grouped by date.</li>
+      <li>Each card shows the title, project/customer, time, van, and crew.</li>
+      <li>Use the <strong>Upcoming / Past / All</strong> pills and the status/date filters to narrow the list.</li>
+      <li>When a job is <span class="pill p-blue">scheduled</span>, press <strong>▶ Start</strong> when you begin; when <span class="pill p-amber">in progress</span>, press <strong>✓ Complete</strong> when finished.</li>
+    </ol>
+    <div class="note"><span class="lbl">Note</span> Starting/completing a job is not the same as clocking in — keep both up to date.</div>
+    <figure class="shot"><img class="shot-img" src="images/my-jobs.png" alt="The My Jobs list" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The My Jobs list</span></div><figcaption>images/my-jobs.png &mdash; Capture: My Jobs with a job card and its status buttons.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ SCHEDULE ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Your week</p>
+    <h2>Schedule</h2>
+    <p class="lead">See the days you're rostered to work, and this week's jobs.</p>
+    <ol class="steps">
+      <li>Open <strong>Schedule</strong> from the sidebar.</li>
+      <li>The <strong>Staff Roster</strong> shows your scheduled working days for the week, with shift times where set.</li>
+      <li>Switch tabs to see this week's <strong>jobs</strong> alongside the roster.</li>
+      <li>Use the week arrows to look ahead or back.</li>
+    </ol>
+    <div class="note"><span class="lbl">Note</span> Your working pattern and shifts are set by your manager — check here so you know when you're expected in.</div>
+    <figure class="shot"><img class="shot-img" src="images/schedule.png" alt="The Schedule / roster" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The Schedule / roster</span></div><figcaption>images/schedule.png &mdash; Capture: the weekly roster view.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ CALENDAR ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">The month at a glance</p>
+    <h2>Calendar</h2>
+    <p class="lead">A monthly view of jobs, leave, and project schedules.</p>
+    <ol class="steps">
+      <li>Open <strong>Calendar</strong> from the sidebar.</li>
+      <li>Each day shows <strong>jobs</strong> and <strong>leave</strong> as chips; <strong>projects</strong> appear as bars spanning their dates.</li>
+      <li>Use the arrows to move between months, or press <strong>Today</strong> to jump back.</li>
+      <li>The <strong>legend</strong> at the top explains what each mark means.</li>
+    </ol>
+    <figure class="shot"><img class="shot-img" src="images/calendar.png" alt="The Calendar" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The Calendar</span></div><figcaption>images/calendar.png &mdash; Capture: the month view with jobs, leave, and project bars.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 6. OVERTIME ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Extra hours</p>
+    <h2>Overtime</h2>
+    <p class="lead">File overtime so extra hours are approved and paid.</p>
+    <ol class="steps">
+      <li>Open <strong>Overtime</strong> from the sidebar and click <strong>Request OT</strong>.</li>
+      <li>Choose the <strong>date</strong>, <strong>start</strong> and <strong>end</strong> times, and the <strong>type</strong> (OT or RDOT), then add a reason.</li>
+      <li>Submit — it goes to your manager as <span class="pill p-amber">pending</span> for approval.</li>
+      <li>Track the outcome on the same page (<span class="pill p-green">approved</span> / <span class="pill p-red">rejected</span>).</li>
+    </ol>
+    <div class="tip"><span class="lbl">How it affects pay</span> Regular pay is capped at 8 hours per shift. Anything beyond 8 hours is only paid if you file it as overtime and it's approved — otherwise the extra time isn't paid.</div>
+    <figure class="shot"><img class="shot-img" src="images/overtime.png" alt="The Overtime request form" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The Overtime request form</span></div><figcaption>images/overtime.png &mdash; Capture: the Request OT form and the requests list.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 7. LEAVE ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Time off</p>
+    <h2>Leave</h2>
+    <p class="lead">Request time off and track your balance.</p>
+    <ol class="steps">
+      <li>Open <strong>Leave</strong> from the sidebar. The top shows your allowance, days left, and sick days.</li>
+      <li>Click <strong>Request Leave</strong>, choose the <strong>type</strong> (Annual, Sick, Compassionate, Unpaid, Other) and the <strong>dates</strong>, add a reason.</li>
+      <li>Check the working-days preview (weekends aren't counted), then <strong>Submit</strong>.</li>
+      <li>Your request goes to your manager: <span class="pill p-amber">pending</span> → <span class="pill p-green">approved</span> / <span class="pill p-red">rejected</span>.</li>
+    </ol>
+    <div class="tip"><span class="lbl">Tip</span> Request annual leave well in advance so it can be planned around jobs. Keep an eye on your <strong>Days left</strong>.</div>
+    <figure class="shot"><img class="shot-img" src="images/leave.png" alt="The Leave page" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The Leave page</span></div><figcaption>images/leave.png &mdash; Capture: the leave balance cards and the Request Leave form.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 8. NEWS FEED ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Stay connected</p>
+    <h2>News Feed</h2>
+    <p class="lead">The company's social wall for announcements, posts, and recognition.</p>
+    <ol class="steps">
+      <li>Open <strong>Newsfeed</strong> from the sidebar. Click <strong>What's on your mind?</strong> to write a post.</li>
+      <li>Pick a type (Post, Blog, Event, Recognition), type your message, and add up to six photos.</li>
+      <li>Type <span class="k">@</span> to mention a colleague, or <span class="k">@all</span> to notify everyone.</li>
+      <li><strong>React</strong> and <strong>comment</strong> on posts; you can edit your own posts and comments.</li>
+    </ol>
+    <figure class="shot"><img class="shot-img" src="images/newsfeed.png" alt="The News Feed" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The News Feed</span></div><figcaption>images/newsfeed.png &mdash; Capture: the feed with the composer open.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 9. WORKSPACES ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Organise tasks</p>
+    <h2>Workspaces &amp; Boards</h2>
+    <p class="lead">Visual boards for organising tasks — like digital sticky notes.</p>
+    <ol class="steps">
+      <li>Open <strong>Workspace</strong> from the sidebar and click a board to open it.</li>
+      <li>Boards have <strong>lists</strong> (columns) and <strong>cards</strong> (tasks). Add a card with <strong>+ Add a card</strong>.</li>
+      <li>Drag cards between lists to move them along; click a card to open its details.</li>
+      <li>Inside a card: description, labels, dates, checklist, attachments (images, files, video), and comments. Type <span class="k">@</span> to mention a teammate.</li>
+    </ol>
+    <figure class="shot"><img class="shot-img" src="images/workspace.png" alt="A board &amp;amp; a card" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>A board &amp; a card</span></div><figcaption>images/workspace.png &mdash; Capture: a board with lists/cards, and an open card.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 10. QR ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">On site</p>
+    <h2>My QR Code</h2>
+    <p class="lead">Your personal QR code for clocking in/out on site.</p>
+    <ol class="steps">
+      <li>Open <strong>My QR Code</strong> from the sidebar (it's also on your Dashboard).</li>
+      <li>Show it to your site head so they can scan you in or out — no typing needed.</li>
+    </ol>
+    <figure class="shot"><img class="shot-img" src="images/my-qr.png" alt="The My QR Code page" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The My QR Code page</span></div><figcaption>images/my-qr.png &mdash; Capture: your QR code screen.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 11. PAYSLIP ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Your pay</p>
+    <h2>My Payslip</h2>
+    <p class="lead">See your hours and pay for a period.</p>
+    <ol class="steps">
+      <li>Open <strong>My Payslip</strong> from the sidebar.</li>
+      <li>It shows the period, your shift details, hours (regular and overtime), and gross pay.</li>
+      <li>Use the <strong>date filter</strong> to view a specific range, or open a past payslip from the list.</li>
+    </ol>
+    <div class="note"><span class="lbl">Note</span> Times are shown in your own timezone. Hours beyond 8 per shift appear only if they were approved as overtime.</div>
+    <figure class="shot"><img class="shot-img" src="images/my-payslip.png" alt="The My Payslip page" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The My Payslip page</span></div><figcaption>images/my-payslip.png &mdash; Capture: a payslip with shift details.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 12. KB ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Help &amp; learning</p>
+    <h2>Knowledge Base &amp; Training</h2>
+    <p class="lead">Guides and training material, any time.</p>
+    <ol class="steps">
+      <li>Open <strong>Knowledge Base</strong> from the sidebar to browse help articles by category.</li>
+      <li>Use <strong>On this page</strong> on the right of an article to jump between sections.</li>
+      <li>Open <strong>Training</strong> for learning material assigned to you.</li>
+    </ol>
+    <figure class="shot"><img class="shot-img" src="images/knowledge-base.png" alt="The Knowledge Base" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>The Knowledge Base</span></div><figcaption>images/knowledge-base.png &mdash; Capture: the KB with an article open.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ CLIENT PROJECTS ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Client work</p>
+    <h2>Client Projects</h2>
+    <p class="lead">View projects from connected client systems (BGR and BCF).</p>
+    <ol class="steps">
+      <li>Open <strong>Client Projects</strong> from the sidebar and choose <strong>BGR</strong> or <strong>BCF</strong>.</li>
+      <li>The first time, connect your account — enter your BGR Portal credentials once; they're stored securely and you won't be asked again.</li>
+      <li>Once connected, your assigned projects and orders appear here.</li>
+    </ol>
+    <div class="note"><span class="lbl">Not linked?</span> If you see "Account not linked", ask an admin to link your account in <strong>Staff → Edit</strong>.</div>
+    <figure class="shot"><img class="shot-img" src="images/client-projects.png" alt="Client Projects" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>Client Projects</span></div><figcaption>images/client-projects.png &mdash; Capture: the Client Projects connect screen.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 13. PROFILE ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Your account</p>
+    <h2>Your Profile</h2>
+    <p class="lead">Keep your details and password up to date.</p>
+    <ol class="steps">
+      <li>Click your name/avatar at the bottom of the sidebar and choose <strong>Profile</strong>.</li>
+      <li>Update your photo, name, email, hire date, <strong>emergency contact</strong>, and <strong>certifications</strong>, then <strong>Save Changes</strong>.</li>
+      <li>Change your <strong>password</strong> in the Change Password section.</li>
+    </ol>
+    <div class="note"><span class="lbl">Managed by HR</span> Your role, pay rate, contracted hours, and timezone are set by HR/admin — contact your manager if any look wrong.</div>
+    <figure class="shot"><img class="shot-img" src="images/profile.png" alt="Your Profile page" onerror="this.style.display='none';this.nextElementSibling.style.display='flex';"><div class="shotbox" style="display:none"><span><b>📷 Screenshot</b>Your Profile page</span></div><figcaption>images/profile.png &mdash; Capture: the profile edit page.</figcaption></figure>
+  </div></div>
+
+  <!-- ══ 14. NOTIFICATIONS ══ -->
+  <div class="sheet section"><div class="pad">
+    <p class="eyebrow-s">Staying informed</p>
+    <h2>Notifications</h2>
+    <p class="lead">The portal keeps you in the loop automatically.</p>
+    <ul class="plain">
+      <li>The <strong>bell</strong> at the top of the screen shows new notifications — a job assigned, a mention, a leave decision, a reviewed EOD log, and more.</li>
+      <li>Click a notification to jump straight to what it's about.</li>
+      <li>Some notifications are also emailed to you so you don't miss company news.</li>
+    </ul>
+    <hr class="div">
+    <p class="lead" style="margin-bottom:0">That's the whole portal. If you get stuck, check the <strong>Knowledge Base</strong> or ask your manager. Welcome aboard!</p>
+  </div></div>
+
+</div>
