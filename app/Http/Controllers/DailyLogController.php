@@ -49,6 +49,12 @@ class DailyLogController extends Controller
                 'photos'   => count($l->photos ?? []),
             ]);
 
+        // Other active staff the worker can mention as their team for the day
+        $teammates = User::where('is_active', true)
+            ->where('id', '!=', $user->id)
+            ->orderBy('name')
+            ->get(['id', 'name', 'avatar']);
+
         return Inertia::render('DailyLog/MyDay', [
             'date'    => $date,
             'today'   => Carbon::now($tz)->toDateString(),
@@ -58,6 +64,11 @@ class DailyLogController extends Controller
                 'title'    => $j->title,
                 'date'     => $j->date?->toDateString(),
                 'is_today' => $j->date?->toDateString() === $date,
+            ]),
+            'teammates' => $teammates->map(fn ($u) => [
+                'id'         => $u->id,
+                'name'       => $u->name,
+                'avatar_url' => $u->avatar_url,
             ]),
             'history' => $history,
         ]);
@@ -79,8 +90,13 @@ class DailyLogController extends Controller
             'photos.*.size' => ['nullable', 'integer'],
             'jobs'          => ['nullable', 'array'],
             'jobs.*'        => ['string', 'exists:work_orders,id'],
+            'team'          => ['nullable', 'array'],
+            'team.*'        => ['string', 'exists:users,id'],
             'submit'        => ['nullable', 'boolean'],
         ]);
+
+        // Never let a worker tag themselves as their own team.
+        $team = collect($data['team'] ?? [])->reject(fn ($id) => $id === $user->id)->unique()->values()->all();
 
         $log = DailyLog::firstOrCreate(
             ['user_id' => $user->id, 'log_date' => $data['date']],
@@ -93,6 +109,7 @@ class DailyLogController extends Controller
             'plan_tomorrow' => $data['plan_tomorrow'] ?? null,
             'photos'        => $data['photos'] ?? [],
             'jobs'          => $data['jobs'] ?? [],
+            'team'          => $team,
         ]);
 
         if ($request->boolean('submit')) {
@@ -152,6 +169,7 @@ class DailyLogController extends Controller
                 'status'       => $l->status,
                 'photos'       => count($l->photos ?? []),
                 'jobs'         => count($l->jobs ?? []),
+                'team'         => count($l->team ?? []),
                 'has_summary'  => filled($l->summary),
                 'acknowledged' => ! is_null($l->acknowledged_at),
             ]),
@@ -209,9 +227,10 @@ class DailyLogController extends Controller
 
         return response()->stream(function () use ($query) {
             $handle = fopen('php://output', 'w');
-            fputcsv($handle, ['Employee ID', 'Name', 'Date', 'Status', 'Accomplishments', 'Blockers', 'Plan for tomorrow', 'Jobs', 'Photos']);
+            fputcsv($handle, ['Employee ID', 'Name', 'Date', 'Status', 'Accomplishments', 'Blockers', 'Plan for tomorrow', 'Jobs', 'Team', 'Photos']);
             $query->chunk(200, function ($rows) use ($handle) {
                 $titles = $this->jobTitleMap($rows->pluck('jobs')->flatten()->filter()->unique()->all());
+                $names  = $this->teamMap($rows->pluck('team')->flatten()->filter()->unique()->all());
                 foreach ($rows as $l) {
                     fputcsv($handle, [
                         $l->user?->employee_id ?? '',
@@ -222,6 +241,7 @@ class DailyLogController extends Controller
                         $l->blockers,
                         $l->plan_tomorrow,
                         collect($l->jobs ?? [])->map(fn ($id) => $titles[$id] ?? $id)->implode('; '),
+                        collect($l->team ?? [])->map(fn ($id) => $names[$id]['name'] ?? $id)->implode('; '),
                         count($l->photos ?? []),
                     ]);
                 }
@@ -253,6 +273,13 @@ class DailyLogController extends Controller
             'jobs'            => collect($log->jobs ?? [])->map(fn ($id) => [
                 'id' => $id, 'title' => $titles[$id] ?? 'Job',
             ])->values(),
+            'team'            => (function () use ($log) {
+                $map = $this->teamMap($log->team ?? []);
+                return collect($log->team ?? [])
+                    ->filter(fn ($id) => isset($map[$id]))
+                    ->map(fn ($id) => $map[$id])
+                    ->values();
+            })(),
             'acknowledged'    => ! is_null($log->acknowledged_at),
             'acknowledged_by' => $log->acknowledgedBy?->name,
             'acknowledged_at' => $log->acknowledged_at?->toIso8601String(),
@@ -276,6 +303,18 @@ class DailyLogController extends Controller
             return [];
         }
         return Job::whereIn('id', $ids)->pluck('title', 'id')->all();
+    }
+
+    /** @return array<string, array{id:string,name:string,avatar_url:?string}> */
+    private function teamMap(array $ids): array
+    {
+        if (empty($ids)) {
+            return [];
+        }
+        return User::whereIn('id', $ids)->get(['id', 'name', 'avatar'])
+            ->keyBy('id')
+            ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'avatar_url' => $u->avatar_url])
+            ->all();
     }
 
     private function mediaDisk(): string

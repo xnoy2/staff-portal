@@ -40,6 +40,18 @@
                 </div>
             </div>
 
+            <!-- Team -->
+            <div v-if="log.team && log.team.length" class="bg-white rounded-2xl border border-gray-200 p-4">
+                <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Team that day</p>
+                <div class="flex flex-wrap gap-1.5">
+                    <span v-for="m in log.team" :key="m.id" class="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full pl-1 pr-2.5 py-0.5">
+                        <img v-if="m.avatar_url" :src="m.avatar_url" class="w-4 h-4 rounded-full object-cover" />
+                        <UserCircleIcon v-else class="w-4 h-4" />
+                        @{{ m.name }}
+                    </span>
+                </div>
+            </div>
+
             <!-- Photos -->
             <div v-if="log.photos.length" class="bg-white rounded-2xl border border-gray-200 p-4">
                 <p class="text-xs font-bold text-gray-500 uppercase tracking-wide mb-2">Photos</p>
@@ -76,7 +88,7 @@ import { Link, router } from '@inertiajs/vue3';
 import dayjs from 'dayjs';
 import relativeTime from 'dayjs/plugin/relativeTime';
 import AppLayout from '@/Layouts/AppLayout.vue';
-import { ArrowLeftIcon, BriefcaseIcon, CheckBadgeIcon } from '@heroicons/vue/24/outline';
+import { ArrowLeftIcon, BriefcaseIcon, CheckBadgeIcon, UserCircleIcon } from '@heroicons/vue/24/outline';
 dayjs.extend(relativeTime);
 
 const props = defineProps({ log: { type: Object, required: true } });

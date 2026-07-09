@@ -12,7 +12,7 @@ class DailyLog extends Model
 
     protected $fillable = [
         'user_id', 'log_date', 'status', 'summary', 'blockers', 'plan_tomorrow',
-        'photos', 'jobs', 'submitted_at', 'acknowledged_by', 'acknowledged_at', 'manager_comment',
+        'photos', 'jobs', 'team', 'submitted_at', 'acknowledged_by', 'acknowledged_at', 'manager_comment',
     ];
 
     protected function casts(): array
@@ -21,6 +21,7 @@ class DailyLog extends Model
             'log_date'        => 'date',
             'photos'          => 'array',
             'jobs'            => 'array',
+            'team'            => 'array',
             'submitted_at'    => 'datetime',
             'acknowledged_at' => 'datetime',
         ];

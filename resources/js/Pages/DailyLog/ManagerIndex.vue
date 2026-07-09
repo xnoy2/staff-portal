@@ -67,6 +67,7 @@
                         <p class="text-xs text-gray-400">
                             {{ prettyDate(l.log_date) }}
                             <span v-if="l.jobs"> · {{ l.jobs }} job{{ l.jobs === 1 ? '' : 's' }}</span>
+                            <span v-if="l.team"> · {{ l.team }} team</span>
                             <span v-if="l.photos"> · {{ l.photos }} photo{{ l.photos === 1 ? '' : 's' }}</span>
                         </p>
                     </div>

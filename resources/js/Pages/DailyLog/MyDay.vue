@@ -6,7 +6,7 @@
             <div class="flex flex-wrap items-center justify-between gap-3 mb-5">
                 <div>
                     <h1 class="text-lg font-semibold text-gray-800">My Day</h1>
-                    <p class="text-xs text-gray-500 mt-0.5">Write your end-of-day summary, tag the jobs you worked on, and add photos.</p>
+                    <p class="text-xs text-gray-500 mt-0.5">Write your end-of-day summary, tag the jobs you worked on, mention your team, and add photos.</p>
                 </div>
                 <div class="flex items-center gap-1.5">
                     <button @click="go(-1)" class="p-2 rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50"><ChevronLeftIcon class="w-4 h-4" /></button>
@@ -90,6 +90,24 @@
                             <p v-else-if="!form.jobs.length" class="text-xs text-gray-400">No jobs assigned around this date.</p>
                         </div>
 
+                        <!-- Team today -->
+                        <div class="pt-1">
+                            <label class="block text-xs font-medium text-gray-600 mb-1.5">Who was on your team today?</label>
+                            <div v-if="form.team.length" class="flex flex-wrap gap-1.5 mb-2">
+                                <span v-for="id in form.team" :key="id" class="inline-flex items-center gap-1 text-xs bg-emerald-50 text-emerald-700 border border-emerald-200 rounded-full pl-1 pr-1 py-0.5">
+                                    <img v-if="teammateAvatar(id)" :src="teammateAvatar(id)" class="w-4 h-4 rounded-full object-cover" />
+                                    <UserCircleIcon v-else class="w-4 h-4" />
+                                    @{{ teammateName(id) }}
+                                    <button @click="toggleMate(id)" class="w-4 h-4 rounded-full hover:bg-emerald-100 flex items-center justify-center"><XMarkIcon class="w-3 h-3" /></button>
+                                </span>
+                            </div>
+                            <select v-if="addableMates.length" @change="onAddMate($event)" class="text-xs border-gray-200 rounded-lg py-1.5 focus:ring-[#EF233C] focus:border-[#EF233C] max-w-full sm:max-w-md">
+                                <option value="">+ Mention a teammate…</option>
+                                <option v-for="m in addableMates" :key="m.id" :value="m.id">{{ m.name }}</option>
+                            </select>
+                            <p v-else-if="!form.team.length" class="text-xs text-gray-400">No other staff to mention.</p>
+                        </div>
+
                         <!-- Photos -->
                         <div class="pt-1">
                             <div class="flex items-center justify-between mb-1.5">
@@ -151,15 +169,16 @@ import axios from 'axios';
 import AppLayout from '@/Layouts/AppLayout.vue';
 import {
     ChevronLeftIcon, ChevronRightIcon, PhotoIcon, XMarkIcon,
-    BriefcaseIcon, CheckCircleIcon, CheckBadgeIcon,
+    BriefcaseIcon, CheckCircleIcon, CheckBadgeIcon, UserCircleIcon,
 } from '@heroicons/vue/24/outline';
 
 const props = defineProps({
-    date:    { type: String, required: true },
-    today:   { type: String, required: true },
-    log:     { type: Object, default: null },
-    jobs:    { type: Array,  default: () => [] },
-    history: { type: Array,  default: () => [] },
+    date:      { type: String, required: true },
+    today:     { type: String, required: true },
+    log:       { type: Object, default: null },
+    jobs:      { type: Array,  default: () => [] },
+    teammates: { type: Array,  default: () => [] },
+    history:   { type: Array,  default: () => [] },
 });
 
 const opts = { preserveScroll: true };
@@ -173,6 +192,7 @@ const buildForm = () => ({
     plan_tomorrow:   props.log?.plan_tomorrow ?? '',
     photos:          [...(props.log?.photos ?? [])],
     jobs:            (props.log?.jobs ?? []).map(j => j.id),
+    team:            (props.log?.team ?? []).map(m => m.id),
 });
 const form = reactive(buildForm());
 
@@ -201,6 +221,19 @@ function jobTitle(id) { return jobTitleMap.value[id] ?? 'Job'; }
 const addableJobs = computed(() => (props.jobs || []).filter(j => !form.jobs.includes(j.id)));
 function onAddJob(e) { const id = e.target.value; if (id && !form.jobs.includes(id)) form.jobs.push(id); e.target.value = ''; }
 function toggleJob(id) { const i = form.jobs.indexOf(id); if (i >= 0) form.jobs.splice(i, 1); }
+
+// ── Team ──
+const teammateMap = computed(() => {
+    const m = {};
+    (props.teammates || []).forEach(u => { m[u.id] = u; });
+    (props.log?.team || []).forEach(u => { m[u.id] = { ...(m[u.id] || {}), ...u }; });
+    return m;
+});
+function teammateName(id) { return teammateMap.value[id]?.name ?? 'Someone'; }
+function teammateAvatar(id) { return teammateMap.value[id]?.avatar_url ?? null; }
+const addableMates = computed(() => (props.teammates || []).filter(u => !form.team.includes(u.id)));
+function onAddMate(e) { const id = e.target.value; if (id && !form.team.includes(id)) form.team.push(id); e.target.value = ''; }
+function toggleMate(id) { const i = form.team.indexOf(id); if (i >= 0) form.team.splice(i, 1); }
 
 // ── Photos ──
 const uploading = ref(false);
@@ -231,6 +264,7 @@ function save(submit) {
         blockers:      form.blockers,
         plan_tomorrow: form.plan_tomorrow,
         jobs:          form.jobs,
+        team:          form.team,
         photos:        form.photos.map(p => ({ path: p.path, name: p.name, size: p.size })),
         submit,
     }, { ...opts, onFinish: () => { saving.value = false; } });
