@@ -56,7 +56,9 @@ class PayrollRun extends Model
 
     public function user(): BelongsTo
     {
-        return $this->belongsTo(User::class);
+        // Payroll is a historical record: a run must still resolve its staff
+        // member even after that person is soft-deleted (left the company).
+        return $this->belongsTo(User::class)->withTrashed();
     }
 
     public function generatedBy(): BelongsTo

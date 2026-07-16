@@ -39,10 +39,10 @@ class PayrollRunController extends Controller
                 'period_from'    => $r->period_from->toDateString(),
                 'period_to'      => $r->period_to->toDateString(),
                 'status'         => $r->status,
-                'staff_name'     => $r->user->name,
-                'staff_id'       => $r->user->employee_id,
+                'staff_name'     => $r->user?->name ?? 'Deleted staff',
+                'staff_id'       => $r->user?->employee_id,
                 'staff_uuid'     => $r->user_id,
-                'avatar_url'     => $r->user->avatar_url,
+                'avatar_url'     => $r->user?->avatar_url,
                 'total_hours'    => $r->total_hours,
                 'gross_pay'      => $r->gross_pay,
                 'has_rate'       => ! is_null($r->hourly_rate),
@@ -162,7 +162,7 @@ class PayrollRunController extends Controller
             grossPay:   (float) $run->gross_pay,
         ));
 
-        return back()->with('success', "{$run->user->name}'s payslip approved.");
+        return back()->with('success', ($run->user?->name ?? 'Staff') . "'s payslip approved.");
     }
 
     public function approveAll(Request $request): RedirectResponse
